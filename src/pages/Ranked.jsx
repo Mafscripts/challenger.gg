@@ -1,3 +1,4 @@
+import { retainDataSnapshot } from "@/lib/dataSnapshot";
 import useCompetitionGame from "@/hooks/useCompetitionGame";
 import CompetitionGameSelect from "@/components/competition/CompetitionGameSelect";
 import { storedGameId } from "@/lib/mw4";
@@ -113,7 +114,6 @@ export default function Ranked() {
   useEffect(() => {
     let active = true;
     let refreshing = false;
-    let leaderboardRefreshTick = 0;
 
     if (!user?.id) return undefined;
 
@@ -124,22 +124,14 @@ export default function Ranked() {
         const [matches, playerMatches, playerStats] = await Promise.all([
           base44.entities.RankedMatch.filterFresh({ status: "open", matchfinder_visible: true }, "-created_date", 100),
           base44.entities.RankedMatch.filterFresh({}, "-created_date", 100),
-          base44.functions.invoke("getRankedStandings", { game_id: gameId }).then(response => (response.data?.rows || []).filter(row => row.user_id === user.id)),
+          base44.functions.invoke("getRankedStandings", { game_id: gameId }).then(response => response.data?.rows || []),
         ]);
         if (active) {
-          setRankedMatches((matches || []).filter((match) => match.match_type !== "xp"));
-          setActiveRankedMatch(selectActiveRankedMatch((playerMatches || []).filter((match) => match.match_type !== "xp"), user.id));
-          setCurrentStats((playerStats || [])[0] || null);
-        }
-
-        leaderboardRefreshTick += 1;
-        if (leaderboardRefreshTick >= 5) {
-          leaderboardRefreshTick = 0;
-          const leaderboard = await base44.functions.invoke("getRankedStandings", { game_id: gameId }).then((response) => response.data?.rows || []);
-          if (active) {
-            const position = (leaderboard || []).findIndex((stats) => stats.user_id === user.id);
-            setLeaderboardPosition(position >= 0 ? position + 1 : null);
-          }
+          setRankedMatches(previous => retainDataSnapshot(previous, (matches || []).filter((match) => match.match_type !== "xp")));
+          setActiveRankedMatch(previous => retainDataSnapshot(previous, selectActiveRankedMatch((playerMatches || []).filter((match) => match.match_type !== "xp"), user.id)));
+          setCurrentStats(previous => retainDataSnapshot(previous, playerStats.find(stats => stats.user_id === user.id) || null));
+          const position = playerStats.findIndex(stats => stats.user_id === user.id);
+          setLeaderboardPosition(position >= 0 ? position + 1 : null);
         }
       } catch (error) {
         console.error("Failed to refresh ranked matches:", error);
@@ -178,7 +170,7 @@ export default function Ranked() {
       ]);
 
       if (requestId !== loadRequest.current) return;
-      setRankedMatches((matches || []).filter((match) => match.match_type !== "xp"));
+      setRankedMatches(previous => retainDataSnapshot(previous, (matches || []).filter((match) => match.match_type !== "xp")));
       setCurrentStats((statsRows || []).find((stats) => stats.user_id === currentUser?.id) || null);
       setRankedTeams(captainTeams || []);
       const position = (statsRows || []).findIndex((stats) => stats.user_id === currentUser?.id);

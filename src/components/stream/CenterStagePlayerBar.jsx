@@ -5,22 +5,8 @@ import "@/styles/vivid-player-overlays.css";
 import "@/styles/tokyo-midnight-overlay.css";
 import AfterHoursDecorations from "./AfterHoursDecorations";
 
-export const CENTER_STAGE_THEMES = [
-  { key: "miami-vice", label: "Miami Vice", vivid: true, caption: "Hot pink / turquoise skyline", description: "A rolling neon perspective grid, striped sunset and turquoise horizon beneath a centered pink signature." },
-  { key: "venom-core", label: "Venom Core", vivid: true, caption: "Emerald / living energy", description: "Emerald energy filaments breathe and weave through dark glass while luminous motes rise around your name." },
-  { key: "ember-forge", label: "Ember Forge", vivid: true, caption: "Copper / molten orange", description: "Brushed copper, molten seams, rising embers and a forged-metal player signature." },
-  { key: "astral-gate", label: "Astral Gate", vivid: true, caption: "Violet / ice-blue starlight", description: "Counter-rotating portal rings, drifting stars and ice-blue orbital accents around your centered signature." },
-  { key: "crimson-overdrive", label: "Crimson Overdrive", vivid: true, caption: "Scarlet / racing afterburners", description: "The original red afterburner design: rushing light trails, angular armor and a luminous centered player signature." },
-  { key: "volt-rush", label: "Tokyo Midnight", vivid: true, caption: "Yellow neon / after-hours broadcast", description: "Tokyo after dark: animated Japanese neon signs, rain streaks, a yellow station-style nameplate and brief signal glitches. Your existing yellow overlay URL still works." },
-  { key: "cobalt-strike", label: "Cobalt Strike", vivid: true, caption: "Royal blue / plasma ribbons", description: "Layered blue plasma ribbons flow behind a sharp ice-blue player frame." },
-  { key: "gilded-reign", label: "Gilded Reign", vivid: true, caption: "Rich gold / polished metal", description: "Cut-gold facets, broad polished reflections and rising golden embers." },
-  { key: "silver-spectre", label: "Silver Spectre", vivid: true, caption: "Chrome silver / liquid light", description: "Flowing liquid-chrome reflections and opposing diamond comets surround a silver player frame." },
-  { key: "arc-reactor", label: "Arc Reactor", caption: "Electric cyan / reactor rings", description: "A centered player signature powered by spinning reactor rings, charging rails and electric particles." },
-  { key: "rift-runner", label: "Rift Runner", caption: "Magenta / warp-speed trails", description: "An angular magenta broadcast with rushing warp trails, a split portal and cascading light." },
-  { key: "crownline", label: "Crownline", caption: "Champagne / royal spotlight", description: "A black-and-gold signature with sweeping spotlights, orbiting gold dust and a radiant crown-shaped frame." },
-  { key: "storm-circuit", label: "Storm Circuit", caption: "Lime / moving circuitry", description: "A kinetic lime dashboard with traveling circuit pulses, scanning grids and an energized player frame." },
-  { key: "prism-tide", label: "Prism Tide", caption: "Iridescent / flowing ribbons", description: "A luminous pearl-and-violet broadcast with flowing iridescent ribbons, drifting light and a prismatic player signature." },
-];
+import { CENTER_STAGE_THEMES } from "@/lib/playerOverlayConfig";
+export { CENTER_STAGE_THEMES } from "@/lib/playerOverlayConfig";
 const format = value => Number(value || 0).toLocaleString("en-US");
 function Metric({ label, value }) {
   return <div className="centerbar-metric"><span>{label}</span><strong key={String(value)} title={String(value)}>{value}</strong></div>;

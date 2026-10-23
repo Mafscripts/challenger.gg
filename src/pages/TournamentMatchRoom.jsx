@@ -1,3 +1,4 @@
+import { retainDataSnapshot } from "@/lib/dataSnapshot";
 import { consoleRestrictedFor } from "@/lib/playerRestrictions";
 import StreamRequirementNotice from "@/components/competition/StreamRequirementNotice";
 import { competitionStreamChannels, streamChannelUrl } from "@/lib/competitionStreaming";
@@ -951,8 +952,8 @@ function TournamentMatchRoomView() {
           match?.tournament_id ? base44.entities.Tournament.getFresh(match.tournament_id) : Promise.resolve(null),
         ]);
         if (!active) return;
-        setMatch(latest);
-        if (parent) setTournament(parent);
+        setMatch(previous => retainDataSnapshot(previous, latest));
+        if (parent) setTournament(previous => retainDataSnapshot(previous, parent));
       } catch (error) {
         console.error("Failed to refresh tournament match:", error);
       } finally {

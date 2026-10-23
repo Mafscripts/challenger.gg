@@ -1101,7 +1101,7 @@ function InventoryMiniCard({ item }) {
     <motion.div whileHover={{ y: -4, transition: { duration: 0.1, ease: "easeOut" } }} className={`relative overflow-hidden rounded-lg border bg-secondary/60 ${premiumInventoryEffectClass(item)} ${inventoryBorderClass(item)}`}>
       <div className="aspect-square bg-secondary">
         {item.item_image ? (
-          <img src={item.item_image} alt={item.item_name} className="h-full w-full object-cover" />
+          <img src={item.item_image} alt={item.item_name} loading="lazy" decoding="async" className="h-full w-full object-cover" />
         ) : (
           <div className="flex h-full w-full items-center justify-center">
             <Package className="h-8 w-8 text-vapor/30" />
@@ -1124,7 +1124,7 @@ function InventoryFullCard({ item }) {
     >
       <div className="relative aspect-[4/3] overflow-hidden bg-secondary">
         {item.item_image ? (
-          <img src={item.item_image} alt={item.item_name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
+          <img src={item.item_image} alt={item.item_name} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
         ) : (
           <div className="flex h-full w-full items-center justify-center">
             <Package className="h-12 w-12 text-vapor/30" />

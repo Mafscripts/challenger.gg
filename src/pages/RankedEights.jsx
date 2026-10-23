@@ -1,3 +1,4 @@
+import { retainDataSnapshot } from "@/lib/dataSnapshot";
 import { competitionStreamRequiredMessage, hasCompetitionStream } from "@/lib/competitionStreaming";
 import StreamRequirementNotice from "@/components/competition/StreamRequirementNotice";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -96,9 +97,9 @@ export default function RankedEights() {
       const current = activeMatches.filter((row) => row?.match_type === lobbyMatchType && activeStatuses.has(row.status)).sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0))[0] || null;
       const participantLists = await Promise.all((openRows || []).map((row) => base44.entities.WagerParticipant.filterFresh({ wager_id: row.id }, "joined_date", 8).catch(() => [])));
       setUser(currentUser);
-      setLobbies(openRows || []);
-      setActiveLobby(current);
-      setCounts(Object.fromEntries((openRows || []).map((row, index) => [row.id, participantLists[index]?.length || 0])));
+      setLobbies(previous => retainDataSnapshot(previous, openRows || []));
+      setActiveLobby(previous => retainDataSnapshot(previous, current));
+      setCounts(previous => retainDataSnapshot(previous, Object.fromEntries((openRows || []).map((row, index) => [row.id, participantLists[index]?.length || 0]))));
     } catch (error) {
       console.error("Failed to load 8s:", error);
       toast({ title: isMoney ? "Money 8s unavailable" : "8s unavailable", description: error.message || "Please try again.", variant: "destructive" });

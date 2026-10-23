@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
-import { usePlayerOverlay } from "@/components/stream/PlayerStatsBar";
+import { usePlayerOverlay } from "@/hooks/usePlayerOverlay";
 import WebcamFrame, { WEBCAM_THEMES, webcamDimensions } from "@/components/stream/WebcamFrame";
 
 export default function WebcamOverlay() {

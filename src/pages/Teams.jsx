@@ -701,7 +701,7 @@ function TeamLogo({ team, className = "h-16 w-16", textClassName = "text-xl" }) 
 
   return (
     <div className={`flex shrink-0 items-center justify-center overflow-hidden rounded-xl border border-cyan/20 bg-gradient-to-br from-cyan/20 via-secondary to-slate-500/15 font-mono font-black text-cyan shadow-[0_12px_28px_rgba(0,0,0,0.24)] ${className}`}>
-      {team.logo_url && !imageFailed ? <img src={team.logo_url} alt="" onError={() => setImageFailed(true)} className="block h-full w-full object-cover" /> : <span className={`block max-w-full truncate px-2 ${textClassName}`}>{teamInitials(team)}</span>}
+      {team.logo_url && !imageFailed ? <img src={team.logo_url} alt="" loading="lazy" decoding="async" onError={() => setImageFailed(true)} className="block h-full w-full object-cover" /> : <span className={`block max-w-full truncate px-2 ${textClassName}`}>{teamInitials(team)}</span>}
     </div>
   );
 }

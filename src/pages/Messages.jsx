@@ -1,3 +1,4 @@
+import { retainDataSnapshot } from "@/lib/dataSnapshot";
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
@@ -124,7 +125,7 @@ export default function Messages() {
   const loadInvitations = async (userId, stillActive = () => true) => {
     try {
       const rows = await base44.entities.Message.filterFresh({ recipient_id: userId, message_type: "tournament_invitation" }, "-created_date", 100);
-      if (stillActive()) setInvitations((rows || []).map((row) => readInvitationIdsRef.current.has(row.id) ? { ...row, is_read: true } : row));
+      if (stillActive()) setInvitations(previous => retainDataSnapshot(previous, (rows || []).map((row) => readInvitationIdsRef.current.has(row.id) ? { ...row, is_read: true } : row)));
     } catch { /* Keep the existing invitations on a temporary failure. */ }
   };
 
@@ -148,7 +149,7 @@ export default function Messages() {
               const otherId = message.sender_id === user.id ? message.recipient_id : message.sender_id;
               if (!nextPlayers[otherId]) nextPlayers[otherId] = { id: otherId, name: message.sender_id === user.id ? message.recipient_name : message.sender_name };
             }
-            setPlayers((current) => ({ ...current, ...nextPlayers }));
+            setPlayers((current) => retainDataSnapshot(current, { ...current, ...nextPlayers }));
             if (!activePlayerIdRef.current && initialMessages?.length) {
               const latest = initialMessages[initialMessages.length - 1];
               const otherId = latest.sender_id === user.id ? latest.recipient_id : latest.sender_id;

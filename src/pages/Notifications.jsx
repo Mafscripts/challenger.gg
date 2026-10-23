@@ -8,6 +8,7 @@ import AccountPageHero from "@/components/ui/AccountPageHero";
 import PageLoader from "@/components/ui/PageLoader";
 import { isCurrentNotification } from "@/lib/notificationRetention";
 import { applyNotificationChange } from "@/lib/notificationInbox";
+import { retainDataSnapshot } from "@/lib/dataSnapshot";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 
 export default function Notifications() {
@@ -44,7 +45,7 @@ export default function Notifications() {
       if (event.detail?.refresh) refresh();
     };
     const timer = window.setInterval(() => {
-      setNotifications((current) => current.filter((notification) => isCurrentNotification(notification)));
+      setNotifications((current) => retainDataSnapshot(current, current.filter((notification) => isCurrentNotification(notification))));
       refresh();
     }, 30000);
     window.addEventListener("topfragg:notifications-updated", onChange);
@@ -70,7 +71,7 @@ export default function Notifications() {
         50
       );
       if (currentRequest !== requestId.current) return;
-      setNotifications((data || []).filter((notification) => isCurrentNotification(notification)));
+      setNotifications(previous => retainDataSnapshot(previous, (data || []).filter((notification) => isCurrentNotification(notification))));
       setLoadError(false);
     } catch (error) {
       if (currentRequest !== requestId.current) return;

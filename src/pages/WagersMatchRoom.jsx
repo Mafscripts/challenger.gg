@@ -1,3 +1,4 @@
+import { retainDataSnapshot } from "@/lib/dataSnapshot";
 import StreamRequirementNotice from "@/components/competition/StreamRequirementNotice";
 import React, { useRef, useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
@@ -245,7 +246,7 @@ function WagersMatchRoomView() {
           base44.entities.WagerParticipant.filterFresh({ wager_id: id }, "joined_date", 20).catch(() => []),
         ]);
         if (!active || !latest) return;
-        setWager(latest);
+        setWager(previous => retainDataSnapshot(previous, latest));
         const signature = (participantRows || []).map((participant) => `${participant.user_id}:${participant.team}:${participant.payment_status}`).sort().join("|");
         if (signature === rosterSignatureRef.current) return;
         const participants = await loadWagerParticipants(base44, latest, { participantRows, fresh: true });

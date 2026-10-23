@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Check, Copy, ExternalLink, MonitorPlay } from "lucide-react";
-import { PLAYER_OVERLAY_HEIGHT, PLAYER_OVERLAY_WIDTH, PLAYER_OVERLAY_THEMES, playerOverlayUrl } from "@/components/stream/PlayerStatsBar";
+import { PLAYER_OVERLAY_HEIGHT, PLAYER_OVERLAY_WIDTH, PLAYER_OVERLAY_THEMES, playerOverlayUrl } from "@/lib/playerOverlayConfig";
 import "@/styles/stream-overlay-settings.css";
 import StreamAdOverlaySection from "./StreamAdOverlaySection";
 import WebcamOverlaySection from "./WebcamOverlaySection";

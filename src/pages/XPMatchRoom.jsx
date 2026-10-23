@@ -1,3 +1,4 @@
+import { retainDataSnapshot } from "@/lib/dataSnapshot";
 import { storedGameId } from "@/lib/mw4";
 import { consoleRestrictedFor } from "@/lib/playerRestrictions";
 import React, { useEffect, useMemo, useState } from "react";
@@ -336,7 +337,7 @@ function XPMatchRoomView() {
           const mapResponse = await base44.functions.invoke("ensureRankedMatchMap", { ranked_match_id: id }).catch(() => null);
           if (mapResponse?.data?.match) refreshedMatch = mapResponse.data.match;
         }
-        if (active) setMatch(refreshedMatch);
+        if (active) setMatch(previous => retainDataSnapshot(previous, refreshedMatch));
       } catch (error) {
         if (active && error.data?.code === "XP_MATCH_AWAITING_ACCEPTANCE") {
           navigate("/xp#matchfinder", { replace: true });

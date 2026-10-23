@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Camera, Check, Copy, ExternalLink } from "lucide-react";
-import { WEBCAM_THEMES, webcamDimensions, webcamOverlayUrl } from "@/components/stream/WebcamFrame";
+import { WEBCAM_THEMES, webcamDimensions, webcamOverlayUrl } from "@/lib/webcamOverlayConfig";
+import "@/styles/webcam-overlay.css";
 import OverlayPreview from "@/components/stream/OverlayPreview";
 
 export default function WebcamOverlaySection({ user }) {

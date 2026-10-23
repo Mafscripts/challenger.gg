@@ -7,17 +7,8 @@ import "@/styles/studio-player-overlays.css";
 import "@/styles/hyperdrive-player-overlay.css";
 import "@/styles/cinematic-player-overlays.css";
 
-export const STUDIO_OVERLAY_THEMES = [
-  { key: "apex", label: "Apex", caption: "Race-day broadcast", edition: "06", description: "Apex / 06 — racing red, crisp white stat blocks and an angular player panel." },
-  { key: "obsidian", label: "Obsidian", caption: "Black & champagne", edition: "07", description: "Obsidian / 07 — champagne gold on black, a central player signature and a trophy gallery." },
-  { key: "aurora", label: "Aurora", caption: "Floating light", edition: "08", description: "Aurora / 08 — separate floating panels, deep indigo and soft mint-to-violet light." },
-  { key: "terminal", label: "Terminal", caption: "Phosphor green", edition: "09", description: "Terminal / 09 — green phosphor, monospace readouts and a compact two-row dashboard." },
-  { key: "editorial", label: "Editorial", caption: "Ivory & vermilion", edition: "10", description: "Editorial / 10 — warm ivory, vermilion accents, oversized serif numbers and a print-inspired layout." },
-  { key: "hyperdrive", label: "Hyperdrive", caption: "Fully animated", edition: "11", description: "Hyperdrive / 11 — a fully animated cyan-and-magenta broadcast: orbiting logo rings, flowing light trails, moving grid, cascading stat highlights and floating trophies." },
-  { key: "solar", label: "Solar Flare", caption: "Animated / fire & gold", edition: "12", cinematic: true, description: "Solar Flare / 12 — a molten-gold broadcast with a rotating solar corona, rising embers, flowing firelight and glowing trophy pedestals." },
-  { key: "hologram", label: "Hologram", caption: "Animated / ice & cyan", edition: "13", cinematic: true, description: "Hologram / 13 — a cyan projection with a rotating radar, scanning light, moving grid and levitating trophies." },
-  { key: "quantum", label: "Quantum", caption: "Animated / violet & mint", edition: "14", cinematic: true, description: "Quantum / 14 — drifting nebulae, orbiting geometry and luminous particles surround a central player panel and floating trophy gallery." },
-];
+import { STUDIO_OVERLAY_THEMES } from "@/lib/playerOverlayConfig";
+export { STUDIO_OVERLAY_THEMES } from "@/lib/playerOverlayConfig";
 
 function StudioIdentity({ player, stale }) {
   const effect = player.display_name_color;

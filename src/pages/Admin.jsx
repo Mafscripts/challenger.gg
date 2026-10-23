@@ -1,5 +1,5 @@
-import ProgressionResets from "@/components/admin/ProgressionResets";
 import useRouteSection from "@/hooks/useRouteSection";
+import { retainDataSnapshot } from "@/lib/dataSnapshot";
 import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
@@ -44,10 +44,6 @@ import {
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import UserSecurityPanel from "@/components/admin/UserSecurityPanel";
-import DeleteUserAccount from "@/components/admin/DeleteUserAccount";
-import ModerateUserDialog from "@/components/admin/ModerateUserDialog";
-import UserVpnAccess from "@/components/admin/UserVpnAccess";
 import "@/styles/admin-users.css";
 import { isCloudflareIp } from "@/lib/cloudflareIps";
 import { toast } from "@/components/ui/use-toast";
@@ -68,6 +64,11 @@ import { getRankForElo } from "@/lib/ranks";
 import { consoleRestrictedFor } from "@/lib/playerRestrictions";
 
 const CompetitionRewardsAdmin = lazy(() => import("@/components/admin/CompetitionRewardsAdmin"));
+const ProgressionResets = lazy(() => import("@/components/admin/ProgressionResets"));
+const UserSecurityPanel = lazy(() => import("@/components/admin/UserSecurityPanel"));
+const DeleteUserAccount = lazy(() => import("@/components/admin/DeleteUserAccount"));
+const ModerateUserDialog = lazy(() => import("@/components/admin/ModerateUserDialog"));
+const UserVpnAccess = lazy(() => import("@/components/admin/UserVpnAccess"));
 const AdminDashboard = lazy(() => import("@/components/admin/AdminDashboard"));
 const RankVerificationAdmin = lazy(() => import("@/components/admin/RankVerificationAdmin"));
 const AdminTickets = lazy(() => import("@/components/admin/AdminTickets"));
@@ -623,7 +624,10 @@ export default function Admin() {
         refreshing = true;
         try {
           const marketplace = await base44.entities.MarketplaceItem.filterFresh({}, "-created_date", 500);
-          if (active) setData((current) => ({ ...current, marketplace: marketplace.filter(isVisibleMarketplaceItem) }));
+          if (active) setData((current) => {
+            const rows = retainDataSnapshot(current.marketplace, marketplace.filter(isVisibleMarketplaceItem));
+            return rows === current.marketplace ? current : { ...current, marketplace: rows };
+          });
         } catch (error) { console.warn("Failed to refresh marketplace items:", error); }
         finally { refreshing = false; }
       };
@@ -646,12 +650,13 @@ export default function Admin() {
           base44.entities.Wager.filterFresh({ match_type: "money8s" }, "-created_date", 100).catch(() => []),
         ]);
         if (!mounted) return;
-        setData((current) => ({
-          ...current,
-          eightsMatches: [...(freeMatches || []), ...(moneyMatches || [])]
+        const nextMatches = [...(freeMatches || []), ...(moneyMatches || [])]
             .filter(isLiveEightsLobby)
-            .sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0)),
-        }));
+            .sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0));
+        setData((current) => {
+          const rows = retainDataSnapshot(current.eightsMatches, nextMatches);
+          return rows === current.eightsMatches ? current : { ...current, eightsMatches: rows };
+        });
       } finally { refreshing = false; }
     };
     refreshLiveEights();
@@ -3377,11 +3382,11 @@ export default function Admin() {
         </section>
         </main>
       </div>
-      {moderationRequest && <ModerateUserDialog
+      {moderationRequest && <Suspense fallback={<PageLoader label="Opening moderation" />}><ModerateUserDialog
         key={`${moderationRequest.user.id}:${moderationRequest.action}:${moderationRequest.duration || ""}`}
         request={moderationRequest} busy={busyId === `${moderationRequest.user.id}:${moderationRequest.action}`}
         onClose={() => setModerationRequest(null)} onSubmit={submitModeration}
-      />}
+      /></Suspense>}
     </div>
   );
 }
@@ -3395,7 +3400,7 @@ function ListSection({ title, rows, empty, render, scrollable = false }) {
       </div>
       <div className={`divide-y divide-white/5 ${scrollable ? "max-h-[640px] overflow-y-scroll overscroll-contain" : ""}`}>
         {rows.length === 0 ? <EmptyState label={empty} /> : rows.map((row) => (
-          <div key={row.id}>{render(row)}</div>
+          <div key={row.id} className="admin-lazy-row">{render(row)}</div>
         ))}
       </div>
     </div>

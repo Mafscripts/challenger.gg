@@ -206,3 +206,4 @@
 }
 @container admin-console (min-width: 1201px) { .app-layout-sidebar .admin-page .admin-workspace { scroll-margin-top: 24px; } }
 @media (prefers-reduced-motion: reduce) { .admin-page *, .admin-navigation-dialog *, .admin-action-dialog * { scroll-behavior: auto !important; animation: none !important; transition: none !important; } }
+.admin-lazy-row { content-visibility: auto; contain-intrinsic-block-size: auto 130px; }

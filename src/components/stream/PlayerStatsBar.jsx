@@ -1,6 +1,6 @@
 import { trophyAssets } from "@/lib/trophyAssets";
-import { websiteOrigin } from "@/lib/appEnvironment";
-import React, { useEffect, useState } from "react";
+
+import React from "react";
 import { DollarSign, Medal, Swords, Target, Zap } from "lucide-react";
 import TopfraggLogo from "@/components/brand/TopfraggLogo";
 import UserBadges from "@/components/ui/UserBadges";
@@ -8,23 +8,13 @@ import ChristmasOverlayDecorations, { ChristmasBrandMark, ChristmasPlayerScene }
 import SignalPlayerStatsBar from "./SignalPlayerStatsBar";
 import CenterStagePlayerBar, { CENTER_STAGE_THEMES } from "./CenterStagePlayerBar";
 import StudioPlayerStatsBar, { STUDIO_OVERLAY_THEMES } from "./StudioPlayerStatsBar";
-import { base44 } from "@/api/base44Client";
+
 import { getRankForElo } from "@/lib/ranks";
 import "@/styles/player-overlay.css";
 
-export const PLAYER_OVERLAY_WIDTH = 1920;
-export const PLAYER_OVERLAY_HEIGHT = 80;
-export const PLAYER_OVERLAY_THEMES = [
-  { key: "blue", label: "Original blue", caption: "The Topfragg original" },
-  { key: "orange", label: "Orange", caption: "Warm amber glow" },
-  { key: "mono", label: "Black & white", caption: "Pure monochrome" },
-  { key: "xmas", label: "Christmas", caption: "Merry Fragmas", description: "Merry Fragmas! Snow-white stats, festive lights and falling snow, with your original Topfragg branding." },
-  { key: "signal", label: "Signal", caption: "Acid lime & lavender", description: "Signal / 05 — a fresh broadcast layout in acid lime, charcoal and lavender, with a dedicated trophy strip." },
-  ...STUDIO_OVERLAY_THEMES,
-  ...CENTER_STAGE_THEMES,
-];
-export const normalizePlayerOverlayTheme = theme => PLAYER_OVERLAY_THEMES.some(option => option.key === theme) ? theme : "blue";
-const REFRESH_MS = 15000;
+import { normalizePlayerOverlayTheme } from "@/lib/playerOverlayConfig";
+export { PLAYER_OVERLAY_WIDTH, PLAYER_OVERLAY_HEIGHT, PLAYER_OVERLAY_THEMES, normalizePlayerOverlayTheme, playerOverlayUrl } from "@/lib/playerOverlayConfig";
+
 const brandLetters = [..."TOPFRAGG.GG"].map((letter, index) => ({
   letter,
   tone: index < 3 ? "white" : index < 8 ? "cyan" : "domain",
@@ -44,42 +34,9 @@ const trophies = [
   { key: "premium", label: "Premium", image: trophyAssets.premium },
 ];
 
-export const playerOverlayUrl = (identifier, theme = "blue") => {
-  const selectedTheme = normalizePlayerOverlayTheme(theme);
-  return `${websiteOrigin}/overlay/player/${encodeURIComponent(identifier)}${selectedTheme === "blue" ? "" : `?theme=${selectedTheme}`}`;
-};
 
-export function usePlayerOverlay(identifier) {
-  const [state, setState] = useState({ data: null, error: "", loading: true, stale: false });
-  useEffect(() => {
-    let disposed = false;
-    let timer;
-    let failedAttempts = 0;
-    setState({ data: null, error: "", loading: true, stale: false });
-    const refresh = async () => {
-      try {
-        const data = await base44.public.playerOverlay(identifier);
-        if (disposed) return;
-        failedAttempts = 0;
-        setState({ data, error: "", loading: false, stale: false });
-      } catch (error) {
-        if (disposed) return;
-        failedAttempts += 1;
-        const missing = [400, 404].includes(error.status);
-        setState(previous => ({
-          data: missing ? null : previous.data,
-          error: missing ? "Player not found. Check the player URL." : "Player stats are temporarily unavailable. Reconnecting…",
-          loading: false,
-          stale: true,
-        }));
-      }
-      if (!disposed) timer = window.setTimeout(refresh, Math.min(REFRESH_MS * Math.max(1, failedAttempts), 60000));
-    };
-    refresh();
-    return () => { disposed = true; window.clearTimeout(timer); };
-  }, [identifier]);
-  return state;
-}
+
+export { usePlayerOverlay } from "@/hooks/usePlayerOverlay";
 
 export default function PlayerStatsBar({ data, stale = false, theme = "blue" }) {
   const player = data.player;
