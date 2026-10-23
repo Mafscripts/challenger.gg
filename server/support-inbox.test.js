@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { Prisma } from "@prisma/client";
 import { build } from "esbuild";
-import { getAdminTickets, getSupportInboxSummary } from "./admin-tickets.js";
+import { getAdminTickets, getSupportInboxSummary, saveSupportCase } from "./admin-tickets.js";
 import { claimSupportTicket } from "./support-claims.js";
 import { hasRole } from "./roles.js";
 
@@ -91,4 +91,32 @@ test("room links always target the correct internal room, ignoring supplied URLs
     assert.equal(module.exports.ticketRoomPath({ ticket: { match_type: type, match_id: "room", match_url: "//outside.example" }, disputes: [] }), `/${prefix}/room`);
   }
   assert.equal(module.exports.ticketRoomPath({ ticket: null, disputes: [{ match_type: "tournament", match_id: "event" }] }), "/tournament-match/event");
+});
+
+test("saved cases support tickets and disputes, preserve conversation data and require staff", async () => {
+  const statements = [];
+  const db = { $executeRaw: async (strings, ...values) => { statements.push(Prisma.sql(strings, ...values)); return 1; } };
+  const staff = { id: "staff", role: "moderator" };
+  for (const kind of ["ticket", "dispute"]) {
+    assert.equal((await saveSupportCase(db, staff, { kind, id: "case", saved: true })).success, true);
+  }
+  assert.match(statements[0].sql, /UPDATE "Ticket" SET metadata = jsonb_set/);
+  assert.match(statements[1].sql, /UPDATE "Dispute" SET metadata = jsonb_set/);
+  assert.ok(statements[0].values.includes("true"));
+  await assert.rejects(() => saveSupportCase(db, { role: "user" }, { kind: "ticket", id: "case", saved: true }), error => error.status === 403);
+  await assert.rejects(() => saveSupportCase(db, staff, { kind: "User", id: "case", saved: true }), error => error.status === 400);
+  await assert.rejects(() => saveSupportCase({ $executeRaw: async () => 0 }, staff, { kind: "ticket", id: "missing", saved: false }), error => error.status === 404);
+});
+test("queue filters search safely and promote admin calls before premium and live requests", async () => {
+  const s = queueStore();
+  const search = "' OR 1=1 --";
+  await getAdminTickets(s.db, { id: "staff", role: "moderator" }, { view: "saved", search });
+  const query = s.queries[0];
+  assert.ok(query.values.includes(search));
+  assert.ok(!query.sql.includes(search));
+  assert.match(query.sql, /AND saved AND strpos/);
+  assert.match(query.sql, /requested_admin' = 'true' THEN 3/);
+  assert.match(query.sql, /request_type' = 'live_support' THEN 1/);
+  await getAdminTickets(s.db, { id: "staff", role: "moderator" }, { view: "mine" });
+  assert.ok(s.queries.some(query => query.sql.includes('AND owner =') && query.values.includes('staff')));
 });

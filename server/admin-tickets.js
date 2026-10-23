@@ -19,7 +19,11 @@ const queueSql = Prisma.sql`
         WHEN t.metadata->>'requested_admin' = 'true' THEN 'calls'
         WHEN NULLIF(t.metadata->>'dispute_id', '') IS NOT NULL OR EXISTS (SELECT 1 FROM "Dispute" d WHERE d.metadata->>'ticket_id' = t.id) THEN 'disputes' ELSE 'tickets' END AS channel,
       COALESCE(t.metadata->>'match_type', t.metadata->>'category', '') AS mode,
-      CASE WHEN t.metadata->>'priority' = 'critical' AND t.metadata->>'premium_escalated' = 'true' THEN 3 WHEN t.metadata->>'support_premium' = 'true' THEN 2 WHEN t.metadata->>'requested_admin' = 'true' THEN 1 ELSE 0 END AS priority,
+      CASE WHEN t.metadata->>'requested_admin' = 'true' THEN 3 WHEN t.metadata->>'priority' = 'critical' AND t.metadata->>'premium_escalated' = 'true' THEN 3 WHEN t.metadata->>'support_premium' = 'true' THEN 2 WHEN t.metadata->>'request_type' = 'live_support' THEN 1 ELSE 0 END AS priority,
+      (NULLIF(t.metadata->>'dispute_id', '') IS NOT NULL OR EXISTS (SELECT 1 FROM "Dispute" d WHERE d.metadata->>'ticket_id' = t.id)) AS has_dispute,
+      COALESCE(t.metadata->>'assigned_admin_id', '') AS owner,
+      COALESCE(t.metadata->>'support_favorite', 'false') = 'true' AS saved,
+      concat_ws(' ', t.id, t.metadata->>'subject', t.metadata->>'description', t.metadata->>'user_name', t.metadata->>'username', t.metadata->>'display_name', t.metadata->>'last_message') AS search_text,
       (COALESCE(t.metadata->>'status', 'open') IN ('resolved', 'closed', 'rejected')
         AND NOT EXISTS (SELECT 1 FROM "Dispute" d
           WHERE (d.metadata->>'ticket_id' = t.id OR t.metadata->>'dispute_id' = d.id)
@@ -32,6 +36,10 @@ const queueSql = Prisma.sql`
     SELECT d.id, 'dispute' AS kind, d.created_date, 'disputes' AS channel,
       COALESCE(d.metadata->>'match_type', 'wagers') AS mode,
       1 AS priority,
+      TRUE AS has_dispute,
+      COALESCE(d.metadata->>'assigned_admin_id', '') AS owner,
+      COALESCE(d.metadata->>'support_favorite', 'false') = 'true' AS saved,
+      concat_ws(' ', d.id, d.metadata->>'reason', d.metadata->>'description', d.metadata->>'reporter_name') AS search_text,
       COALESCE(d.metadata->>'status', 'pending') IN ('resolved', 'closed', 'rejected') AS closed,
       TRUE AS match_ticket
     FROM "Dispute" d
@@ -44,7 +52,20 @@ export async function getAdminTicketCounts(db, user) {
   const [counts] = await db.$queryRaw`${queueSql}
     SELECT COUNT(*)::int AS total, COUNT(*) FILTER (WHERE NOT closed)::int AS open,
       COUNT(*) FILTER (WHERE closed)::int AS closed,
-      COUNT(*) FILTER (WHERE NOT closed AND match_ticket)::int AS match_open FROM queue`;
+      COUNT(*) FILTER (WHERE NOT closed AND match_ticket)::int AS match_open,
+      COUNT(*) FILTER (WHERE NOT closed AND owner = '')::int AS waiting,
+      COUNT(*) FILTER (WHERE NOT closed AND owner = ${user.id})::int AS mine,
+      COUNT(*) FILTER (WHERE saved)::int AS saved,
+      json_build_object(
+        'all', COUNT(*) FILTER (WHERE NOT closed),
+        'live', COUNT(*) FILTER (WHERE NOT closed AND channel = 'live'),
+        'calls', COUNT(*) FILTER (WHERE NOT closed AND channel = 'calls'),
+        'disputes', COUNT(*) FILTER (WHERE NOT closed AND has_dispute),
+        'tickets', COUNT(*) FILTER (WHERE NOT closed AND channel = 'tickets'),
+        'money8s', COUNT(*) FILTER (WHERE NOT closed AND mode IN ('money8s','8s','eights')),
+        'wagers', COUNT(*) FILTER (WHERE NOT closed AND mode IN ('wager','wagers')),
+        'tournament', COUNT(*) FILTER (WHERE NOT closed AND mode = 'tournament')
+      ) AS categories FROM queue`;
   return { success: true, ...counts };
 }
 
@@ -70,7 +91,7 @@ export async function getAdminTickets(db, user, payload = {}) {
   const statusSql = filter === "all" ? Prisma.sql`TRUE` : Prisma.sql`closed = ${filter === "closed"}`;
   const category = ["live", "calls", "disputes", "tickets", "money8s", "wagers", "tournament"].includes(payload.category) ? payload.category : "all";
   const categorySql = ["live", "calls", "tickets"].includes(category) ? Prisma.sql`channel = ${category}`
-    : category === "disputes" ? Prisma.sql`(channel = 'disputes' OR EXISTS (SELECT 1 FROM "Dispute" d WHERE d.metadata->>'ticket_id' = queue.id OR d.id = (SELECT t.metadata->>'dispute_id' FROM "Ticket" t WHERE t.id = queue.id)))`
+    : category === "disputes" ? Prisma.sql`has_dispute`
     : category === "money8s" ? Prisma.sql`mode IN ('money8s', '8s', 'eights')`
     : category === "wagers" ? Prisma.sql`mode IN ('wager', 'wagers')`
     : category === "tournament" ? Prisma.sql`mode = 'tournament'` : Prisma.sql`TRUE`;
@@ -79,11 +100,16 @@ export async function getAdminTickets(db, user, payload = {}) {
     if (typeof payload.record_id !== "string" || payload.record_id.length > 200 || !["ticket", "dispute"].includes(payload.kind)) throw Object.assign(new Error("Choose a valid support case."), { status: 400 });
     selectedSql = Prisma.sql`id = ${payload.record_id} AND kind = ${payload.kind}`;
   }
+  const viewSql = payload.view === "waiting" ? Prisma.sql`owner = ''`
+    : payload.view === "mine" ? Prisma.sql`owner = ${user.id}`
+    : payload.view === "saved" ? Prisma.sql`saved` : Prisma.sql`TRUE`;
+  const search = typeof payload.search === "string" ? payload.search.trim().slice(0, 150) : "";
+  const searchSql = search ? Prisma.sql`strpos(lower(search_text), lower(${search})) > 0` : Prisma.sql`TRUE`;
   const cursorSql = cursor
     ? Prisma.sql`(priority, created_date, kind, id) < (${cursor.priority}, ${cursor.date}, ${cursor.kind}, ${cursor.id})`
     : Prisma.sql`TRUE`;
   const candidates = await db.$queryRaw`${queueSql}
-    SELECT * FROM queue WHERE ${statusSql} AND ${categorySql} AND ${selectedSql} AND ${cursorSql}
+    SELECT * FROM queue WHERE ${statusSql} AND ${categorySql} AND ${selectedSql} AND ${viewSql} AND ${searchSql} AND ${cursorSql}
     ORDER BY priority DESC, created_date DESC, kind DESC, id DESC LIMIT 11`;
   const page = candidates.slice(0, 10);
   const ticketIds = page.filter((row) => row.kind === "ticket").map((row) => row.id);
@@ -195,4 +221,16 @@ export async function deleteAdminTicket(db, user, payload = {}) {
     } } });
     return { success: true, deleted_ticket_ids: ticketIds, deleted_dispute_ids: disputeIds };
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+}
+
+// Saving is staff organisation only: conversations and their existing notes remain intact.
+export async function saveSupportCase(db, user, payload = {}) {
+  requireStaff(user);
+  if (!["ticket", "dispute"].includes(payload.kind) || typeof payload.id !== "string" || !payload.id || payload.id.length > 200 || typeof payload.saved !== "boolean") {
+    throw Object.assign(new Error("Choose a valid support case."), { status: 400 });
+  }
+  const table = Prisma.raw(payload.kind === "ticket" ? '"Ticket"' : '"Dispute"');
+  const changed = await db.$executeRaw`UPDATE ${table} SET metadata = jsonb_set(metadata, '{support_favorite}', ${JSON.stringify(payload.saved)}::jsonb) WHERE id = ${payload.id}`;
+  if (!changed) throw Object.assign(new Error("Support case no longer exists."), { status: 404 });
+  return { success: true };
 }

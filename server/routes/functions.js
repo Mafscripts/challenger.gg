@@ -19,7 +19,7 @@ import { activeProgressionSeason, progressionResetOverview, resetProgression } f
 import { matchAfterProgressionReset } from "../../src/lib/progressionResets.js";
 import { Router } from "express";
 import { prisma } from "../prisma.js";
-import { getAdminTickets, getAdminTicketCounts, deleteAdminTicket, getSupportInboxSummary } from "../admin-tickets.js";
+import { getAdminTickets, getAdminTicketCounts, deleteAdminTicket, getSupportInboxSummary, saveSupportCase } from "../admin-tickets.js";
 import { getAdminUserSecurity, deleteAdminUser, getAdminUsers, getAdminUserCount, setAdminUserVpnAccess } from "../admin-users.js";
 import { getAdminAuditLogs, getAdminAuditEntry, getAdminAuditCounts } from "../admin-audit.js";
 import { getAdminDashboard } from "../admin-dashboard.js";
@@ -10591,6 +10591,7 @@ const handlers = {
   sendLiveSupportMessage: req => sendLiveSupport(prisma, req.user, req.body),
   markLiveSupportRead: req => updateLiveSupport(prisma, req.user, req.body),
   closeLiveSupportConversation: req => updateLiveSupport(prisma, req.user, req.body, true),
+  saveSupportCase: (req) => saveSupportCase(prisma, req.user, req.body),
   getAdminTickets: (req) => getAdminTickets(prisma, req.user, req.body),
   claimSupportDispute: async req => ({ success: true, dispute: (await claimSupportTicket(prisma, req.user, { dispute_id: req.body.dispute_id, take_over: req.body.take_over })).ticket }),
   getSupportInboxSummary: req => getSupportInboxSummary(prisma, req.user),

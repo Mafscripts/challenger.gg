@@ -158,3 +158,20 @@
   .admin-tickets .at-facts { grid-template-columns: minmax(0, 1fr); gap: 16px; }
   .admin-tickets .at-message { padding: 12px; }
 }
+
+.admin-tickets .at-header-tools { display:flex;gap:8px;align-items:center; }
+.admin-tickets .at-categories { display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:7px;padding:16px 22px 10px;flex-shrink:0; }
+.admin-tickets .at-categories button { display:flex;align-items:center;justify-content:space-between;gap:6px;padding:12px 10px;border:1px solid var(--at-line);border-radius:9px;background:#102330;color:#9ab5c5;font-size:11px;font-weight:700; }
+.admin-tickets .at-categories button[aria-pressed="true"] { border-color:#12c8e7;color:#39dfff;background:#103747; }
+.admin-tickets .at-categories b { display:grid;place-items:center;min-width:22px;height:22px;border-radius:6px;background:#ffffff09;color:inherit; }
+.admin-tickets .at-organize { display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:4px 22px 10px;flex-shrink:0; }
+.admin-tickets .at-organize .at-filters { flex-wrap:wrap; }
+.admin-tickets .at-organize .at-filters button { padding:8px 10px;font-size:11px; }
+.admin-tickets .at-search { display:flex;align-items:center;gap:8px;flex:1;min-width:170px;border:1px solid var(--at-line);border-radius:8px;padding:9px 11px;color:#8aabba; }
+.admin-tickets .at-search input { width:100%;min-width:0;outline:none;background:transparent;font-size:12px;color:inherit; }
+.admin-tickets .at-organize select { padding:9px;border:1px solid var(--at-line);border-radius:8px;background:#102330;color:#c6dbe7;font-size:12px; }
+.admin-tickets .at-queue-hint { padding:0 22px 12px;color:#809fae;font-size:10px;line-height:1.6;flex-shrink:0; }
+.admin-tickets .at-saved-label { display:flex;gap:4px;align-items:center;margin-top:8px;color:#ffd06d;font-size:10px; }
+.admin-tickets .at-inbox { overscroll-behavior:contain; }
+@media(max-width:1100px) { .admin-tickets .at-categories { grid-template-columns:repeat(4,minmax(0,1fr)); } }
+@media(max-width:600px) { .admin-tickets .at-categories { display:flex;overflow-x:auto;padding:10px 14px; } .admin-tickets .at-categories button { flex-shrink:0;min-width:120px; } .admin-tickets .at-organize { padding:4px 14px 8px; } .admin-tickets .at-queue-hint { padding:0 14px 9px; } .admin-tickets[data-detail-open="true"] .at-categories,.admin-tickets[data-detail-open="true"] .at-organize,.admin-tickets[data-detail-open="true"] .at-queue-hint { display:none; } }
