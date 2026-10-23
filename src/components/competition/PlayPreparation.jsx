@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useId, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, CheckCircle2, Circle, Gamepad2, ShieldCheck } from "lucide-react";
+import { ArrowRight, CheckCircle2, ChevronDown, Circle, Gamepad2, ShieldCheck } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { hasActivisionId } from "@/lib/activision";
@@ -70,9 +70,16 @@ function Readiness({ mode, user }) {
 export default function PlayPreparation({ mode: fixedMode, className = "" }) {
   const { user } = useAuth();
   const [selected, setSelected] = useState("xp");
+  const [expanded, setExpanded] = useState(!fixedMode);
+  const contentId = useId();
   const mode = playModeFor(fixedMode || selected);
   return <section className={`rounded-2xl border border-cyan/20 bg-card p-4 sm:p-5 ${className}`} aria-label="Play guide and account preparation">
-    <div className="grid gap-5 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+    <button type="button" onClick={() => setExpanded(value => !value)} aria-expanded={expanded} aria-controls={contentId} className="flex w-full items-center justify-between gap-3 rounded text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan">
+      <span className="flex items-center gap-2 text-sm font-black"><Gamepad2 className="h-4 w-4 text-cyan" />How to play & account setup</span>
+      <span className="flex shrink-0 items-center gap-2 text-xs font-bold text-cyan">{expanded ? "Hide" : "Show"}<ChevronDown aria-hidden="true" className={`h-4 w-4 transition-transform motion-reduce:transition-none ${expanded ? "rotate-180" : ""}`} /></span>
+    </button>
+    <div id={contentId} hidden={!expanded}>
+    {expanded && <div className="mt-5 grid gap-5 border-t border-white/[0.07] pt-5 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
       <div className="min-w-0 xl:border-r xl:border-white/[0.07] xl:pr-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="flex items-center gap-2 text-sm font-black"><Gamepad2 className="h-4 w-4 text-cyan" />{fixedMode ? "How to play" : "Find your game"}</h2>
@@ -84,6 +91,7 @@ export default function PlayPreparation({ mode: fixedMode, className = "" }) {
         {!fixedMode ? <Link to={mode.href} className="site-hover mt-3 inline-flex items-center gap-2 rounded-lg border border-cyan/20 px-3 py-2 text-xs font-bold text-cyan">Open {mode.name}<ArrowRight className="h-3.5 w-3.5" /></Link> : <details className="mt-3 text-xs"><summary className="cursor-pointer font-bold text-cyan">Compare other modes</summary><div className="mt-2 grid gap-1 sm:grid-cols-2">{PLAY_MODES.filter((item) => item.id !== mode.id).map((item) => <Link key={item.id} to={item.href} className="site-hover rounded-lg px-2 py-2"><strong className="block text-cyan">{item.name}</strong><span className="text-[10px] text-vapor">{item.entry} · {item.progress}</span></Link>)}</div></details>}
       </div>
       {user ? <Readiness mode={mode} user={user} /> : <div className="self-center text-sm text-vapor">Sign in to check your account setup.<Link to="/login" className="site-hover ml-2 inline-flex items-center gap-1 rounded px-2 py-1 text-cyan">Sign in<ArrowRight className="h-3.5 w-3.5" /></Link></div>}
+    </div>}
     </div>
   </section>;
 }
