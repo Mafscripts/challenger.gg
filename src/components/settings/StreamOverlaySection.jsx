@@ -3,6 +3,7 @@ import { Check, Copy, ExternalLink, MonitorPlay } from "lucide-react";
 import { PLAYER_OVERLAY_HEIGHT, PLAYER_OVERLAY_WIDTH, PLAYER_OVERLAY_THEMES, playerOverlayUrl } from "@/components/stream/PlayerStatsBar";
 import "@/styles/stream-overlay-settings.css";
 import StreamAdOverlaySection from "./StreamAdOverlaySection";
+import WebcamOverlaySection from "./WebcamOverlaySection";
 
 export default function StreamOverlaySection({ user }) {
   const [copied, setCopied] = useState(false);
@@ -38,7 +39,7 @@ export default function StreamOverlaySection({ user }) {
     }
   };
   const previewScale = previewWidth / PLAYER_OVERLAY_WIDTH;
-  return <><StreamAdOverlaySection /><section className="glass stream-overlay-settings">
+  return <><StreamAdOverlaySection /><WebcamOverlaySection user={user} /><section className="glass stream-overlay-settings">
     <header><span className="stream-overlay-settings-mark"><MonitorPlay size={22} /></span><div><h3>Twitch player overlay</h3><p>Your live Topfragg stats, ready for your stream.</p></div><span className="stream-overlay-settings-status">Auto updates</span></header>
     <div className="stream-overlay-settings-body">
       <div className="stream-overlay-preview-heading"><strong>Your player bar</strong><a href={url} target="_blank" rel="noopener noreferrer">Open full preview<ExternalLink size={14} /></a></div>

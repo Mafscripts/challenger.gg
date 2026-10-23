@@ -13,7 +13,7 @@ import { initializeNativeApp } from '@/lib/nativeApp'
 
 void initializeNativeApp().catch(error => console.error('App initialization failed:', error.message))
 
-if (/^\/overlay\/player\/[^/]+\/?$/.test(window.location.pathname)) {
+if (/^\/overlay\/(player|webcam)\/[^/]+\/?$/.test(window.location.pathname)) {
   document.documentElement.classList.add('stream-overlay-document')
 }
 

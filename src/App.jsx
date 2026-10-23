@@ -51,6 +51,7 @@ const Terms = lazy(() => import('@/pages/Terms'));
 const Privacy = lazy(() => import('@/pages/Privacy'));
 const Settings = lazy(() => import('@/pages/Settings'));
 const PlayerOverlay = lazy(() => import('@/pages/PlayerOverlay'));
+const WebcamOverlay = lazy(() => import('@/pages/WebcamOverlay'));
 const ThankYou = lazy(() => import('@/pages/ThankYou'));
 const Admin = lazy(() => import('@/pages/Admin'));
 const AccountRestricted = lazy(() => import('@/pages/AccountRestricted'));
@@ -201,9 +202,9 @@ function App() {
     };
   }, []);
 
-  if (typeof window !== "undefined" && /^\/overlay\/player\/[^/]+\/?$/.test(window.location.pathname)) {
+  if (typeof window !== "undefined" && /^\/overlay\/(player|webcam)\/[^/]+\/?$/.test(window.location.pathname)) {
     return <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <Suspense fallback={null}><Routes><Route path="/overlay/player/:identifier" element={<PlayerOverlay />} /></Routes></Suspense>
+      <Suspense fallback={null}><Routes><Route path="/overlay/player/:identifier" element={<PlayerOverlay />} /><Route path="/overlay/webcam/:identifier" element={<WebcamOverlay />} /></Routes></Suspense>
     </Router>;
   }
 
