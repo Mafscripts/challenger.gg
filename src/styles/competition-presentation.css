@@ -155,3 +155,13 @@
 }
 @media (hover: none) { .competition-mode-link:hover, .competition-stat-card:hover, .competition-surface .tournament-list-card:hover { transform: none; } }
 @media (prefers-reduced-motion: reduce) { .competition-hero *, .competition-hero *::before, .competition-hero *::after, .competition-mode-link, .competition-mode-link::before, .competition-mode-link::after, .competition-nav-icon, .competition-section-tabs > :is(button, a), .competition-section-tabs > :is(button, a)::before, .competition-section-tabs > :is(button, a)::after, .competition-filter-pill, .competition-filter-pill::before, .competition-filter-pill::after, .competition-stat-card, .competition-standing-row, .competition-standing-row::before, .competition-match-row, .competition-empty-state svg, .competition-surface .tournament-list-card { animation: none !important; transition: none !important; } }
+
+/* Dropdowns use a steady surface and text hover, rather than action-button fills. */
+.competition-hero:not(.account-page-hero) .competition-game-switch.competition-action-pill::before,
+.competition-hero:not(.account-page-hero) .competition-game-switch.competition-action-pill::after { display: none; }
+.competition-game-switch.competition-action-pill { transition: color 150ms ease, border-color 150ms ease; }
+.competition-hero:not(.account-page-hero) .competition-game-switch.competition-action-pill:not(:disabled):is(:hover, :focus-visible),
+.competition-game-switch.competition-action-pill:not(:disabled):is(:hover, :focus-visible) { color: hsl(var(--cyan)); border-color: hsl(var(--cyan) / .5); transform: none; }
+.competition-game-switch.competition-action-pill:is(:hover, :focus-visible) > svg { color: hsl(var(--cyan)); }
+.competition-select-menu.arena-select-menu [role="option"] { color: #fff; background: transparent; transition: color 150ms ease; }
+.competition-select-menu.arena-select-menu [role="option"]:is(:hover, :focus, [data-highlighted]) { color: hsl(var(--cyan)); background: transparent; outline: none; }
