@@ -284,11 +284,6 @@ export default function Ranked() {
           action={
             <div className="competition-actions">
               <CompetitionGameSelect games={games} value={gameId} onChange={setGameId} />
-              <Link to="/rules" title="Competitive ranked ruleset — required" className="competition-action-pill">
-                <Trophy className="h-4 w-4" /> CDL Rules
-                <span className="text-[10px] text-vapor">Required</span>
-                <ArrowRight className="h-4 w-4" />
-              </Link>
               {activeRankedMatch ? (
                 <Link to={`/ranked-match/${activeRankedMatch.id}`} className="competition-action-pill">
                   Return to Active Match <ArrowRight className="h-4 w-4" />

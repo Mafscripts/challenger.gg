@@ -283,11 +283,6 @@ export default function XP() {
           action={
             <div className="competition-actions">
               <CompetitionGameSelect games={games} value={gameId} onChange={setGameId} />
-              <Link to="/rules" title="Competitive XP match ruleset — required" className="competition-action-pill">
-                <Trophy className="h-4 w-4" /> CDL Rules
-                <span className="text-[10px] text-vapor">Required</span>
-                <ArrowRight className="h-4 w-4" />
-              </Link>
               <XPFormatSelect value={category} onChange={setCategory} />
               {activeRankedMatch ? xpMatchAwaitingAcceptance(activeRankedMatch) ? (
                 <div className="flex flex-wrap items-center gap-3"><span className="text-xs text-vapor">Waiting for opponent acceptance</span><XPMatchPostAction match={activeRankedMatch} userId={user?.id} onChanged={loadRankedData} /></div>
