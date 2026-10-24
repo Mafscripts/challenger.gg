@@ -41,3 +41,10 @@
 .staff-support-center .at-detail[data-chat-layout="true"] > .at-detail-body { display:flex; flex:1; flex-direction:column; min-height:0; overflow:auto; }
 .staff-support-center .at-detail[data-chat-layout="true"] .at-conversation-box { flex:1; height:auto; min-height:160px; }
 .staff-support-center .at-detail[data-chat-layout="true"] .at-next { flex-shrink:0; }
+
+.staff-center-floating { position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); z-index:50; border-radius:16px; box-shadow:0 24px 80px #0009; }
+.staff-center-floating .staff-center-return { display:flex; align-items:center; gap:12px; padding:10px 14px; cursor:grab; touch-action:none; user-select:none; }
+.staff-center-floating .staff-center-return:active { cursor:grabbing; }
+.staff-center-floating .staff-center-return > span { display:flex; align-items:center; gap:6px; margin-left:auto; color:#8baebf; font-size:11px; }
+.staff-center-floating .staff-center-return button { cursor:pointer; }
+@media(max-width:600px) { .staff-center-floating .staff-center-return > span { display:none; } .staff-center-floating .staff-center-return button:first-child { margin-right:auto; } }
