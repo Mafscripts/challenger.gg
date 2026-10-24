@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { hasRole } from "./roles.js";
 import { serializeRow } from "./entity.js";
@@ -11,14 +11,15 @@ const walletIndexSql = Prisma.sql`WITH wallets AS (
   FROM "Wallet" ORDER BY metadata->>'user_id', created_date ASC, id ASC
 )`;
 const walletJoin = Prisma.sql`LEFT JOIN wallets w ON w.user_id = u.id`;
-const balanceSql = Prisma.sql`COALESCE((w.metadata->>'available_balance')::numeric, u.wallet_balance, 0)`;
+const walletNumber = field => Prisma.sql`CASE WHEN LENGTH(w.metadata->>${field}) <= 24 AND (w.metadata->>${field}) ~ '^-?[0-9]+([.][0-9]+)?$' THEN (w.metadata->>${field})::numeric END`;
+const balanceSql = Prisma.sql`COALESCE(${walletNumber("available_balance")}, u.wallet_balance, 0)`;
 
 export async function getAdminWalletSummary(db, actor) {
   if (!hasRole(actor, "admin")) fail("Admin access required", 403);
   const [summary] = await db.$queryRaw`${walletIndexSql} SELECT COUNT(*)::int AS total,
     COALESCE(SUM(${balanceSql}), 0)::float8 AS available,
-    COALESCE(SUM((w.metadata->>'pending_balance')::numeric), 0)::float8 AS pending,
-    COALESCE(SUM((w.metadata->>'escrow_balance')::numeric), 0)::float8 AS escrow,
+    COALESCE(SUM(${walletNumber("pending_balance")}), 0)::float8 AS pending,
+    COALESCE(SUM(${walletNumber("escrow_balance")}), 0)::float8 AS escrow,
     COALESCE(SUM(u.credits), 0)::float8 AS credits FROM "User" u ${walletJoin}`;
   return { success: true, ...summary };
 }
@@ -27,32 +28,33 @@ export async function getAdminWallets(db, actor, body = {}) {
   if (!hasRole(actor, "admin")) fail("Admin access required", 403);
   const search = String(body.search || "").trim().toLowerCase().slice(0, 200);
   const filter = ["funded", "held"].includes(body.filter) ? body.filter : "all";
+  const scope = createHash("sha256").update(JSON.stringify([search, filter])).digest("hex").slice(0, 20);
   const searchSql = search ? Prisma.sql`POSITION(${search} IN LOWER(CONCAT_WS(' ', u.id, u.username, u.display_name, u.full_name, u.email))) > 0` : Prisma.sql`TRUE`;
   const filterSql = filter === "funded" ? Prisma.sql`(${balanceSql} > 0 OR u.credits > 0)`
-    : filter === "held" ? Prisma.sql`(COALESCE((w.metadata->>'pending_balance')::numeric, 0) > 0 OR COALESCE((w.metadata->>'escrow_balance')::numeric, 0) > 0)` : Prisma.sql`TRUE`;
+    : filter === "held" ? Prisma.sql`(COALESCE(${walletNumber("pending_balance")}, 0) > 0 OR COALESCE(${walletNumber("escrow_balance")}, 0) > 0)` : Prisma.sql`TRUE`;
   let cursorSql = Prisma.sql`TRUE`;
   if (body.cursor) {
     try {
       const cursor = JSON.parse(Buffer.from(String(body.cursor), "base64url").toString("utf8"));
       const date = new Date(cursor.date);
-      if (!Number.isFinite(date.getTime()) || typeof cursor.id !== "string" || !cursor.id || cursor.id.length > 200) throw new Error();
-      cursorSql = Prisma.sql`(u.created_date, u.id) < (${date}, ${cursor.id})`;
+      if (cursor.scope !== scope || !Number.isFinite(date.getTime()) || typeof cursor.id !== "string" || !cursor.id || cursor.id.length > 200) throw new Error();
+      cursorSql = Prisma.sql`(u.created_date, u.id) < (${date.toISOString().slice(0, -1)}::timestamp, ${cursor.id})`;
     } catch { fail("Invalid wallet page. Refresh the list."); }
   }
   const [candidates, counts] = await Promise.all([
     db.$queryRaw`${walletIndexSql} SELECT u.id, u.username, u.display_name, u.full_name, u.email, u.credits, u.created_date,
       w.id AS wallet_id, ${balanceSql}::float8 AS available_balance,
-      COALESCE((w.metadata->>'pending_balance')::numeric, 0)::float8 AS pending_balance,
-      COALESCE((w.metadata->>'escrow_balance')::numeric, 0)::float8 AS escrow_balance,
-      COALESCE((w.metadata->>'withdrawable_balance')::numeric, ${balanceSql})::float8 AS withdrawable_balance,
-      COALESCE((w.metadata->>'total_earnings')::numeric, 0)::float8 AS total_earnings
+      COALESCE(${walletNumber("pending_balance")}, 0)::float8 AS pending_balance,
+      COALESCE(${walletNumber("escrow_balance")}, 0)::float8 AS escrow_balance,
+      COALESCE(${walletNumber("withdrawable_balance")}, ${balanceSql})::float8 AS withdrawable_balance,
+      COALESCE(${walletNumber("total_earnings")}, 0)::float8 AS total_earnings
       FROM "User" u ${walletJoin} WHERE ${searchSql} AND ${filterSql} AND ${cursorSql}
       ORDER BY u.created_date DESC, u.id DESC LIMIT 26`,
     db.$queryRaw`${walletIndexSql} SELECT COUNT(*)::int AS total FROM "User" u ${walletJoin} WHERE ${searchSql} AND ${filterSql}`,
   ]);
   const rows = candidates.slice(0, 25), last = rows.at(-1);
   return { success: true, rows, total: counts[0].total, next_cursor: candidates.length > 25 && last
-    ? Buffer.from(JSON.stringify({ id: last.id, date: last.created_date.toISOString() })).toString("base64url") : null };
+    ? Buffer.from(JSON.stringify({ scope, id: last.id, date: last.created_date.toISOString() })).toString("base64url") : null };
 }
 
 export async function adjustAdminWallet(db, actor, body = {}) {

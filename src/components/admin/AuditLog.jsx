@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { Activity, ChevronDown, CreditCard, KeyRound, Loader2, ScrollText, Search, Server, ShieldAlert, Swords, Trash2, X } from "lucide-react";
+import { Activity, ChevronDown, CreditCard, KeyRound, Loader2, RefreshCw, ScrollText, Search, Server, ShieldAlert, Swords, Trash2, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { effectiveRoleForUser } from "@/lib/roles";
 import { adminTargetUrl, openAdminPlayer } from "@/lib/adminWorkspace";
@@ -54,20 +54,28 @@ function AuditDetails({ row, user }) {
 }
 
 export default function AuditLog({ user }) {
-  const location = useLocation();
-  const [source, setSource] = useState("all");
-  const [period, setPeriod] = useState("all");
+  const location = useLocation(), navigate = useNavigate();
+  const parameters = new URLSearchParams(location.search);
+  const [source, setSource] = useState(() => ["admin", "system"].includes(parameters.get("source")) ? parameters.get("source") : "all");
+  const [period, setPeriod] = useState(() => ["day", "week", "month"].includes(parameters.get("period")) ? parameters.get("period") : "all");
+  const [action, setAction] = useState(() => parameters.get("action") || "");
   const [search, setSearch] = useState(() => new URLSearchParams(location.search).get("search") || "");
   const [debounced, setDebounced] = useState(() => new URLSearchParams(location.search).get("search") || "");
   const [expanded, setExpanded] = useState(null);
-  useEffect(() => { setSearch(new URLSearchParams(location.search).get("search") || ""); setExpanded(null); }, [location.search]);
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    setSearch(params.get("search") || ""); setAction(params.get("action") || "");
+    setSource(["admin", "system"].includes(params.get("source")) ? params.get("source") : "all");
+    setPeriod(["day", "week", "month"].includes(params.get("period")) ? params.get("period") : "all");
+    setExpanded(null);
+  }, [location.search]);
   useEffect(() => { const timer = setTimeout(() => setDebounced(search.trim()), 300); return () => clearTimeout(timer); }, [search]);
   const role = effectiveRoleForUser(user);
   const query = useInfiniteQuery({
-    queryKey: ["admin-console", user.id, role, "auditLog", source, period, debounced],
+    queryKey: ["admin-console", user.id, role, "auditLog", source, period, debounced, action],
     initialPageParam: null,
     queryFn: async ({ pageParam }) => {
-      const response = await base44.functions.invoke("getAdminAuditLogs", { source, period, search: debounced, cursor: pageParam });
+      const response = await base44.functions.invoke("getAdminAuditLogs", { source, period, action, search: debounced, cursor: pageParam });
       if (!response.data?.success) throw new Error(response.data?.error || "Could not load the audit log.");
       return response.data;
     }, getNextPageParam: (page) => page.next_cursor || undefined,
@@ -76,25 +84,28 @@ export default function AuditLog({ user }) {
   const rows = useMemo(() => [...new Map((query.data?.pages || []).flatMap((page) => page.rows).map((row) => [row.id, row])).values()], [query.data]);
   const total = query.data?.pages[0]?.total ?? 0;
   const searching = search.trim() !== debounced;
+  const resetFilters = () => { setSource("all"); setPeriod("all"); setAction(""); setSearch(""); setDebounced(""); setExpanded(null); navigate(adminTargetUrl({ tab: "audit" }), { replace: true }); };
   return <section className="admin-audit">
     <header className="al-heading"><div><span className="al-eyebrow">ACTIVITY &amp; ACCOUNTABILITY</span><h2><ScrollText size={21} /> Audit Log</h2><p>A record of staff actions and platform events.</p></div>
       <div className="al-search"><Search size={16} /><input aria-label="Search the audit log" value={search} placeholder="Search action, staff, player or reference..." onChange={(event) => { setSearch(event.target.value); setExpanded(null); }} />{search && <button aria-label="Clear audit search" onClick={() => setSearch("")}><X size={14} /></button>}</div>
     </header>
     <div className="al-toolbar"><div className="al-source-filter" aria-label="Audit source">{[["all", "All events"], ["admin", "Admin actions"], ["system", "System logs"]].map(([value, label]) => <button key={value} aria-pressed={source === value} onClick={() => { setSource(value); setExpanded(null); }}>{label}</button>)}</div>
-      <div className="al-period"><label htmlFor="audit-period">Period</label><select id="audit-period" value={period} onChange={(event) => { setPeriod(event.target.value); setExpanded(null); }}><option value="all">All time</option><option value="day">Last 24 hours</option><option value="week">Last 7 days</option><option value="month">Last 30 days</option></select></div>
+      <div className="al-period"><label htmlFor="audit-period">Period</label><select id="audit-period" value={period} onChange={(event) => { setPeriod(event.target.value); setExpanded(null); }}><option value="all">All time</option><option value="day">Last 24 hours</option><option value="week">Last 7 days</option><option value="month">Last 30 days</option></select><button type="button" className="al-refresh" disabled={query.isFetching || searching} onClick={() => query.refetch()}><RefreshCw size={13} className={query.isFetching ? "animate-spin" : ""} />Refresh</button></div>
     </div>
+    {(action || search || source !== "all" || period !== "all") && <div className="al-results"><span>{action ? `Event: ${readable(action)} · ` : ""}Filters applied</span><button type="button" className="text-cyan font-bold" onClick={resetFilters}>Clear filters</button></div>}
     <div className="al-results"><strong>{total.toLocaleString()} {total === 1 ? "event" : "events"}</strong><span>Newest first</span></div>
     <div className="al-column-heading"><span>Activity</span><span>Performed by</span><span>Target</span><span>Time</span><span /></div>
     <div>{rows.map((row, index) => {
       const { Icon, tone } = eventStyle(row);
       const open = expanded === row.id;
       const target = row.target_name || (row.target_id ? `${readable(row.target_kind)} #${row.target_id.slice(-8)}` : "Platform");
+      const actorName = row.actor_name || "Unrecorded staff";
       return <React.Fragment key={row.id}>
         {(!index || dayLabel(rows[index - 1].created_date) !== dayLabel(row.created_date)) && <h3 className="al-day">{dayLabel(row.created_date)}</h3>}
         <article className="al-event" data-open={open}>
           <div className="al-event-grid"><div className="al-activity"><span className="al-event-icon" data-tone={tone}><Icon size={17} /></span><div><div className="al-action-heading"><strong>{eventName(row)}</strong><span className="al-source" data-source={row.source}>{row.source === "admin" ? "Admin" : "System"}</span></div><p>{row.description || "No description was recorded. Open details to inspect the event."}</p></div></div>
-            <div className="al-actor"><span className="al-person-icon">{row.source === "system" && row.actor_name === "System" ? <Server size={12} /> : row.actor_name.slice(0, 1).toUpperCase()}</span>{row.actor_id && row.actor_id !== "system" ? <button type="button" className="admin-player-link" onClick={() => openAdminPlayer(row.actor_id)}>{row.actor_name}</button> : <span>{row.actor_name}</span>}</div>
-            <div className="al-target">{row.target_username ? <button type="button" className="admin-player-link" onClick={() => openAdminPlayer(row.target_id)}>{target}</button> : row.target_id && /match|wager|challenge/i.test(row.target_kind) ? <Link to={adminTargetUrl({ tab: "matches", search: row.target_id })}>{target}</Link> : row.target_id && /ticket|dispute/i.test(row.target_kind) ? <Link to={adminTargetUrl({ tab: "tickets", caseId: `${/dispute/i.test(row.target_kind) ? "dispute" : "ticket"}:${row.target_id}` })}>{target}</Link> : <span>{target}</span>}</div>
+            <div className="al-actor"><span className="al-person-icon">{row.source === "system" && actorName === "System" ? <Server size={12} /> : actorName.slice(0, 1).toUpperCase()}</span>{row.actor_id && row.actor_id !== "system" ? <button type="button" className="admin-player-link" onClick={() => openAdminPlayer(row.actor_id)}>{actorName}</button> : <span>{actorName}</span>}</div>
+            <div className="al-target">{row.target_id && (row.target_username || /^(user|account|player)$/i.test(row.target_kind)) && row.action_code !== "account_deleted" ? <button type="button" className="admin-player-link" onClick={() => openAdminPlayer(row.target_id)}>{target}</button> : row.target_id && /match|wager|challenge/i.test(row.target_kind) ? <Link to={adminTargetUrl({ tab: "matches", search: row.target_id })}>{target}</Link> : row.target_id && /ticket|dispute/i.test(row.target_kind) ? <Link to={adminTargetUrl({ tab: "tickets", caseId: `${/dispute/i.test(row.target_kind) ? "dispute" : "ticket"}:${row.target_id}` })}>{target}</Link> : <span>{target}</span>}</div>
             <time dateTime={row.created_date} title={new Date(row.created_date).toLocaleString()}>{new Date(row.created_date).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}</time>
             <button className="al-expand" aria-expanded={open} aria-controls={`audit-details-${row.id}`} aria-label={`${open ? "Hide" : "View"} details for ${eventName(row)}`} onClick={() => setExpanded(open ? null : row.id)}><span>Details</span><ChevronDown size={14} /></button>
           </div>

@@ -45,7 +45,7 @@ export default function AdminDashboard({ overview, onSelect, canReset, allowedSe
     ...(operations.rank_reviews != null ? [{ label: "Rank reviews", count: operations.rank_reviews, tab: "verifyRank", detail: "Screenshots awaiting review" }] : []),
     ...(support.appeals !== null && allowedSections.includes("banAppeals") ? [{ label: "Ban appeals", count: support.appeals, tab: "banAppeals", detail: "Waiting for your response" }] : []),
     ...(economy ? [{ label: "Withdrawals", count: economy.pending_withdrawals, tab: "withdrawals", detail: "Requests awaiting a decision" }] : []),
-  ];
+  ].filter(item => allowedSections.includes(item.tab));
   return <div className="admin-dashboard">
     <div className="ad-heading"><div><p>YOUR PLATFORM</p><h3>Platform at a glance</h3><span>Accounts, access and every competition in one place.</span></div><time dateTime={overview.generated_at}>Updated {new Date(overview.generated_at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</time></div>
     {overview.unavailable_match_sources?.length > 0 && <p className="admin-work-context" role="status">Some match data is currently unavailable: {overview.unavailable_match_sources.map(key => roomTypes.find(type => type.key === key)?.label || key).join(", ")}. Available competitions are shown below.</p>}
@@ -118,10 +118,10 @@ export default function AdminDashboard({ overview, onSelect, canReset, allowedSe
     </Panel>
 
     <div className="ad-records">
-      <button type="button" className="site-hover" onClick={() => onSelect("marketplace")}><Boxes size={18} /><span><strong>{number(operations.marketplace_items)}</strong><small>Marketplace items</small></span><ArrowUpRight size={14} /></button>
-      <button type="button" className="site-hover" onClick={() => onSelect("inventory")}><Crown size={18} /><span><strong>{number(operations.owned_items)}</strong><small>Player-owned items</small></span><ArrowUpRight size={14} /></button>
-      <button type="button" className="site-hover" onClick={() => onSelect("audit")}><ScrollText size={18} /><span><strong>{number(operations.audit_actions)}</strong><small>Staff actions · {number(operations.staff_actions_24h)} in 24h</small></span><ArrowUpRight size={14} /></button>
-      <button type="button" className="site-hover" onClick={() => onSelect("audit")}><ShieldCheck size={18} /><span><strong>{number(operations.system_logs)}</strong><small>System log records</small></span><ArrowUpRight size={14} /></button>
+      {allowedSections.includes("marketplace") && <button type="button" className="site-hover" onClick={() => onSelect("marketplace")}><Boxes size={18} /><span><strong>{number(operations.marketplace_items)}</strong><small>Marketplace items</small></span><ArrowUpRight size={14} /></button>}
+      {allowedSections.includes("inventory") && <button type="button" className="site-hover" onClick={() => onSelect("inventory")}><Crown size={18} /><span><strong>{number(operations.owned_items)}</strong><small>Player-owned items</small></span><ArrowUpRight size={14} /></button>}
+      <button type="button" className="site-hover" onClick={() => onSelect("audit", { source: "admin" })}><ScrollText size={18} /><span><strong>{number(operations.audit_actions)}</strong><small>Staff actions · {number(operations.staff_actions_24h)} in 24h</small></span><ArrowUpRight size={14} /></button>
+      <button type="button" className="site-hover" onClick={() => onSelect("audit", { source: "system" })}><ShieldCheck size={18} /><span><strong>{number(operations.system_logs)}</strong><small>System log records</small></span><ArrowUpRight size={14} /></button>
     </div>
     {canReset && <section className="ad-reset"><div><h3><RotateCcw size={17} />Resets & seasons</h3><p>Manage progression, balances and competition seasons.</p></div><button type="button" className="admin-console-button site-hover" onClick={() => onSelect("progression")}>Manage progression<ArrowUpRight size={14} /></button></section>}
   </div>;

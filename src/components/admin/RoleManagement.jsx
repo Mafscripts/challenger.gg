@@ -4,19 +4,24 @@ import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import RoleBadge from "@/components/ui/RoleBadge";
 import { canManageRoles, getRoleConfig, normalizeRole } from "@/lib/roles";
+import { openAdminPlayer } from "@/lib/adminWorkspace";
+import { playerDisplayName } from "@/lib/playerIdentity";
+import useAdminConfirm from "@/hooks/useAdminConfirm";
 import "@/styles/admin-roles.css";
 
 const roles = ["ceo", "super_admin", "admin", "moderator", "user"];
-const nameFor = (user) => user.display_name || user.full_name || user.username || "Player";
+const nameFor = playerDisplayName;
 
 export default function RoleManagement({ directory, actorRole, search, onSearch, onUserUpdated, onRefresh }) {
   const [drafts, setDrafts] = useState({});
   const [saving, setSaving] = useState(null);
   const [failure, setFailure] = useState(null);
+  const { confirm, dialog } = useAdminConfirm();
   if (!canManageRoles(actorRole)) return <section className="admin-roles"><p className="ar-access-note"><LockKeyhole size={14} /> Role management is restricted to the platform owner.</p></section>;
   const canEdit = (role) => canManageRoles(actorRole) && (actorRole === "ceo" || getRoleConfig(actorRole).power > getRoleConfig(role).power);
   const save = async (user, nextRole) => {
     if (saving || !canEdit(user.role) || !canEdit(nextRole)) return;
+    if (!await confirm({ title: `Change ${nameFor(user)}'s role?`, description: `${getRoleConfig(user.role).label} → ${getRoleConfig(nextRole).label}. This changes the player's permissions immediately.`, confirmLabel: "Change role", tone: "warning" })) return;
     setSaving(user.id); setFailure(null);
     try {
       const response = await base44.functions.invoke("updateUserRole", { user_id: user.id, role: nextRole });
@@ -43,7 +48,7 @@ export default function RoleManagement({ directory, actorRole, search, onSearch,
         const editable = canEdit(currentRole);
         const changed = selected !== currentRole;
         return <tr key={user.id}>
-          <td data-label="Player"><div className="ar-player"><span className="ar-avatar">{nameFor(user).slice(0, 1).toUpperCase()}</span><div><strong>{nameFor(user)}</strong><span>{user.email || (user.username ? `@${user.username}` : "Player account")}</span></div></div></td>
+          <td data-label="Player"><div className="ar-player"><span className="ar-avatar">{nameFor(user).slice(0, 1).toUpperCase()}</span><div><button type="button" title="Open player dossier" className="admin-player-link text-left" onClick={() => openAdminPlayer(user.id)}><strong>{nameFor(user)}</strong></button><span>{user.email || "Player account"}</span></div></div></td>
           <td data-label="Current role"><RoleBadge role={currentRole} internal /></td>
           <td data-label="New role">{editable ? <div className="ar-select"><select aria-label={`New role for ${nameFor(user)}`} value={selected} disabled={Boolean(saving)} onChange={(event) => setDrafts((current) => ({ ...current, [user.id]: event.target.value }))}>
             {roles.filter((role) => role === currentRole || canEdit(role)).map((role) => <option key={role} value={role}>{getRoleConfig(role).label}</option>)}
@@ -59,5 +64,6 @@ export default function RoleManagement({ directory, actorRole, search, onSearch,
     {directory.isError && <div className="ar-feedback ar-error" role="alert"><span>{directory.error?.message || "Could not load players."}</span><button disabled={directory.isFetching} onClick={() => directory.isFetchNextPageError ? directory.fetchNextPage() : directory.refetch()}>Try again</button></div>}
     {!!directory.rows.length && <footer className="ar-footer"><p>{directory.rows.length} of {directory.total} players loaded</p>{directory.hasNextPage && <button disabled={directory.isFetching || directory.searchPending} onClick={() => directory.fetchNextPage()}>
       {directory.isFetchingNextPage ? <Loader2 size={14} className="animate-spin" /> : <ChevronDown size={14} />} Load next 25</button>}</footer>}
+    {dialog}
   </section>;
 }

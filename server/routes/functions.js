@@ -28,6 +28,7 @@ import { getAdminMatches } from "../admin-matches.js";
 import { getAdminPlayerDossier } from "../admin-player-dossier.js";
 import { consoleRestrictedFor } from "../../src/lib/playerRestrictions.js";
 import { getAdminWallets, getAdminWalletSummary, adjustAdminWallet } from "../admin-wallets.js";
+import { getAdminInventory, getAdminWithdrawals, processAdminWithdrawal } from "../admin-economy.js";
 import { requireAuth } from "../middleware/auth.js";
 import { createEntity, deleteEntity, firstEntity, getEntity, listEntities, serializeRow, updateEntity } from "../entity.js";
 import { playerAvatarFor } from "../lib/playerAvatars.js";
@@ -10613,6 +10614,8 @@ const handlers = {
   ...tradingHandlers,
   ...tradeListingHandlers,
   getAdminWallets: (req) => getAdminWallets(prisma, req.user, req.body),
+  getAdminInventory: (req) => getAdminInventory(prisma, req.user, req.body),
+  getAdminWithdrawals: (req) => getAdminWithdrawals(prisma, req.user, req.body),
   getAdminWalletSummary: (req) => getAdminWalletSummary(prisma, req.user),
   getAdminAuditLogs: (req) => getAdminAuditLogs(prisma, req.user, req.body),
   getAdminAuditEntry: (req) => getAdminAuditEntry(prisma, req.user, req.body),
@@ -10765,26 +10768,7 @@ const handlers = {
   closeTournamentRegistration,
   extendTournamentRegistration,
   withdrawFromWallet: async (req) => ({ success: true, withdrawal: await createEntity("WithdrawalRequest", { ...req.body, user_id: req.user.id, status: "pending", created_date: new Date().toISOString() }) }),
-  processWithdrawal: async (req) => {
-    assertStaff(req, "admin");
-    const withdrawalId = req.body.withdrawal_id;
-    const status = String(req.body.status || "").toLowerCase();
-    if (!withdrawalId || !["approved", "rejected", "completed", "cancelled"].includes(status)) {
-      return { success: false, error: "Invalid withdrawal action" };
-    }
-    const withdrawal = await getEntity("WithdrawalRequest", withdrawalId);
-    if (!withdrawal) return { success: false, error: "Withdrawal request not found" };
-    if (!["pending", "processing"].includes(String(withdrawal.status || "").toLowerCase())) {
-      return { success: false, error: "Withdrawal is already resolved" };
-    }
-    const updated = await updateEntity("WithdrawalRequest", withdrawal.id, {
-      status,
-      processed_by: req.user.id,
-      processed_by_name: nameFor(req.user),
-      processed_date: nowIso(),
-    });
-    return { success: true, withdrawal: updated };
-  },
+  processWithdrawal: (req) => processAdminWithdrawal(prisma, req.user, req.body),
   generateTournamentBracket,
   resetTournamentBracket,
   ensureTournamentMatchSetup,

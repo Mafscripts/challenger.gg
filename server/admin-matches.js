@@ -3,7 +3,7 @@ import { hasRole } from "./roles.js";
 import { adminTimestampSql } from "./lib/adminTimestampSql.js";
 
 const fail = (message, status = 400) => { throw Object.assign(new Error(message), { status }); };
-const modes = ["all", "free8s", "money8s", "xp", "ranked", "wagers", "challenge", "tournament"];
+const modes = ["all", "eights", "free8s", "money8s", "xp", "ranked", "wagers", "challenge", "tournament"];
 const states = ["all", "active", "disputed", "completed", "cancelled"];
 const terminal = ["completed", "finished", "cancelled", "canceled", "closed", "expired", "resolved", "rejected", "draft"];
 const names = { free8s: "Free 8s", money8s: "Money 8s", xp: "XP match", ranked: "Ranked match", wagers: "Wager", challenge: "Team challenge", tournament: "Tournament match" };
@@ -120,8 +120,8 @@ async function enrich(db, rows, detail, installed) {
   const users = playerIds.length ? await db.user.findMany({ where: { id: { in: playerIds } }, select: { id: true, display_name: true, full_name: true, username: true } }) : [];
   const userNames = new Map(users.map(user => [user.id, user.display_name || user.full_name || user.username || "Player"]));
   return matches.map((match, index) => {
-    const teamA = match.alpha_team?.name || match.team_a_name || match.host_name || "Team Alpha";
-    const teamB = match.bravo_team?.name || match.team_b_name || match.challenger_name || "Open slot";
+    const teamA = match.alpha_team?.name || match.team_a_name || userNames.get(match.host_id || match.player1_id) || match.host_name || match.player1_name || "Team Alpha";
+    const teamB = match.bravo_team?.name || match.team_b_name || userNames.get(match.challenger_id || match.player2_id) || match.challenger_name || match.player2_name || "Open slot";
     return { id: `${match.mode}:${match.id}`, record_id: match.id, mode: match.mode,
       title: `${teamA} vs ${teamB}`, mode_label: names[match.mode], status: match.status, created_date: match.created_date,
       updated_date: match.updated_date, team_a_name: teamA, team_b_name: teamB,
@@ -132,6 +132,7 @@ async function enrich(db, rows, detail, installed) {
       room_url: `/${paths[match.mode]}/${encodeURIComponent(match.id)}`,
       support_cases: supportRows.filter(row => (row.kind === "ticket" && row.id === match.support_ticket_id)
         || (supportMatchId(row) === match.id && (!supportMode(row.metadata?.match_type || row.metadata?.related_entity_type) || supportMode(row.metadata?.match_type || row.metadata?.related_entity_type) === match.mode)))
+        .sort((a, b) => Number(["closed", "resolved", "rejected"].includes(a.metadata?.status)) - Number(["closed", "resolved", "rejected"].includes(b.metadata?.status)))
         .map(row => ({ id: `${row.kind}:${row.id}`, record_id: row.id, kind: row.kind, title: row.metadata?.subject || (row.kind === "dispute" ? "Match dispute" : "Match support"), status: row.metadata?.status || "open", assigned_admin_name: row.metadata?.assigned_admin_name || "" })),
       ...(detail ? { details: Object.fromEntries(Object.entries(match).filter(([key]) => !["metadata", "messages", "chat_logs", "chat_messages", "internal_notes"].includes(key))) } : {}),
     };
@@ -163,16 +164,16 @@ export async function getAdminMatches(db, actor, payload = {}) {
   if (payload.cursor) {
     try {
       cursor = JSON.parse(Buffer.from(String(payload.cursor), "base64url").toString("utf8"));
-      if (cursor.scope !== scope || typeof cursor.id !== "string" || !cursor.id || cursor.id.length > 200 || !modes.slice(1).includes(cursor.mode) || !Number.isFinite(Date.parse(cursor.date))) throw new Error();
+      if (cursor.scope !== scope || typeof cursor.id !== "string" || !cursor.id || cursor.id.length > 200 || !Object.hasOwn(tablesByMode, cursor.mode) || !Number.isFinite(Date.parse(cursor.date))) throw new Error();
     } catch { fail("Invalid match page. Refresh the list."); }
   }
-  const modeWhere = mode === "all" ? Prisma.sql`TRUE` : Prisma.sql`mode = ${mode}`;
+  const modeWhere = mode === "all" ? Prisma.sql`TRUE` : mode === "eights" ? Prisma.sql`mode IN ('free8s', 'money8s')` : Prisma.sql`mode = ${mode}`;
   const statusWhere = state === "all" ? Prisma.sql`TRUE` : state === "active" ? Prisma.sql`status NOT IN (${Prisma.join(terminal)})`
     : state === "disputed" ? Prisma.sql`status IN ('disputed', 'score_conflict')`
-      : state === "completed" ? Prisma.sql`status IN ('completed', 'finished')` : Prisma.sql`status IN ('cancelled', 'canceled', 'expired')`;
+      : state === "completed" ? Prisma.sql`status IN ('completed', 'finished', 'resolved')` : Prisma.sql`status IN ('cancelled', 'canceled', 'expired', 'closed', 'rejected')`;
   const cursorWhere = cursor ? Prisma.sql`(created_date, id, mode) < (${new Date(cursor.date)}, ${cursor.id}, ${cursor.mode})` : Prisma.sql`TRUE`;
   const searchWhere = !search ? Prisma.sql`TRUE` : Prisma.sql`(POSITION(${search} IN LOWER(CONCAT_WS(' ', id, metadata->>'host_name', metadata->>'challenger_name',
-    metadata->>'team_a_name', metadata->>'team_b_name', metadata->'alpha_team'->>'name', metadata->'bravo_team'->>'name', metadata->'players', metadata->>'game_name'))) > 0
+    metadata->>'team_a_name', metadata->>'team_b_name', metadata->'alpha_team'->>'name', metadata->'bravo_team'->>'name', metadata->'players', metadata->>'game_name', metadata->>'tournament_id'))) > 0
     OR EXISTS (SELECT 1 FROM "User" u WHERE POSITION(${search} IN LOWER(CONCAT_WS(' ', u.display_name, u.full_name, u.username))) > 0
       AND (${refs(Prisma.sql`rooms.metadata`, Prisma.sql`u.id`)} OR ${installed.has("WagerParticipant") ? Prisma.sql`(rooms.mode IN ('free8s', 'money8s', 'wagers') AND EXISTS (SELECT 1 FROM "WagerParticipant" wp
         WHERE wp.metadata->>'wager_id' = rooms.id AND wp.metadata->>'user_id' = u.id))` : Prisma.sql`FALSE`} OR ${installed.has("TournamentParticipant") ? Prisma.sql`(rooms.mode = 'tournament' AND EXISTS (SELECT 1 FROM "TournamentParticipant" p

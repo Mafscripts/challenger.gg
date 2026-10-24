@@ -17,14 +17,14 @@ const overviewKeys = ["dashboardOverview"];
 const sectionKeys = {
   dashboard: overviewKeys,
   users: [], roles: [], alerts: ["adminAlerts", "tickets"],
-  websiteUpdates: [], tickets: [], banAppeals: [], matches: [], wagers: ["wagers"],
-  challenges: [], live8s: [], eightsGames: [], ranked: ["users", "rankedMatches", "rankedStats"],
-  verifyRank: ["users"], progression: [],
+  websiteUpdates: [], tickets: [], banAppeals: [], matches: [], wagers: [],
+  challenges: [], live8s: [], eightsGames: [], ranked: [],
+  verifyRank: [], progression: [],
   tournaments: ["tournaments", "tournamentMatches", "marketplace"],
-  tournamentMatches: ["tournamentMatches"], wallets: [],
-  referrals: ["referralProgram"], freeTrials: ["animatedNameFreeTrial", "users"],
-  withdrawals: ["withdrawals", "users"], marketplace: ["marketplace"],
-  inventory: ["inventory", "users"], rewards: [], audit: [],
+  tournamentMatches: [], wallets: [],
+  referrals: ["referralProgram"], freeTrials: ["animatedNameFreeTrial", "userCount"],
+  withdrawals: [], marketplace: ["marketplace"],
+  inventory: [], rewards: [], audit: [],
 };
 const queryKeys = [...Object.keys(entities), "dashboardOverview", "userCount", "ticketCounts", "auditCounts", "walletSummary", "referralProgram", "animatedNameFreeTrial"];
 const combineQueries = (results) => ({
@@ -91,7 +91,7 @@ export function useAdminConsoleData(user, activeTab, userFilters = {}, options =
   const role = effectiveRoleForUser(user);
   const allowed = Boolean(user?.id) && canAccessAdminPanel(role);
   const scope = `${user?.id}:${role}`;
-  const directoryTab = ["users", "roles"].includes(activeTab);
+  const directoryTab = ["users", "roles", "ranked"].includes(activeTab);
   const sharedOnly = activeTab === "users" && Boolean(userFilters.sharedOnly);
   const userFilter = activeTab === "users" && ["banned", "suspended", "premium", "new"].includes(userFilters.filter) ? userFilters.filter : "all";
   const tournamentRosterId = options.tournamentRosterId || null;
@@ -114,7 +114,7 @@ export function useAdminConsoleData(user, activeTab, userFilters = {}, options =
     queryKey: ["admin-console", user?.id, role, "userDirectory", activeTab, userSearch, sharedOnly, userFilter],
     initialPageParam: null,
     queryFn: async ({ pageParam }) => {
-      const response = await base44.functions.invoke("getAdminUsers", { cursor: pageParam, search: userSearch, filter: userFilter, shared_only: sharedOnly, include_security: activeTab !== "roles", include_wallets: activeTab === "users" });
+      const response = await base44.functions.invoke("getAdminUsers", { cursor: pageParam, search: userSearch, filter: userFilter, shared_only: sharedOnly, include_security: activeTab === "users", include_wallets: activeTab === "users", include_ranked: activeTab === "ranked" });
       if (!response.data?.success) throw new Error(response.data?.error || "Could not load users");
       return response.data;
     },

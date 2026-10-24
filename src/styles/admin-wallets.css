@@ -5,6 +5,8 @@
 .admin-wallets h2 svg { color: hsl(var(--cyan)); }
 .admin-wallets .aw-heading p { margin-top: 6px; color: hsl(var(--vapor)); font-size: 12px; }
 .admin-wallets .aw-access { display: inline-flex; align-items: center; gap: 7px; padding: 8px 10px; border: 1px solid hsl(var(--border)); border-radius: 6px; color: hsl(var(--vapor)); font-size: 10px; }
+.aw-heading-actions { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.aw-heading-actions > a, .aw-heading-actions > button { display:inline-flex; align-items:center; gap:7px; padding:9px 11px; border:1px solid hsl(var(--cyan) / .22); border-radius:7px; color:hsl(var(--cyan)); font-size:10px; font-weight:800; background:hsl(var(--cyan) / .05); }
 .admin-wallets .aw-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; padding: 22px 24px; }
 .admin-wallets .aw-summary > div { display: grid; gap: 11px; padding: 16px; border: 1px solid hsl(var(--border)); border-radius: 8px; background: var(--arena-inset); }
 .admin-wallets .aw-summary span { display: flex; align-items: center; gap: 7px; color: hsl(var(--vapor)); font-size: 10px; }

@@ -26,13 +26,13 @@ const eventsSql = Prisma.sql`
     FROM events
   ), records AS (
     SELECT e.id, e.source, e.created_date, e.action_code, e.actor_id, e.target_id, e.description,
-      COALESCE(NULLIF(e.metadata->>'admin_name', ''), NULLIF(e.metadata->>'actor_name', ''),
+      COALESCE(NULLIF(a.display_name, ''), NULLIF(a.full_name, ''), NULLIF(e.metadata->>'admin_name', ''), NULLIF(e.metadata->>'actor_name', ''),
         NULLIF(e.metadata->>'user_name', ''), e.metadata->'actor'->>'name',
-        NULLIF(a.display_name, ''), NULLIF(a.full_name, ''), a.username,
+        a.username,
         CASE WHEN e.source = 'system' OR e.actor_id = 'system' THEN 'System' ELSE 'Unrecorded staff' END) AS actor_name,
       a.username AS actor_username,
       COALESCE(NULLIF(e.metadata->>'admin_role', ''), NULLIF(e.metadata->>'actor_role', '')) AS actor_role,
-      COALESCE(e.recorded_target, NULLIF(t.display_name, ''), NULLIF(t.full_name, ''), t.username) AS target_name,
+      COALESCE(NULLIF(t.display_name, ''), NULLIF(t.full_name, ''), e.recorded_target, t.username) AS target_name,
       t.username AS target_username,
       COALESCE(NULLIF(e.metadata->>'entity_type', ''), NULLIF(e.metadata->>'related_entity_type', ''),
         CASE WHEN e.metadata->>'target_user_id' IS NOT NULL OR e.action_code = 'account_deleted' THEN 'Account'
@@ -51,9 +51,11 @@ export async function getAdminAuditLogs(db, user, body = {}) {
   requireStaff(user);
   const source = ["admin", "system"].includes(body.source) ? body.source : "all";
   const search = String(body.search || "").trim().toLowerCase().slice(0, 200);
+  const action = String(body.action || "").trim().slice(0, 100);
   const days = { day: 1, week: 7, month: 30 }[body.period];
   const sourceSql = source === "all" ? Prisma.sql`TRUE` : Prisma.sql`source = ${source}`;
-  const periodSql = Number.isFinite(days) ? Prisma.sql`created_date >= ${new Date(Date.now() - days * 86400000)}` : Prisma.sql`TRUE`;
+  const periodSql = Number.isFinite(days) ? Prisma.sql`created_date >= ${new Date(Date.now() - days * 86400000).toISOString().slice(0, -1)}::timestamp` : Prisma.sql`TRUE`;
+  const actionSql = action ? Prisma.sql`action_code = ${action}` : Prisma.sql`TRUE`;
   const searchSql = search ? Prisma.sql`POSITION(${search} IN LOWER(CONCAT_WS(' ',
     REPLACE(action_code, '_', ' '), action_code, actor_name, actor_username, actor_id,
     target_name, target_username, target_id, target_kind, description))) > 0` : Prisma.sql`TRUE`;
@@ -64,15 +66,15 @@ export async function getAdminAuditLogs(db, user, body = {}) {
       const date = new Date(cursor.date);
       if (!Number.isFinite(date.getTime()) || !["admin", "system"].includes(cursor.source)
         || typeof cursor.id !== "string" || !cursor.id || cursor.id.length > 200) throw new Error();
-      cursorSql = Prisma.sql`(created_date, source, id) < (${date}, ${cursor.source}, ${cursor.id})`;
+      cursorSql = Prisma.sql`(created_date, source, id) < (${date.toISOString().slice(0, -1)}::timestamp, ${cursor.source}, ${cursor.id})`;
     } catch { throw Object.assign(new Error("Invalid audit page. Refresh the log."), { status: 400 }); }
   }
   const [candidates, counts] = await Promise.all([
     db.$queryRaw`${eventsSql} SELECT id, source, created_date, action_code, actor_id, actor_name, actor_username, actor_role,
       target_id, target_name, target_username, target_kind, LEFT(description, 350) AS description
-      FROM records WHERE ${sourceSql} AND ${periodSql} AND ${searchSql} AND ${cursorSql}
+      FROM records WHERE ${sourceSql} AND ${periodSql} AND ${searchSql} AND ${actionSql} AND ${cursorSql}
       ORDER BY created_date DESC, source DESC, id DESC LIMIT 26`,
-    db.$queryRaw`${eventsSql} SELECT COUNT(*)::int AS total FROM records WHERE ${sourceSql} AND ${periodSql} AND ${searchSql}`,
+    db.$queryRaw`${eventsSql} SELECT COUNT(*)::int AS total FROM records WHERE ${sourceSql} AND ${periodSql} AND ${searchSql} AND ${actionSql}`,
   ]);
   const rows = candidates.slice(0, 25).map((row) => ({ ...row, record_id: row.id, id: `${row.source}:${row.id}` }));
   const last = candidates[24];

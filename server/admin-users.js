@@ -4,6 +4,7 @@ import { knownUserIpAddresses, normalizeIpAddress, requestIpAddress } from "./ba
 import { effectiveRoleForUser, hasRolePower } from "../src/lib/roles.js";
 import { isCloudflareIp } from "../src/lib/cloudflareIps.js";
 import { adminTimestampSql } from "./lib/adminTimestampSql.js";
+import { PRIMARY_GAME_ID, LEGACY_GAME_ID } from "../src/lib/mw4.js";
 
 const fail = (message, status = 400) => { throw Object.assign(new Error(message), { status }); };
 const requireAdmin = (actor) => { if (!hasRole(actor, "admin")) fail("Admin access required", 403); };
@@ -52,7 +53,7 @@ export async function setAdminUserVpnAccess(db, actor, body = {}) {
   });
 }
 
-const directoryFields = ["id", "username", "handle", "display_name", "full_name", "role", "admin_role", "is_admin",
+const directoryFields = ["id", "username", "handle", "display_name", "full_name", "activision_id", "activision_name", "role", "admin_role", "is_admin",
   "created_date", "updated_date", "account_created_date", "is_banned", "is_premium", "premium_expires", "region",
   "badges", "verified_player", "is_verified_player", "streamer_badge", "is_streamer", "force_stream_required",
   "stream_override_required", "monitor_cam_required", "required_monitor_cam", "moni_cam_required", "monitor_cam_override_required", "console_restricted", "suspended_until"];
@@ -81,6 +82,8 @@ export async function getAdminUsers(db, actor, body = {}) {
   const admin = hasRole(actor, "admin");
   const includeWallets = admin && body.include_wallets !== false;
   const search = String(body.search || "").trim().toLowerCase().slice(0, 200);
+  if (body.user_id !== undefined && (typeof body.user_id !== "string" || !body.user_id || body.user_id.length > 200)) fail("Choose a valid player.");
+  const selectedWhere = body.user_id ? Prisma.sql`u.id = ${body.user_id}` : Prisma.sql`TRUE`;
   const filterSql = adminUserFilterSql(body.filter);
   const restrictions = adminUserRestrictionSql();
   const sharedOnly = admin && body.shared_only === true;
@@ -109,7 +112,7 @@ export async function getAdminUsers(db, actor, body = {}) {
   const sharedIds = [...shared.keys()];
   const sharedWhere = sharedOnly ? (sharedIds.length ? Prisma.sql`id IN (${Prisma.join(sharedIds)})` : Prisma.sql`FALSE`) : Prisma.sql`TRUE`;
   const searchWhere = search ? Prisma.sql`(
-    POSITION(${search} IN LOWER(CONCAT_WS(' ', id, username, handle, display_name, full_name, role, admin_role))) > 0
+    POSITION(${search} IN LOWER(CONCAT_WS(' ', id, username, handle, display_name, full_name, role, admin_role, metadata->>'activision_id', metadata->>'activision_name'))) > 0
     ${admin ? Prisma.sql`OR POSITION(${search} IN LOWER(COALESCE(email, ''))) > 0
       OR POSITION(${search} IN CONCAT_WS(' ', metadata->>'registration_ip', metadata->>'last_login_ip', metadata->>'last_seen_ip', metadata->'ip_history')) > 0` : Prisma.empty}
   )` : Prisma.sql`TRUE`;
@@ -118,8 +121,8 @@ export async function getAdminUsers(db, actor, body = {}) {
   // non-UTC database sessions; bind the same UTC wall-clock timestamp instead.
   const cursorWhere = cursor ? Prisma.sql`(created_date, id) < (${new Date(cursor.date).toISOString().slice(0, -1)}::timestamp, ${cursor.id})` : Prisma.sql`TRUE`;
   const [candidates, counts] = await Promise.all([
-    db.$queryRaw`SELECT *, ${restrictions.banned} AS active_ban, (${restrictions.suspended}) AS active_suspension FROM "User" u WHERE ${sharedWhere} AND ${searchWhere} AND ${filterSql} AND ${cursorWhere} ORDER BY created_date DESC, id DESC LIMIT 26`,
-    db.$queryRaw`SELECT COUNT(*)::int AS total FROM "User" u WHERE ${sharedWhere} AND ${searchWhere} AND ${filterSql}`,
+    db.$queryRaw`SELECT *, ${restrictions.banned} AS active_ban, (${restrictions.suspended}) AS active_suspension FROM "User" u WHERE ${selectedWhere} AND ${sharedWhere} AND ${searchWhere} AND ${filterSql} AND ${cursorWhere} ORDER BY created_date DESC, id DESC LIMIT 26`,
+    db.$queryRaw`SELECT COUNT(*)::int AS total FROM "User" u WHERE ${selectedWhere} AND ${sharedWhere} AND ${searchWhere} AND ${filterSql}`,
   ]);
   const page = candidates.slice(0, 25);
   // The directory only needs balances for its current page. Use the same
@@ -129,11 +132,24 @@ export async function getAdminUsers(db, actor, body = {}) {
     FROM "Wallet" WHERE metadata->>'user_id' IN (${Prisma.join(page.map((user) => user.id))})
     ORDER BY metadata->>'user_id', created_date ASC, id ASC` : [];
   const availableBalanceByUser = new Map(wallets.map((wallet) => [wallet.user_id, wallet.available_balance ?? 0]));
+  // Ranked management searches every account, but only reads stats for the
+  // displayed page and chosen game. Legacy stats belong to BO7, not MW4.
+  const gameId = String(body.game_id || PRIMARY_GAME_ID).toLowerCase().slice(0, 40);
+  const ranked = body.include_ranked === true && page.length ? await db.$queryRaw`SELECT DISTINCT ON (metadata->>'user_id')
+    metadata->>'user_id' AS user_id,
+    jsonb_build_object('id', id, 'user_id', metadata->>'user_id', 'game_id', ${gameId}::text,
+      'elo', metadata->'elo', 'wins', metadata->'wins', 'losses', metadata->'losses',
+      'win_streak', metadata->'win_streak', 'peak_elo', metadata->'peak_elo', 'matches_played', metadata->'matches_played') AS stats
+    FROM "RankedStats" WHERE metadata->>'user_id' IN (${Prisma.join(page.map((user) => user.id))})
+      AND LOWER(COALESCE(NULLIF(metadata->>'game_id', ''), ${LEGACY_GAME_ID})) = ${gameId}
+    ORDER BY metadata->>'user_id', created_date DESC, id DESC` : [];
+  const rankedByUser = new Map(ranked.map(row => [row.user_id, row.stats]));
   const rows = page.map((user) => {
     const flat = { ...user.metadata, ...user };
     const result = Object.fromEntries(directoryFields.filter((key) => flat[key] !== undefined).map((key) => [key, flat[key]]));
     result.active_ban = user.active_ban ?? Boolean(user.is_banned);
     result.active_suspension = user.active_suspension ?? false;
+    if (body.include_ranked === true) result.ranked_stats = rankedByUser.get(user.id) || null;
     if (admin || user.id === actor.id) result.email = user.email;
     if (hasRole(actor, "ceo")) result.vpn_access_allowed = user.vpn_access_allowed === true;
     if (admin) {

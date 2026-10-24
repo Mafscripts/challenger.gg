@@ -174,7 +174,10 @@ export async function getAdminRewardOverview(db, actor) {
     db.competitionRewardGrant.findMany({ where: { NOT: { user_id: "system" } }, orderBy: { created_date: "desc" }, take: 30 }),
     db.$queryRaw`SELECT id, metadata->>'name' AS name FROM "Tournament" WHERE COALESCE(metadata->>'status', '') NOT IN ('completed', 'cancelled', 'closed') ORDER BY created_date DESC LIMIT 100`,
   ]);
-  return { success: true, settings, items: items.map(publicItem), campaigns, seasons, grants: grants.map((row) => ({ id: row.id, user_id: row.user_id, source_key: row.source_key, created_date: row.created_date, name: row.metadata.item?.name || row.metadata.kind })), tournaments, current: rewardSeason() };
+  const playerIds = [...new Set(grants.map(row => row.user_id).filter(Boolean))];
+  const players = playerIds.length ? await db.user.findMany({ where: { id: { in: playerIds } }, select: { id: true, display_name: true, full_name: true, username: true } }) : [];
+  const playerNames = new Map(players.map(row => [row.id, row.display_name || row.full_name || row.username || "Player"]));
+  return { success: true, settings, items: items.map(publicItem), campaigns, seasons, grants: grants.map((row) => ({ id: row.id, user_id: row.user_id, player_name: playerNames.get(row.user_id) || "Former player", source_key: row.source_key, created_date: row.created_date, name: row.metadata.item?.name || row.metadata.kind })), tournaments, current: rewardSeason() };
 }
 export async function getRewardSeasonStandings(db, input = {}) {
   const current = rewardSeason(), stored = input.season_id ? await db.competitionRewardSeason.findUnique({ where: { id: String(input.season_id) } }) : null;

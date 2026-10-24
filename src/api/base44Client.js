@@ -31,6 +31,8 @@ const readOnlyFunctions = new Set([
   "getAdminMatches",
   "getAdminPlayerDossier",
   "getAdminWallets",
+  "getAdminInventory",
+  "getAdminWithdrawals",
   "getAdminWalletSummary",
   "getProgressionResetOverview",
   "getAdminAuditLogs",

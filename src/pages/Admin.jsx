@@ -1,7 +1,7 @@
 import useRouteSection from "@/hooks/useRouteSection";
-import { retainDataSnapshot } from "@/lib/dataSnapshot";
 import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useIsFetching, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/AuthContext";
 import {
   Archive,
@@ -52,18 +52,18 @@ import RoleBadge from "@/components/ui/RoleBadge";
 import UserBadges from "@/components/ui/UserBadges";
 import RankBadge from "@/components/ui/RankBadge";
 import AdminNavigation from "@/components/admin/AdminNavigation";
+import AdminSectionLinks from "@/components/admin/AdminSectionLinks";
 import TopfraggLogo from "@/components/brand/TopfraggLogo";
 import { adminSectionInfo } from "@/lib/adminNavigation";
 import "@/styles/admin-console.css";
 import RarityBadge from "@/components/ui/RarityBadge";
 import PageLoader from "@/components/ui/PageLoader";
 import { useAdminConsoleData } from "@/hooks/useAdminConsoleData";
-import { eightsMatchGameName } from "@/lib/freeEightsGames";
 import { TOURNAMENT_GAMES, TOURNAMENT_MODES, parseTournamentMapList, switchTournamentGame, tournamentGameId, tournamentGameName, tournamentMapForm, tournamentModesForGame } from "@/lib/tournamentGames";
 import { canAccessAdminPanel, canManageWallets, canViewUserIps, effectiveRoleForUser, hasRolePower } from "@/lib/roles";
 import { getRankForElo } from "@/lib/ranks";
 import { consoleRestrictedFor } from "@/lib/playerRestrictions";
-import { adminTargetUrl, notifyAdminChanged, openAdminPlayer } from "@/lib/adminWorkspace";
+import { adminAlertDestination, adminTargetUrl, isAdminWorkspaceQuery, notifyAdminChanged, openAdminPlayer } from "@/lib/adminWorkspace";
 import AdminWorkspaceSearch from "@/components/admin/AdminWorkspaceSearch";
 import useAdminConfirm from "@/hooks/useAdminConfirm";
 
@@ -89,11 +89,14 @@ const FreeEightsGamesAdmin = lazyAdminSection(() => import("@/components/admin/F
 const ChallengeTeamAdmin = lazyAdminSection(() => import("@/components/admin/ChallengeTeamAdmin"));
 const SiteAnnouncementAdmin = lazyAdminSection(() => import("@/components/admin/SiteAnnouncementAdmin"));
 const AdminMatches = lazyAdminSection(() => import("@/components/admin/AdminMatches"));
+const AdminEconomyRecords = lazyAdminSection(() => import("@/components/admin/AdminEconomyRecords"));
 const sectionComponents = {
   dashboard: AdminDashboard, matches: AdminMatches, verifyRank: RankVerificationAdmin, tickets: AdminTickets,
   roles: RoleManagement, audit: AuditLog, wallets: AdminWallets, banAppeals: AdminBanAppeals,
   eightsGames: FreeEightsGamesAdmin, challenges: ChallengeTeamAdmin,
   websiteUpdates: SiteAnnouncementAdmin, progression: ProgressionResets, rewards: CompetitionRewardsAdmin,
+  withdrawals: AdminEconomyRecords, inventory: AdminEconomyRecords,
+  live8s: AdminMatches, wagers: AdminMatches, tournamentMatches: AdminMatches,
 };
 
 const marketplaceCategories = ["cosmetic", "badge", "frame", "calling_card", "trophy", "knife", "ranked_reward", "weapon_skin", "gloves", "agent", "sticker", "patch", "music_kit"];
@@ -275,17 +278,17 @@ const tabs = [
   { id: "eightsGames", label: "8s Games & Maps", icon: Swords },
   { id: "ranked", label: "Ranked Management", icon: Swords },
   { id: "progression", label: "Resets & Seasons", icon: RotateCcw, seniorOnly: true },
-  { id: "verifyRank", label: "Verify Rank", icon: UserCheck },
+  { id: "verifyRank", label: "Verify Rank", icon: UserCheck, adminOnly: true },
   { id: "tournaments", label: "Tournaments", icon: Trophy },
   { id: "tournamentMatches", label: "Tournament Matches", icon: ClipboardList },
-  { id: "wallets", label: "Wallets", icon: Wallet },
+  { id: "wallets", label: "Wallets", icon: Wallet, adminOnly: true },
   { id: "websiteUpdates", label: "Website updates", icon: BellRing, adminOnly: true },
-  { id: "referrals", label: "Referrals", icon: Gift },
-  { id: "freeTrials", label: "Free Trials", icon: Sparkles },
-  { id: "withdrawals", label: "Withdrawals", icon: Landmark },
+  { id: "referrals", label: "Referrals", icon: Gift, ceoOnly: true },
+  { id: "freeTrials", label: "Free Trials", icon: Sparkles, adminOnly: true },
+  { id: "withdrawals", label: "Withdrawals", icon: Landmark, adminOnly: true },
   { id: "rewards", label: "Reward Items & Seasons", icon: Gift, adminOnly: true },
   { id: "marketplace", label: "Marketplace", icon: ShoppingBag },
-  { id: "inventory", label: "Inventory", icon: Boxes },
+  { id: "inventory", label: "Inventory", icon: Boxes, adminOnly: true },
   { id: "audit", label: "Audit Logs", icon: ScrollText },
 ];
 const initialAdminTab = () => {
@@ -344,17 +347,6 @@ const isVisibleMarketplaceItem = (item) => (
   !hiddenCompetitionTypes.has(String(item?.unlock_type || "").toLowerCase())
   && !isRemovedInvitationalTrophy(item)
 );
-const adminAlertActionUrl = (alert, ticket) => {
-  if (ticket?.action_url) return ticket.action_url;
-  if (alert?.action_url) return alert.action_url;
-  const id = alert?.match_id || alert?.related_entity_id;
-  if (!id) return "/admin";
-  const matchType = String(alert?.match_type || "").toLowerCase();
-  if (matchType === "tournament") return `/tournament-match/${id}`;
-  if (matchType === "wager") return `/wagers-match/${id}`;
-  if (matchType === "ranked") return `/ranked-match/${id}`;
-  return "/admin";
-};
 const effectiveRoleFor = (user) => effectiveRoleForUser(user);
 const canAddWalletAdjustment = (role) => role === "ceo";
 const canAdjustUserWallet = (actorRole) => canAddWalletAdjustment(actorRole);
@@ -454,15 +446,16 @@ const userBadgePreset = (user) => {
   if (types.includes("streamer")) return "streamer";
   return "none";
 };
-function StatCard({ icon: Icon, label, value, color = "text-cyan" }) {
+function StatCard({ icon: Icon, label, value, color = "text-cyan", onClick }) {
+  const Element = onClick ? "button" : "div";
   return (
-    <div className="admin-overview-stat" data-stat-tone={color}>
+    <Element type={onClick ? "button" : undefined} onClick={onClick} className="admin-overview-stat text-left" data-stat-tone={color}>
       <div className="flex items-center gap-2 mb-2">
         <Icon className={`w-4 h-4 ${color}`} />
-        <span className="text-[10px] text-vapor uppercase">{label}</span>
+        <span className="flex-1 text-[10px] text-vapor uppercase">{label}</span>{onClick && <ArrowUpRight size={13} className="text-vapor" aria-hidden="true" />}
       </div>
       <p className={`text-xl font-black font-mono ${color}`}>{value}</p>
-    </div>
+    </Element>
   );
 }
 
@@ -580,11 +573,14 @@ export default function Admin() {
   const [moderationRequest, setModerationRequest] = useState(null);
   const [walletAdjustmentForm, setWalletAdjustmentForm] = useState(defaultWalletAdjustmentForm);
   const [rankedPlayerSearch, setRankedPlayerSearch] = useState("");
+  const [selectedRankedPlayer, setSelectedRankedPlayer] = useState(null);
   const [rankedAdjustment, setRankedAdjustment] = useState({ user_id: "", operation: "set", amount: "", reason: "" });
   const [rankedStatsForm, setRankedStatsForm] = useState(defaultRankedStatsForm);
   const [referralProgram, setReferralProgram] = useState(null);
   const [animatedNameFreeTrial, setAnimatedNameFreeTrial] = useState(null);
   const currentRole = effectiveRoleFor(currentUser);
+  const rankedBusy = String(busyId || "").startsWith("ranked:");
+  const workspaceFetching = useIsFetching({ predicate: query => isAdminWorkspaceQuery(query.queryKey) }) > 0;
   const allowedTabs = useMemo(() => tabs.filter(tab => (!tab.ceoOnly || currentRole === "ceo") && (!tab.seniorOnly || hasRolePower(currentRole, "super_admin")) && (!tab.adminOnly || hasRolePower(currentRole, "admin"))), [currentRole]);
   const workspaceRef = useRef(null);
   const focusAdminWorkspace = () => {
@@ -612,13 +608,30 @@ export default function Admin() {
     if (!loading && canAccessAdminPanel(currentRole) && !allowedTabs.some(tab => tab.id === activeTab)) setActiveTab("dashboard");
   }, [activeTab, allowedTabs, currentRole, loading]);
 
-  const adminQueries = useAdminConsoleData(currentUser, activeTab,
-    { search: activeTab === "roles" ? roleSearch : searchQuery, sharedOnly: sharedIpOnly, filter: userFilter },
+  const adminQueries = useAdminConsoleData(currentUser, allowedTabs.some(tab => tab.id === activeTab) ? activeTab : "dashboard",
+    { search: activeTab === "roles" ? roleSearch : activeTab === "ranked" ? rankedPlayerSearch : searchQuery, sharedOnly: sharedIpOnly, filter: userFilter },
     { overviewOpen: overviewTab === activeTab, tournamentInviteOnly: tournamentForm.invite_only, tournamentRosterId: expandedTournamentRosterId });
+  const rankedSelectedOnPage = adminQueries.userDirectory.rows.some(player => player.id === selectedRankedPlayer?.id);
+  const rankedSelection = useQuery({
+    queryKey: ["admin-console", currentUser?.id, currentRole, "rankedSelectedPlayer", selectedRankedPlayer?.id],
+    enabled: activeTab === "ranked" && canAccessAdminPanel(currentRole) && Boolean(selectedRankedPlayer?.id)
+      && !rankedSelectedOnPage,
+    queryFn: async () => {
+      const { data } = await base44.functions.invoke("getAdminUsers", { user_id: selectedRankedPlayer.id, include_ranked: true, include_security: false, include_wallets: false });
+      if (!data?.success) throw new Error(data?.error || "Could not refresh the selected player.");
+      const player = data.rows.find(row => row.id === selectedRankedPlayer.id);
+      if (!player) throw new Error("This player account is no longer available.");
+      return player;
+    }, staleTime: 30000, refetchOnWindowFocus: false,
+  });
+  const selectedRanked = adminQueries.userDirectory.rows.find(player => player.id === selectedRankedPlayer?.id)
+    || rankedSelection.data || selectedRankedPlayer;
+  const rankedSelectionBlocked = !rankedSelectedOnPage && (rankedSelection.isFetching || rankedSelection.isError);
+  const refreshing = adminQueries.refreshing || workspaceFetching;
   const receivedRows = useRef({});
   const receivedScope = useRef(null);
   const loadAdminData = (options = {}) => {
-    notifyAdminChanged({ skipAdminConsole: true, skipSupport: Boolean(options.skipSupport) });
+    notifyAdminChanged({ skipAdminConsole: true, skipSupport: Boolean(options.skipSupport), refreshRequested: Boolean(options.refreshRequested) });
     return adminQueries.refresh(options);
   };
 
@@ -630,6 +643,7 @@ export default function Admin() {
       receivedRows.current = {};
       setReferralProgram(null);
       setAnimatedNameFreeTrial(null);
+      setSelectedRankedPlayer(null);
     }
     const updates = {};
     // Only merge datasets that actually changed, preserving local edits and live polls.
@@ -661,51 +675,19 @@ export default function Admin() {
     }
   }, [activeTab, currentUser?.id, currentRole]);
 
-  useEffect(() => {
-    if (activeTab !== "live8s" || !currentUser?.id) return undefined;
-    let mounted = true, refreshing = false;
-    const refreshLiveEights = async () => {
-      if (!mounted || refreshing || document.visibilityState === "hidden") return;
-      refreshing = true;
-      try {
-        const [freeMatches, moneyMatches] = await Promise.all([
-          base44.entities.Wager.filterFresh({ match_type: "8s" }, "-created_date", 100).catch(() => []),
-          base44.entities.Wager.filterFresh({ match_type: "money8s" }, "-created_date", 100).catch(() => []),
-        ]);
-        if (!mounted) return;
-        const nextMatches = [...(freeMatches || []), ...(moneyMatches || [])]
-            .filter(isLiveEightsLobby)
-            .sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0));
-        setData((current) => {
-          const rows = retainDataSnapshot(current.eightsMatches, nextMatches);
-          return rows === current.eightsMatches ? current : { ...current, eightsMatches: rows };
-        });
-      } finally { refreshing = false; }
-    };
-    refreshLiveEights();
-    const timer = window.setInterval(refreshLiveEights, 4000);
-    return () => {
-      mounted = false;
-      window.clearInterval(timer);
-    };
-  }, [activeTab, currentUser?.id]);
-
   const userById = useMemo(() => (
     Object.fromEntries(data.users.map((user) => [user.id, user]))
   ), [data.users]);
 
   const rankedStatsByUserId = useMemo(() => (
-    Object.fromEntries(data.rankedStats.map((stats) => [stats.user_id, stats]))
-  ), [data.rankedStats]);
+    Object.fromEntries([...(selectedRanked?.ranked_stats ? [selectedRanked] : []), ...data.users.filter(player => player.ranked_stats)].map(player => [player.id, player.ranked_stats]))
+  ), [data.users, selectedRanked]);
 
   const rankedPlayerRows = useMemo(() => {
-    const query = rankedPlayerSearch.trim().toLowerCase();
     return data.users
-      .filter((player) => !query || `${userName(player)} ${player.username || ""} ${player.email || ""} ${player.activision_id || ""}`.toLowerCase().includes(query))
       .map((player) => ({ player, stats: rankedStatsByUserId[player.id] || null }))
-      .sort((a, b) => Number(b.stats?.elo || 0) - Number(a.stats?.elo || 0))
-      .slice(0, 25);
-  }, [data.users, rankedPlayerSearch, rankedStatsByUserId]);
+      .sort((a, b) => Number(b.stats?.elo || 0) - Number(a.stats?.elo || 0));
+  }, [data.users, rankedStatsByUserId]);
 
   const ticketById = useMemo(() => (
     Object.fromEntries(data.tickets.map((ticket) => [ticket.id, ticket]))
@@ -1079,34 +1061,8 @@ export default function Admin() {
     }
   };
 
-  const handleWithdrawal = async (withdrawal, status) => {
-    if (!canManageWallets(currentRole)) {
-      toast({ title: "Not allowed", description: "Admin or higher is required to process withdrawals.", variant: "destructive" });
-      return;
-    }
-
-    setBusyId(`${withdrawal.id}:${status}`);
-    try {
-      const response = await base44.functions.invoke("processWithdrawal", {
-        withdrawal_id: withdrawal.id,
-        status,
-        notes: `Processed from admin panel by ${userName(currentUser)}`,
-      });
-
-      if (response.data?.success) {
-        toast({ title: `Withdrawal ${status}` });
-        loadAdminData();
-      } else {
-        toast({ title: "Withdrawal failed", description: response.data?.error || "Could not process withdrawal.", variant: "destructive" });
-      }
-    } catch (error) {
-      toast({ title: "Withdrawal failed", description: error.message || "Could not process withdrawal.", variant: "destructive" });
-    } finally {
-      setBusyId(null);
-    }
-  };
-
   const handleGenerateBracket = async (tournament) => {
+    if (busyId || !canManageWallets(currentRole)) return;
     setBusyId(`bracket:${tournament.id}`);
     try {
       const response = await base44.functions.invoke("generateTournamentBracket", { tournament_id: tournament.id });
@@ -1124,6 +1080,7 @@ export default function Admin() {
   };
 
   const handleResetBracket = async (tournament) => {
+    if (busyId || !canManageWallets(currentRole)) return;
     const registeredTeams = Number(tournament.registered_teams || 0);
     const currentLimit = Math.max(registeredTeams, Number(tournament.max_teams || 0));
     if (typeof window === "undefined") return;
@@ -1162,6 +1119,7 @@ export default function Admin() {
   };
 
   const handleAdminDisbandTournamentTeams = async (tournament) => {
+    if (busyId || !canManageWallets(currentRole)) return;
     if (typeof window === "undefined") return;
     if (!await confirmAdmin({ title: "Remove all tournament registrations", description: `${tournament.name}: every team registration and any unplayed bracket are removed. Paid entry Credits are refunded. The teams themselves remain.`, confirmLabel: "Remove registrations", tone: "danger" })) return;
 
@@ -1187,6 +1145,7 @@ export default function Admin() {
   };
 
   const handleAdminRemoveTournamentParticipant = async (tournament, participant) => {
+    if (busyId || !canManageWallets(currentRole)) return;
     if (typeof window === "undefined") return;
     const teamName = participant.team_name || "this team";
     if (!await confirmAdmin({ title: "Remove tournament registration", description: `${teamName} will be removed from ${tournament.name}. Entry Credits are refunded and they can register again. The team itself remains.`, confirmLabel: "Remove team", tone: "danger" })) return;
@@ -1214,6 +1173,7 @@ export default function Admin() {
   };
 
   const handleRepairBracket = async (tournament) => {
+    if (busyId || !canManageWallets(currentRole)) return;
     if (typeof window === "undefined") return;
     if (!await confirmAdmin({ title: "Repair tournament bracket", description: `${tournament.name}: all match scores are removed. Each team keeps its seed and a corrected bracket is generated immediately.`, confirmLabel: "Repair bracket", tone: "warning" })) return;
 
@@ -1311,6 +1271,7 @@ export default function Admin() {
 
   const handleSubmitTournament = async (event) => {
     event.preventDefault();
+    if (busyId) return;
 
     if (!canManageWallets(currentRole)) {
       toast({ title: "Not allowed", description: "Admin or higher is required to create tournaments.", variant: "destructive" });
@@ -1354,6 +1315,8 @@ export default function Admin() {
   };
 
   const handleEditTournament = (tournament) => {
+    if (busyId || !canManageWallets(currentRole)) return;
+    document.getElementById("admin-tournament-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
     setEditingTournamentId(tournament.id);
     setTournamentForm({
       ...defaultTournamentForm,
@@ -1416,6 +1379,7 @@ export default function Admin() {
   };
 
   const handleTournamentAction = async (tournament, action, payload = {}) => {
+    if (busyId || !canManageWallets(currentRole)) return;
     const labels = {
       startTournament: "started",
       cancelTournament: "cancelled",
@@ -1424,6 +1388,7 @@ export default function Admin() {
       deleteTournament: "deleted",
     };
     if (action === "deleteTournament" && !await confirmAdmin({ title: "Delete tournament", description: `Permanently delete ${tournament.name}. This action cannot be undone.`, confirmLabel: "Delete tournament", tone: "danger" })) return;
+    if (action === "cancelTournament" && !await confirmAdmin({ title: "Cancel tournament", description: `${tournament.name} will be cancelled and its registered players will be notified.`, confirmLabel: "Cancel tournament", tone: "danger" })) return;
 
     setBusyId(`${action}:${tournament.id}`);
     try {
@@ -1495,6 +1460,7 @@ export default function Admin() {
   };
 
   const handleSetTournamentStatus = async (tournament, status) => {
+    if (busyId || !canManageWallets(currentRole)) return;
     if (tournament.status === status) return;
     const labels = {
       open: "reopened",
@@ -1555,6 +1521,7 @@ export default function Admin() {
 
   const handleSubmitMarketplaceItem = async (event) => {
     event.preventDefault();
+    if (busyId) return;
 
     if (!canManageWallets(currentRole)) {
       toast({ title: "Not allowed", description: "Admin or higher is required to manage marketplace items.", variant: "destructive" });
@@ -1647,6 +1614,8 @@ export default function Admin() {
   };
 
   const handleEditMarketplaceItem = (item) => {
+    if (busyId || !canManageWallets(currentRole)) return;
+    document.getElementById("admin-marketplace-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
     setEditingMarketplaceId(item.id);
     setMarketplaceForm({
       ...defaultMarketplaceForm,
@@ -1670,6 +1639,7 @@ export default function Admin() {
   };
 
   const handleToggleMarketplaceItem = async (item) => {
+    if (busyId || !canManageWallets(currentRole)) return;
     const nextActive = !(item.is_active !== false && item.is_available !== false);
     setBusyId(`marketplace:toggle:${item.id}`);
     try {
@@ -1688,6 +1658,7 @@ export default function Admin() {
   };
 
   const handleDeleteMarketplaceItem = async (item) => {
+    if (busyId || !canManageWallets(currentRole)) return;
     if (!await confirmAdmin({ title: "Delete marketplace item", description: `Permanently delete ${item.name}. This action cannot be undone.`, confirmLabel: "Delete item", tone: "danger" })) return;
     setBusyId(`marketplace:delete:${item.id}`);
     try {
@@ -1711,6 +1682,8 @@ export default function Admin() {
   };
 
   const selectRankedPlayer = (player, stats) => {
+    if (rankedBusy) return;
+    setSelectedRankedPlayer(player);
     setRankedAdjustment((current) => ({ ...current, user_id: player.id }));
     setRankedStatsForm({
       wins: String(Number(stats?.wins || 0)),
@@ -1723,6 +1696,7 @@ export default function Admin() {
   };
 
   const handleRankedStatsUpdate = async (reset = false) => {
+    if (rankedBusy || rankedSelectionBlocked) return;
     if (!canManageWallets(currentRole)) {
       toast({ title: "Not allowed", description: "Admin or higher is required.", variant: "destructive" });
       return;
@@ -1757,6 +1731,7 @@ export default function Admin() {
         reason,
       });
       if (!response.data?.success) throw new Error(response.data?.error || "Ranked stats update failed");
+      setSelectedRankedPlayer(current => current && ({ ...current, ranked_stats: response.data.ranked_stats }));
       toast({ title: reset ? "Ranked record reset" : "Ranked stats updated" });
       setRankedStatsForm((current) => ({ ...current, ...Object.fromEntries(Object.entries(payload).map(([key, value]) => [key, String(value)])), reason: "" }));
       await loadAdminData();
@@ -1769,6 +1744,7 @@ export default function Admin() {
 
   const handleRankedEloAdjustment = async (event) => {
     event.preventDefault();
+    if (rankedBusy || rankedSelectionBlocked) return;
     if (!canManageWallets(currentRole)) {
       toast({ title: "Not allowed", description: "Admin or higher is required.", variant: "destructive" });
       return;
@@ -1803,7 +1779,7 @@ export default function Admin() {
 
   const handleReferralProgramSave = async (event) => {
     event.preventDefault();
-    if (!referralProgram) return;
+    if (!referralProgram || busyId) return;
     setBusyId("referral-program");
     try {
       const response = await base44.functions.invoke("updateReferralProgram", {
@@ -1814,6 +1790,7 @@ export default function Admin() {
       if (!response.data?.success) throw new Error(response.data?.error || "Referral program could not be saved");
       setReferralProgram({ ...response.data.program, rewarded_users: response.data.rewarded_users });
       toast({ title: "Referral program updated" });
+      void loadAdminData();
     } catch (error) {
       toast({ title: "Referral program update failed", description: error.message, variant: "destructive" });
     } finally {
@@ -1833,6 +1810,7 @@ export default function Admin() {
       if (!response.data?.success) throw new Error(response.data?.error || "Free Trial could not be activated");
       setAnimatedNameFreeTrial(response.data.trial);
       toast({ title: "Free Trial activated", description: "All users can use animated name effects for 30 days." });
+      void loadAdminData();
     } catch (error) {
       toast({ title: "Free Trial activation failed", description: error.message || "Could not activate the Free Trial.", variant: "destructive" });
     } finally {
@@ -1852,6 +1830,7 @@ export default function Admin() {
       if (!response.data?.success) throw new Error(response.data?.error || "Free Trial could not be stopped");
       setAnimatedNameFreeTrial(response.data.trial);
       toast({ title: "Free Trial stopped", description: "The animated name effects trial is no longer available." });
+      void loadAdminData();
     } catch (error) {
       toast({ title: "Free Trial stop failed", description: error.message || "Could not stop the Free Trial.", variant: "destructive" });
     } finally {
@@ -1887,77 +1866,43 @@ export default function Admin() {
           <header className="admin-console-header">
             <div className="admin-console-header-copy"><p className="admin-console-eyebrow"><TopfraggLogo showWordmark={false} markClassName="!h-7 !w-7" />TOPFRAGG STAFF WORKSPACE</p><h1>Admin Console<span>.</span></h1><p>Support your players. Run the competition. Keep the arena moving.</p></div>
             <Shield className="admin-console-header-art" size={156} strokeWidth={1} aria-hidden="true" />
-            <div className="admin-console-header-tools"><RoleBadge role={currentRole} /><AdminWorkspaceSearch user={currentUser} /><Link to="/" className="admin-console-button">View website<ArrowUpRight size={15} aria-hidden="true" /></Link><button type="button" onClick={loadAdminData} disabled={adminQueries.refreshing} className="admin-console-button admin-console-primary"><RefreshCw size={15} className={adminQueries.refreshing ? "animate-spin" : undefined} aria-hidden="true" />{adminQueries.refreshing ? "Refreshing…" : "Refresh data"}</button></div>
+            <div className="admin-console-header-tools"><RoleBadge role={currentRole} /><AdminWorkspaceSearch user={currentUser} /><Link to="/" className="admin-console-button">View website<ArrowUpRight size={15} aria-hidden="true" /></Link><button type="button" onClick={() => loadAdminData({ refreshRequested: true })} disabled={refreshing} className="admin-console-button admin-console-primary"><RefreshCw size={15} className={refreshing ? "animate-spin" : undefined} aria-hidden="true" />{refreshing ? "Refreshing…" : "Refresh data"}</button></div>
           </header>
 
         {activeTab !== "dashboard" && <details className="admin-overview" key={activeTab} onToggle={event => setOverviewTab(event.currentTarget.open ? activeTab : null)}>
           <summary><LayoutDashboard size={16} aria-hidden="true" /><span>Platform overview<small>Players, queues & competition totals</small></span><ChevronDown size={16} aria-hidden="true" /></summary>
         {!adminQueries.status.dashboardOverview.ready && adminQueries.status.dashboardOverview.error && <div role="alert" className="px-5 pt-4 text-xs text-vapor">Could not load platform totals. <button type="button" onClick={loadAdminData} className="text-cyan">Try again</button></div>}
         <div className="admin-stat-grid">
-          <StatCard icon={Users} label="Users" value={adminQueries.status.dashboardOverview.ready ? stats.totalUsers : "…"} />
-          <StatCard icon={Shield} label="Banned users" value={adminQueries.status.dashboardOverview.ready ? stats.bannedUsers : "…"} color="text-red-400" />
-          <StatCard icon={BellRing} label="Alerts" value={adminQueries.status.dashboardOverview.ready ? stats.openAdminAlerts : "…"} color="text-red-400" />
-          <StatCard icon={Ticket} label="Open Tickets" value={adminQueries.status.dashboardOverview.ready ? stats.openTickets : "…"} color="text-orange" />
-          <StatCard icon={Gavel} label="Match Tickets" value={adminQueries.status.dashboardOverview.ready ? stats.matchTickets : "…"} color="text-yellow-400" />
-          <StatCard icon={BadgeDollarSign} label="Wagers" value={adminQueries.status.dashboardOverview.ready ? stats.activeWagers : "…"} color="text-green" />
-          <StatCard icon={Swords} label="Ranked" value={adminQueries.status.dashboardOverview.ready ? stats.activeRanked : "…"} color="text-cyan" />
-          <StatCard icon={Trophy} label="Tournaments" value={adminQueries.status.dashboardOverview.ready ? stats.activeTournaments : "…"} color="text-purple-400" />
-          {canManageWallets(currentRole) && <StatCard icon={Landmark} label="Withdrawals" value={adminQueries.status.dashboardOverview.ready ? stats.pendingWithdrawals : "…"} color="text-red-400" />}
-          {canManageWallets(currentRole) && <StatCard icon={CreditCard} label="Wallet Total" value={adminQueries.status.dashboardOverview.ready ? formatMoney(stats.walletTotal) : "…"} color="text-green" />}
+          <StatCard icon={Users} label="Users" value={adminQueries.status.dashboardOverview.ready ? stats.totalUsers : "…"} onClick={() => selectAdminSection("users")} />
+          <StatCard icon={Shield} label="Banned users" value={adminQueries.status.dashboardOverview.ready ? stats.bannedUsers : "…"} color="text-red-400" onClick={() => selectAdminSection("users", { filter: "banned" })} />
+          <StatCard icon={BellRing} label="Alerts" value={adminQueries.status.dashboardOverview.ready ? stats.openAdminAlerts : "…"} color="text-red-400" onClick={() => selectAdminSection("alerts")} />
+          <StatCard icon={Ticket} label="Open Tickets" value={adminQueries.status.dashboardOverview.ready ? stats.openTickets : "…"} color="text-orange" onClick={() => selectAdminSection("tickets", { status: "open" })} />
+          <StatCard icon={Gavel} label="Match Tickets" value={adminQueries.status.dashboardOverview.ready ? stats.matchTickets : "…"} color="text-yellow-400" onClick={() => selectAdminSection("tickets", { category: "disputes" })} />
+          <StatCard icon={BadgeDollarSign} label="Wagers" value={adminQueries.status.dashboardOverview.ready ? stats.activeWagers : "…"} color="text-green" onClick={() => selectAdminSection("matches", { mode: "wagers", state: "active" })} />
+          <StatCard icon={Swords} label="Ranked" value={adminQueries.status.dashboardOverview.ready ? stats.activeRanked : "…"} color="text-cyan" onClick={() => selectAdminSection("matches", { mode: "ranked", state: "active" })} />
+          <StatCard icon={Trophy} label="Tournaments" value={adminQueries.status.dashboardOverview.ready ? stats.activeTournaments : "…"} color="text-purple-400" onClick={() => selectAdminSection("tournaments")} />
+          {canManageWallets(currentRole) && <StatCard icon={Landmark} label="Withdrawals" value={adminQueries.status.dashboardOverview.ready ? stats.pendingWithdrawals : "…"} color="text-red-400" onClick={() => selectAdminSection("withdrawals", { status: "pending" })} />}
+          {canManageWallets(currentRole) && <StatCard icon={CreditCard} label="Wallet Total" value={adminQueries.status.dashboardOverview.ready ? formatMoney(stats.walletTotal) : "…"} color="text-green" onClick={() => selectAdminSection("wallets")} />}
         </div>
 
         </details>}
         <section id="admin-workspace" ref={workspaceRef} tabIndex={-1} aria-labelledby="admin-section-title" className="admin-workspace">
           <header className="admin-section-heading"><span><ActiveIcon size={23} aria-hidden="true" /></span><div><p>{activeInfo.group}</p><h2 id="admin-section-title">{activeSection.label}</h2><span>{activeInfo.description}</span></div></header>
+          <AdminSectionLinks section={activeTab} allowedSections={allowedTabs.map(tab => tab.id)} onSelect={selectAdminSection} />
           {adminQueries.sectionLoading ? (
             <div role="status" className="flex items-center gap-3 p-6 text-sm text-vapor"><Loader2 className="h-5 w-5 animate-spin" /> Loading {tabs.find((tab) => tab.id === activeTab)?.label || "section"}...</div>
           ) : adminQueries.sectionError ? (
             <div role="alert" className="p-6 text-sm text-vapor"><p>Could not load this section.</p><button type="button" onClick={loadAdminData} className="mt-3 text-cyan">Try again</button></div>
           ) : <Suspense fallback={<div role="status" className="flex items-center gap-3 p-6 text-sm text-vapor"><Loader2 className="h-5 w-5 animate-spin" /> Opening section...</div>}>
 
-          {activeTab === "verifyRank" && <RankVerificationAdmin users={data.users} />}
+          {activeTab === "verifyRank" && <RankVerificationAdmin user={currentUser} />}
           {activeTab === "progression" && <ProgressionResets user={currentUser} onChanged={loadAdminData} />}
           {activeTab === "dashboard" && <AdminDashboard overview={adminQueries.data.dashboardOverview} onSelect={selectAdminSection} canReset={hasRolePower(currentRole, "super_admin")} allowedSections={allowedTabs.map((tab) => tab.id)} />}
           {activeTab === "matches" && <AdminMatches user={currentUser} />}
           {activeTab === "websiteUpdates" && <SiteAnnouncementAdmin user={currentUser} />}
-          {activeTab === "eightsGames" && <FreeEightsGamesAdmin />}
-          {activeTab === "challenges" && <ChallengeTeamAdmin />}
-          {activeTab === "live8s" && (
-            <div className="p-6">
-              <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <div className="flex items-center gap-2"><Radio className="h-5 w-5 text-cyan" /><h2 className="text-lg font-black">Live 8s rooms</h2></div>
-                  <p className="mt-1 text-xs text-vapor">Free 8s and Money 8s lobbies update automatically. Join a room to chat and use staff controls.</p>
-                </div>
-                <span className="inline-flex items-center gap-2 rounded-lg border border-green/20 bg-green/10 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-green"><span className="h-2 w-2 animate-pulse rounded-full bg-green" /> Live · {data.eightsMatches.length}</span>
-              </div>
-              {data.eightsMatches.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-white/10 bg-background/25 px-5 py-12 text-center text-sm text-vapor">No active Free 8s or Money 8s lobbies.</div>
-              ) : (
-                <div className="grid gap-3 xl:grid-cols-2">
-                  {data.eightsMatches.map((match) => {
-                    const money8s = match.match_type === "money8s";
-                    return (
-                      <article key={match.id} className={`rounded-xl border p-4 ${money8s ? "border-green/25 bg-green/[0.035]" : "border-cyan/20 bg-cyan/[0.035]"}`}>
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div>
-                            <div className="flex flex-wrap items-center gap-2"><span className={`rounded-md border px-2 py-1 text-[9px] font-black uppercase tracking-wider ${money8s ? "border-green/25 bg-green/10 text-green" : "border-cyan/25 bg-cyan/10 text-cyan"}`}>{money8s ? "Money 8s" : `Free 8s ${eightsMatchGameName(match)}`}</span><StatusPill status={match.status} /></div>
-                            <h3 className="mt-2 text-sm font-black">{match.host_name || "Team Alpha"} <span className="text-vapor">vs</span> {match.challenger_name || "Lobby filling"}</h3>
-                            <p className="mt-1 text-[10px] text-vapor">{match.game_mode_display || match.game_mode || "Mode pending"} · BO{match.best_of || 3} · created {formatDate(match.created_date)}</p>
-                          </div>
-                          <Link to={`/8s-match/${match.id}?admin=1`} className="inline-flex items-center gap-2 rounded-lg bg-cyan px-3.5 py-2.5 text-[10px] font-black uppercase tracking-wider text-background transition-colors hover:bg-cyan/90"><Shield className="h-3.5 w-3.5" /> Join room</Link>
-                        </div>
-                        <div className="mt-4 grid grid-cols-2 gap-2 text-[10px]">
-                          <div className="rounded-lg border border-white/[0.07] bg-black/15 px-3 py-2"><span className="block uppercase tracking-wider text-vapor">Status</span><span className="mt-1 block font-black text-white">{statusText(match.status)}</span></div>
-                          <div className="rounded-lg border border-white/[0.07] bg-black/15 px-3 py-2"><span className="block uppercase tracking-wider text-vapor">Entry</span><span className={`mt-1 block font-mono font-black ${money8s ? "text-green" : "text-white"}`}>{money8s ? formatMoney(match.entry_fee || match.amount) : "Free"}</span></div>
-                        </div>
-                      </article>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
+          {activeTab === "eightsGames" && <FreeEightsGamesAdmin user={currentUser} />}
+          {activeTab === "challenges" && <ChallengeTeamAdmin user={currentUser} />}
+          {activeTab === "live8s" && <AdminMatches user={currentUser} initialMode="eights" initialState="active" pollInterval={10000} />}
 
           {activeTab === "referrals" && (
             <div className="p-6">
@@ -1967,18 +1912,20 @@ export default function Admin() {
               </div>
               {referralProgram ? (
                 <form onSubmit={handleReferralProgramSave} className="max-w-3xl rounded-xl border border-green/15 bg-green/[0.035] p-5">
+                  <fieldset disabled={Boolean(busyId)} className="min-w-0">
                   <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/5 pb-5">
                     <div><p className="text-sm font-black">Referral rewards</p><p className="mt-1 text-xs text-vapor">Controls all new invite claims instantly.</p></div>
                     <label className="flex cursor-pointer items-center gap-3 text-xs font-black uppercase tracking-wider text-vapor"><span>{referralProgram.enabled ? "On" : "Off"}</span><input type="checkbox" checked={Boolean(referralProgram.enabled)} onChange={(event) => setReferralProgram((current) => ({ ...current, enabled: event.target.checked }))} className="h-5 w-5 accent-green" /></label>
                   </div>
                   <div className="mt-5 grid gap-4 sm:grid-cols-3">
-                    <label><span className="text-[10px] font-black uppercase tracking-wider text-vapor">Maximum rewarded users</span><input type="number" min="1" max="100000" value={referralProgram.max_rewards} onChange={(event) => setReferralProgram((current) => ({ ...current, max_rewards: event.target.value }))} className="mt-2 w-full rounded-lg border border-white/10 bg-secondary px-3 py-2.5 text-sm font-bold focus:border-green/50 focus:outline-none" /></label>
-                    <label><span className="text-[10px] font-black uppercase tracking-wider text-vapor">Credits per user</span><input type="number" min="1" max="10000" value={referralProgram.reward_credits} onChange={(event) => setReferralProgram((current) => ({ ...current, reward_credits: event.target.value }))} className="mt-2 w-full rounded-lg border border-white/10 bg-secondary px-3 py-2.5 text-sm font-bold focus:border-green/50 focus:outline-none" /></label>
+                    <label><span className="text-[10px] font-black uppercase tracking-wider text-vapor">Maximum rewarded users</span><input type="number" required step="1" min="1" max="100000" value={referralProgram.max_rewards} onChange={(event) => setReferralProgram((current) => ({ ...current, max_rewards: event.target.value }))} className="mt-2 w-full rounded-lg border border-white/10 bg-secondary px-3 py-2.5 text-sm font-bold focus:border-green/50 focus:outline-none" /></label>
+                    <label><span className="text-[10px] font-black uppercase tracking-wider text-vapor">Credits per user</span><input type="number" required step="1" min="1" max="10000" value={referralProgram.reward_credits} onChange={(event) => setReferralProgram((current) => ({ ...current, reward_credits: event.target.value }))} className="mt-2 w-full rounded-lg border border-white/10 bg-secondary px-3 py-2.5 text-sm font-bold focus:border-green/50 focus:outline-none" /></label>
                     <div className="rounded-lg border border-white/5 bg-black/15 px-3 py-2.5"><p className="text-[10px] font-black uppercase tracking-wider text-vapor">Already rewarded</p><p className="mt-1 font-mono text-2xl font-black text-green">{referralProgram.rewarded_users || 0}</p></div>
                   </div>
                   <button type="submit" disabled={busyId === "referral-program"} className="mt-5 inline-flex items-center gap-2 rounded-lg bg-green px-4 py-2.5 text-xs font-black uppercase tracking-wider text-background hover:bg-green/90 disabled:opacity-50">{busyId === "referral-program" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save referral settings</button>
+                </fieldset>
                 </form>
-              ) : <p className="text-sm text-vapor">Referral controls are available to CEO and Super Admin accounts.</p>}
+              ) : <p className="text-sm text-vapor">Referral controls are available to CEO accounts.</p>}
             </div>
           )}
 
@@ -2003,7 +1950,7 @@ export default function Admin() {
                   </div>
                 </div>
                 <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-lg border border-white/5 bg-black/15 px-3 py-3"><p className="text-[10px] font-black uppercase tracking-wider text-vapor">Users included</p><p className="mt-1 font-mono text-2xl font-black text-purple-200">{data.users.length}</p></div>
+                  <div className="rounded-lg border border-white/5 bg-black/15 px-3 py-3"><p className="text-[10px] font-black uppercase tracking-wider text-vapor">Users included</p><p className="mt-1 font-mono text-2xl font-black text-purple-200">{data.userCount?.total ?? "…"}</p></div>
                   <div className="rounded-lg border border-white/5 bg-black/15 px-3 py-3"><p className="text-[10px] font-black uppercase tracking-wider text-vapor">Started</p><p className="mt-1 text-sm font-bold text-white">{animatedNameFreeTrial?.starts_date ? formatDate(animatedNameFreeTrial.starts_date) : "Not started"}</p></div>
                   <div className="rounded-lg border border-white/5 bg-black/15 px-3 py-3"><p className="text-[10px] font-black uppercase tracking-wider text-vapor">Ends</p><p className="mt-1 text-sm font-bold text-white">{animatedNameFreeTrial?.ends_date ? formatDate(animatedNameFreeTrial.ends_date) : "—"}</p></div>
                 </div>
@@ -2321,7 +2268,7 @@ export default function Admin() {
               render={(alert) => {
                 const ticket = ticketById[alert.ticket_id];
                 const isOpen = isOpenAdminAlert(alert);
-                const actionUrl = adminAlertActionUrl(alert, ticket);
+                const destination = adminAlertDestination(alert, ticket);
                 return (
                   <div className={`px-5 py-4 ${isOpen ? "bg-red-500/[0.03]" : ""}`}>
                     <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
@@ -2336,12 +2283,12 @@ export default function Admin() {
                         {alert.message && <p className="text-sm text-foreground/80 mt-2 whitespace-pre-line">{alert.message}</p>}
                       </div>
                       <div className="flex flex-wrap gap-2 lg:justify-end">
-                        {(alert.ticket_id || ticket?.id) && <Link to={adminTargetUrl({ tab: "tickets", caseId: `ticket:${alert.ticket_id || ticket.id}` })} className="admin-console-button"><Ticket size={14} />Open support case</Link>}
+                        {(alert.ticket_id || ticket?.id) && <Link to={adminTargetUrl({ tab: "tickets", caseId: `ticket:${alert.ticket_id || ticket.id}`, status: "all" })} className="admin-console-button"><Ticket size={14} />Open support case</Link>}
                         <Link
-                          to={actionUrl}
+                          to={destination.url}
                           className="inline-flex items-center gap-2 px-3 py-1.5 bg-cyan/10 text-cyan text-xs font-bold rounded border border-cyan/20 hover:bg-cyan/20"
                         >
-                          Open Room
+                          <ArrowUpRight size={14} />{destination.label}
                         </Link>
                         {ticket && (
                           <button
@@ -2383,17 +2330,7 @@ export default function Admin() {
             <AdminTickets key={`${currentUser.id}:${currentRole}`} user={currentUser} onRefresh={() => loadAdminData({ skipSupport: true })} />
           )}
 
-          {activeTab === "wagers" && (
-            <ListSection title="Wagers" rows={data.wagers} empty="No wagers." render={(wager) => (
-              <RowGrid columns={[
-                ["Match", `${wager.team_size || ""} ${wager.game_mode_display || wager.game_mode || ""}`],
-                ["Players", `${wager.host_name || "Host unavailable"} vs ${wager.challenger_name || "Opponent pending"}`],
-                ["Status", <StatusPill status={wager.status} />],
-                ["Entry", formatMoney(wager.entry_fee || wager.amount)],
-                ["Room", <Link to={`/wagers-match/${wager.id}`} className="text-cyan hover:underline">Open</Link>],
-              ]} />
-            )} />
-          )}
+          {activeTab === "wagers" && <AdminMatches user={currentUser} initialMode="wagers" />}
 
           {activeTab === "ranked" && (
             <div className="space-y-6">
@@ -2409,7 +2346,7 @@ export default function Admin() {
                   {hasRolePower(currentRole, "super_admin") && (
                     <button
                       type="button"
-                      onClick={() => setActiveTab("progression")}
+                      onClick={() => selectAdminSection("progression")}
                       className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-red-500/30 bg-red-500/10 text-red-300 text-xs font-black hover:bg-red-500/20 disabled:opacity-50"
                     >
                       <RotateCcw className="w-4 h-4" />
@@ -2425,14 +2362,18 @@ export default function Admin() {
                     <label className="relative block">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-vapor" />
                       <input
+                        aria-label="Search ranked players"
                         value={rankedPlayerSearch}
+                        disabled={rankedBusy}
                         onChange={(event) => setRankedPlayerSearch(event.target.value)}
                         placeholder="Search player, username, email or Activision ID..."
                         className="w-full pl-10 pr-4 py-3 bg-background/60 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-cyan/50"
                       />
                     </label>
                     <div className="max-h-[520px] overflow-y-auto space-y-2 pr-1">
-                      {rankedPlayerRows.length === 0 && (
+                      {(adminQueries.userDirectory.isPending || adminQueries.userDirectory.searchPending) && <p role="status" className="py-6 text-sm text-vapor">Finding players...</p>}
+                      {adminQueries.userDirectory.isError && <div role="alert" className="py-6 text-sm text-red-300">Could not load ranked players. <button type="button" className="text-cyan" onClick={() => adminQueries.userDirectory.refetch()}>Try again</button></div>}
+                      {!adminQueries.userDirectory.isPending && !adminQueries.userDirectory.searchPending && !adminQueries.userDirectory.isError && rankedPlayerRows.length === 0 && (
                         <div className="py-12 text-center text-sm text-vapor">No players found.</div>
                       )}
                       {rankedPlayerRows.map(({ player, stats }) => {
@@ -2443,6 +2384,7 @@ export default function Admin() {
                           <button
                             key={player.id}
                             type="button"
+                            disabled={rankedBusy}
                             onClick={() => selectRankedPlayer(player, stats)}
                             className={`w-full grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border p-3 text-left transition-colors ${selected ? "border-cyan/50 bg-cyan/10" : "border-white/5 bg-background/35 hover:border-white/15 hover:bg-white/[0.04]"}`}
                           >
@@ -2459,28 +2401,31 @@ export default function Admin() {
                           </button>
                         );
                       })}
+                      {adminQueries.userDirectory.hasNextPage && <button type="button" disabled={rankedBusy || adminQueries.userDirectory.isFetching} onClick={() => adminQueries.userDirectory.fetchNextPage()} className="admin-console-button w-full">{adminQueries.userDirectory.isFetchingNextPage ? "Loading players…" : "Load next 25 players"}</button>}
                     </div>
                   </div>
 
                   <form onSubmit={handleRankedEloAdjustment} className="rounded-xl border border-white/10 bg-background/40 p-5 h-fit space-y-4">
+                    {!canManageWallets(currentRole) && <p className="text-xs text-vapor">Read-only view. Admin access is required to correct ELO or season stats.</p>}
                     <div>
                       <p className="text-[10px] uppercase tracking-[0.18em] text-cyan font-black">ELO Correction</p>
                       {rankedAdjustment.user_id ? (() => {
-                        const player = data.users.find((entry) => entry.id === rankedAdjustment.user_id);
+                        const player = selectedRanked;
                         const stats = rankedStatsByUserId[rankedAdjustment.user_id];
                         const elo = Number(stats?.elo || 0);
                         return (
                           <div className="flex items-center gap-3 mt-3 rounded-lg border border-white/5 bg-white/[0.03] p-3">
                             <RankBadge elo={elo} size="sm" showLabel={false} />
                             <div className="min-w-0">
-                              <p className="font-black truncate">{userName(player)}</p>
+                              <button type="button" className="admin-player-link font-black truncate" onClick={() => openAdminPlayer(player.id)}>{userName(player)} <ArrowUpRight size={13} className="inline" /></button>
                               <p className="text-xs text-vapor">Current balance: <span className="text-cyan font-black">{elo} ELO</span></p>
                             </div>
                           </div>
                         );
                       })() : <p className="text-sm text-vapor mt-2">Select a player from the search results.</p>}
                     </div>
-
+                    {rankedSelectionBlocked && (rankedSelection.isError ? <div role="alert" className="text-xs text-red-300">{rankedSelection.error.message} <button type="button" className="text-cyan" onClick={() => rankedSelection.refetch()}>Try again</button></div> : <p role="status" className="text-xs text-vapor">Updating selected player's stats...</p>)}
+                    <fieldset disabled={rankedBusy || rankedSelectionBlocked || !canManageWallets(currentRole)} className="space-y-4 disabled:opacity-60">
                     <div className="grid grid-cols-3 gap-2">
                       {[
                         ["set", "Set exact"],
@@ -2582,26 +2527,20 @@ export default function Admin() {
                       </label>
                       <button type="button" onClick={() => handleRankedStatsUpdate(false)} disabled={busyId === "ranked:stats" || !rankedAdjustment.user_id} className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-orange px-4 py-3 text-xs font-black text-background hover:bg-orange/90 disabled:opacity-40">{busyId === "ranked:stats" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save Ranked Stats</button>
                     </div>
+                    </fieldset>
                   </form>
                 </div>
               </section>
 
-              <ListSection title="Ranked Matches" rows={data.rankedMatches} empty="No ranked matches." scrollable render={(match) => (
-                <RowGrid columns={[
-                  ["Match", `${match.team_size || ""} ${match.game_mode_display || match.game_mode || ""}`],
-                  ["Players", `${match.host_name || "Host unavailable"} vs ${match.challenger_name || "Opponent pending"}`],
-                  ["Status", <StatusPill status={match.status} />],
-                  ["Winner", match.winner_name || "N/A"],
-                  ["Room", <Link to={`/ranked-match/${match.id}`} className="text-cyan hover:underline">Open</Link>],
-                ]} />
-              )} />
+              <AdminMatches user={currentUser} initialMode="ranked" />
             </div>
           )}
 
           {activeTab === "tournaments" && (
             <div>
               {canManageWallets(currentRole) && (
-                <form onSubmit={handleSubmitTournament} className="p-5 border-b border-white/5">
+                <form id="admin-tournament-form" onSubmit={handleSubmitTournament} className="p-5 border-b border-white/5 scroll-mt-28">
+                  <fieldset disabled={Boolean(busyId)} className="min-w-0">
                   <div className="flex items-center justify-between gap-3 mb-4">
                     <div>
                       <h2 className="text-lg font-bold">{editingTournamentId ? "Edit Tournament" : "Create Tournament"}</h2>
@@ -2805,7 +2744,7 @@ export default function Admin() {
                         <p className="mt-1 max-w-2xl text-[10px] leading-4 text-vapor">Podium trophies are automatic. Only configure extras if this tournament needs them.</p>
                       </div>
                       <div className="flex shrink-0 flex-wrap gap-2">
-                        <button type="button" onClick={() => { setActiveTab("marketplace"); window.scrollTo({ top: 0, behavior: "smooth" }); }} className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-secondary px-3 py-2 text-[10px] font-black uppercase tracking-wider text-vapor hover:text-white">
+                        <button type="button" onClick={() => selectAdminSection("marketplace")} className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-secondary px-3 py-2 text-[10px] font-black uppercase tracking-wider text-vapor hover:text-white">
                           <ShoppingBag className="h-3.5 w-3.5" /> All Marketplace Items
                         </button>
                         {!hasCompleteWinnerSpecialTrophySet && (
@@ -2969,6 +2908,7 @@ export default function Admin() {
                       </p>
                     </div>
                   )}
+                </fieldset>
                 </form>
               )}
               <div className="mt-6 space-y-4">
@@ -2977,7 +2917,7 @@ export default function Admin() {
                     <p className="text-[9px] font-black uppercase tracking-[0.2em] text-vapor">Tournament management</p>
                     <h2 className="mt-1 text-lg font-black text-white">Tournaments</h2>
                   </div>
-                  <span className="rounded-full border border-white/[0.08] bg-secondary/40 px-3 py-1 text-[10px] font-black text-vapor">{(data.tournaments || []).length} total</span>
+                  <span className="rounded-full border border-white/[0.08] bg-secondary/40 px-3 py-1 text-[10px] font-black text-vapor">{(data.tournaments || []).length} loaded</span>
                 </div>
 
                 {(data.tournaments || []).length === 0 ? (
@@ -3066,7 +3006,7 @@ export default function Admin() {
                               <p className="text-[9px] font-black uppercase tracking-[0.16em] text-vapor">Bracket control</p>
                               <p className="mt-1 text-xs font-bold text-white">{hasMatches ? ((tournament.bracket_type || tournament.format) === "double_elimination" ? "Winners + Lower + Grand Final" : "Generated") : "No bracket yet"}</p>
                             </div>
-                            {!hasMatches && (
+                            {!hasMatches && canManageWallets(currentRole) && (
                               <button onClick={() => handleGenerateBracket(tournament)} disabled={busyId === `bracket:${tournament.id}`} className="rounded-lg border border-cyan/20 bg-cyan/10 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-cyan disabled:opacity-50">
                                 {busyId === `bracket:${tournament.id}` ? "Generating..." : "Generate"}
                               </button>
@@ -3082,7 +3022,7 @@ export default function Admin() {
                               <p className="text-[9px] font-black uppercase tracking-[0.16em] text-cyan">Registered rosters</p>
                               <p className="mt-1 text-xs text-vapor">Manage seeds and remove teams before the tournament starts.</p>
                             </div>
-                            {adminQueries.status.tournamentParticipants.ready && registeredParticipants.length > 0 && (
+                            {canManageWallets(currentRole) && adminQueries.status.tournamentParticipants.ready && registeredParticipants.length > 0 && (
                               <button onClick={() => handleAdminDisbandTournamentTeams(tournament)} disabled={busyId === `disband-tournament-teams:${tournament.id}`} className="text-[10px] font-black uppercase tracking-wider text-red-300 hover:underline disabled:opacity-50">
                                 {busyId === `disband-tournament-teams:${tournament.id}` ? "Removing..." : "Remove all"}
                               </button>
@@ -3111,9 +3051,9 @@ export default function Admin() {
                                       <p className="truncate text-xs font-black text-white">#{participant.seed || "?"} {participant.team_name || "Unnamed team"}</p>
                                       <p className="mt-1 line-clamp-2 text-[10px] leading-4 text-vapor">{rosterNames.length ? rosterNames.join(" · ") : "Roster unavailable"}</p>
                                     </div>
-                                    <button onClick={() => handleAdminRemoveTournamentParticipant(tournament, participant)} disabled={busyId === `remove-tournament-team:${tournament.id}:${participant.id}`} className="shrink-0 text-[9px] font-black uppercase tracking-wider text-red-300 hover:underline disabled:opacity-50">
+                                    {canManageWallets(currentRole) && <button onClick={() => handleAdminRemoveTournamentParticipant(tournament, participant)} disabled={Boolean(busyId)} className="shrink-0 text-[9px] font-black uppercase tracking-wider text-red-300 hover:underline disabled:opacity-50">
                                       {busyId === `remove-tournament-team:${tournament.id}:${participant.id}` ? "Removing" : "Remove"}
-                                    </button>
+                                    </button>}
                                   </div>
                                 </div>
                               );
@@ -3122,7 +3062,11 @@ export default function Admin() {
                         </div>
                       )}
 
-                      <div className="flex flex-col gap-3 border-t border-white/[0.06] bg-secondary/20 px-5 py-4 xl:flex-row xl:items-center xl:justify-between">
+                      <div className="flex flex-wrap gap-2 border-t border-white/[0.06] px-5 py-3">
+                        <Link className="admin-console-button" to={`/tournaments/${tournament.id}`} target="_blank" rel="noopener noreferrer"><ArrowUpRight size={14} />Open tournament</Link>
+                        <Link className="admin-console-button" to={adminTargetUrl({ tab: "matches", mode: "tournament", search: tournament.id })}><Gamepad2 size={14} />View tournament matches</Link>
+                      </div>
+                      {canManageWallets(currentRole) && <fieldset disabled={Boolean(busyId)} className="flex flex-col gap-3 border-t border-white/[0.06] bg-secondary/20 px-5 py-4 xl:flex-row xl:items-center xl:justify-between disabled:opacity-60">
                         <div className="flex flex-wrap gap-2">
                           <button onClick={() => handleEditTournament(tournament)} className="rounded-lg border border-cyan/20 bg-cyan/10 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-cyan">Edit</button>
                           {hasMatches && (
@@ -3143,7 +3087,7 @@ export default function Admin() {
                           <button onClick={() => handleTournamentAction(tournament, "cancelTournament")} disabled={busyId === `cancelTournament:${tournament.id}`} className="rounded-lg border border-orange/20 bg-orange/10 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-orange">Cancel</button>
                           <button onClick={() => handleTournamentAction(tournament, "deleteTournament")} disabled={busyId === `deleteTournament:${tournament.id}`} className="rounded-lg border border-red-400/20 bg-red-400/10 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-red-300">Delete</button>
                         </div>
-                      </div>
+                      </fieldset>}
                     </article>
                   );
                 })}
@@ -3151,47 +3095,20 @@ export default function Admin() {
             </div>
           )}
 
-          {activeTab === "tournamentMatches" && (
-            <ListSection title="Tournament Matches" rows={data.tournamentMatches} empty="No tournament matches." render={(match) => (
-              <RowGrid columns={[
-                ["Bracket", `${match.bracket || "winner"} R${match.round} M${match.match_number}`],
-                ["Teams", `${match.team_a_name || "Open slot"} vs ${match.team_b_name || "Open slot"}`],
-                ["Score", `${match.team_a_score || 0}-${match.team_b_score || 0}`],
-                ["Status", <StatusPill status={match.status} />],
-                ["Room", <Link to={`/tournament-match/${match.id}`} className="text-cyan hover:underline">Open</Link>],
-              ]} />
-            )} />
-          )}
+          {activeTab === "tournamentMatches" && <AdminMatches user={currentUser} initialMode="tournament" />}
 
           {activeTab === "wallets" && (
             <AdminWallets key={`${currentUser.id}:${currentRole}`} user={currentUser} onRefresh={loadAdminData} />
           )}
 
-          {activeTab === "withdrawals" && (
-            <ListSection title="Withdrawals" rows={data.withdrawals} empty="No withdrawals." render={(withdrawal) => (
-              <div className="px-5 py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-                <RowGrid compact columns={[
-                  ["User", <button type="button" className="admin-player-link" onClick={() => openAdminPlayer(withdrawal.user_id)}>{userById[withdrawal.user_id] ? userName(userById[withdrawal.user_id]) : withdrawal.user_id}</button>],
-                  ["Amount", formatMoney(withdrawal.amount)],
-                  ["Method", withdrawal.payment_method],
-                  ["Status", <StatusPill status={withdrawal.status} />],
-                  ["Requested", formatDate(withdrawal.requested_date)],
-                ]} />
-                {withdrawal.status === "pending" && (
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => handleWithdrawal(withdrawal, "approved")} className="px-3 py-1.5 bg-green/10 text-green text-xs font-bold rounded hover:bg-green/20">Approve</button>
-                    <button onClick={() => handleWithdrawal(withdrawal, "rejected")} className="px-3 py-1.5 bg-red-500/10 text-red-400 text-xs font-bold rounded hover:bg-red-500/20">Reject</button>
-                  </div>
-                )}
-              </div>
-            )} />
-          )}
+          {activeTab === "withdrawals" && <AdminEconomyRecords key={`${currentUser.id}:${currentRole}:withdrawals`} type="withdrawals" user={currentUser} onRefresh={loadAdminData} />}
 
-          {activeTab === "rewards" && <Suspense fallback={<PageLoader label="Loading rewards" />}><CompetitionRewardsAdmin /></Suspense>}
+          {activeTab === "rewards" && <Suspense fallback={<PageLoader label="Loading rewards" />}><CompetitionRewardsAdmin user={currentUser} /></Suspense>}
           {activeTab === "marketplace" && (
             <div>
               {canManageWallets(currentRole) && (
-                <form onSubmit={handleSubmitMarketplaceItem} className="p-5 border-b border-white/5">
+                <form id="admin-marketplace-form" onSubmit={handleSubmitMarketplaceItem} className="p-5 border-b border-white/5 scroll-mt-28">
+                  <fieldset disabled={Boolean(busyId)} className="min-w-0">
                   <div className="flex items-center justify-between gap-3 mb-4">
                     <div>
                       <p className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan">Marketplace management</p>
@@ -3345,6 +3262,7 @@ export default function Admin() {
                       </label>
                     ))}
                   </div>
+                </fieldset>
                 </form>
               )}
               <ListSection title="Marketplace" rows={data.marketplace} empty="No marketplace items." render={(item) => (
@@ -3357,8 +3275,8 @@ export default function Admin() {
                   ["Unlock", (item.unlock_type || (item.is_premium_only ? "premium" : "marketplace")).replace(/_/g, " ")],
                   ["Placement", marketplacePlacementText(item)],
                   ["Status", <StatusPill status={item.is_active === false || item.is_available === false ? "cancelled" : "active"} />],
-                  ["Actions", (
-                    <div className="flex flex-wrap items-center gap-2">
+                  ["Actions", canManageWallets(currentRole) ? (
+                    <fieldset disabled={Boolean(busyId)} className="flex flex-wrap items-center gap-2 disabled:opacity-60">
                       <button
                         onClick={() => handleEditMarketplaceItem(item)}
                         className="inline-flex items-center gap-1 px-2 py-1 bg-cyan/10 text-cyan text-[10px] font-bold rounded border border-cyan/20 hover:bg-cyan/20"
@@ -3380,25 +3298,14 @@ export default function Admin() {
                       >
                         {busyId === `marketplace:delete:${item.id}` ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />} Delete
                       </button>
-                    </div>
-                  )],
+                    </fieldset>
+                  ) : "Read-only"],
                 ]} />
               )} />
             </div>
           )}
 
-          {activeTab === "inventory" && (
-            <ListSection title="Inventory" rows={data.inventory} empty="No inventory rows." render={(item) => (
-              <RowGrid columns={[
-                ["Owner", userById[item.user_id] ? userName(userById[item.user_id]) : item.user_id],
-                ["Item", item.item_name],
-                ["Category", item.item_category],
-                ["Rarity", item.item_rarity],
-                ["Method", item.purchase_method],
-                ["Acquired", formatDate(item.acquired_date)],
-              ]} />
-            )} />
-          )}
+          {activeTab === "inventory" && <AdminEconomyRecords key={`${currentUser.id}:${currentRole}:inventory`} type="inventory" user={currentUser} onRefresh={loadAdminData} />}
 
           {activeTab === "audit" && (
             <AuditLog key={`${currentUser.id}:${currentRole}`} user={currentUser} />

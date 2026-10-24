@@ -18,6 +18,7 @@
 .admin-audit .al-period label { color: hsl(var(--vapor)); font-size: 11px; }
 .admin-audit .al-period select { padding: 9px 11px; border: 1px solid hsl(var(--border)); border-radius: 7px; background: var(--arena-inset); color: hsl(var(--foreground)); outline: none; font-size: 11px; }
 .admin-audit .al-period select:focus { border-color: hsl(var(--cyan) / .4); }
+.admin-audit .al-refresh { display: inline-flex; align-items: center; gap: 6px; padding: 9px 11px; border: 1px solid hsl(var(--cyan) / .22); border-radius: 7px; color: hsl(var(--cyan)); font-size: 11px; font-weight: 800; }
 .admin-audit .al-results { display: flex; align-items: center; gap: 12px; padding: 2px 24px 17px; font-size: 11px; }
 .admin-audit .al-results > span { color: hsl(var(--vapor)); font-size: 10px; }
 .admin-audit .al-column-heading, .admin-audit .al-event-grid { display: grid; grid-template-columns: minmax(220px, 2.8fr) minmax(110px, 1fr) minmax(130px, 1.2fr) 65px 82px; align-items: center; gap: 20px; padding: 16px 24px; }

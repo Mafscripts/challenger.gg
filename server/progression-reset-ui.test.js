@@ -14,11 +14,12 @@ test("the real admin page offers separate categories and limits Super Admins to 
   const root = fileURLToPath(new URL("../", import.meta.url)).replaceAll("\\", "/").replace(/\/$/, "");
   const result = await build({ stdin: { resolveDir: root, loader: "jsx", contents: `
     import React from 'react'; import {renderToStaticMarkup} from 'react-dom/server';
+    import {MemoryRouter} from 'react-router-dom';
     import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
     import Resets from './src/components/admin/ProgressionResets.jsx';
-    export const render = (role) => {const client=new QueryClient(); const html=renderToStaticMarkup(<QueryClientProvider client={client}><Resets user={{id:'admin',role}}/></QueryClientProvider>); client.clear(); return html;};
+    export const render = (role) => {const client=new QueryClient(); const html=renderToStaticMarkup(<MemoryRouter><QueryClientProvider client={client}><Resets user={{id:'admin',role}}/></QueryClientProvider></MemoryRouter>); client.clear(); return html;};
   ` }, bundle: true, write: false, platform: "node", format: "cjs", mainFields: ["module", "main"],
-    external: ["react", "react-dom", "react-dom/server", "@tanstack/react-query"], alias: { "@": `${root}/src` },
+    external: ["react", "react-dom", "react-dom/server", "react-router-dom", "@tanstack/react-query"], alias: { "@": `${root}/src` },
     plugins: [{ name: "api-boundary", setup(bundle) {
       bundle.onResolve({ filter: /^@\/api\/base44Client$/ }, () => ({ path: "api", namespace: "reset-ui" }));
       bundle.onLoad({ filter: /.*/, namespace: "reset-ui" }, () => ({ contents: "export const base44={functions:{invoke(){throw new Error('Rendering must not reset anything')}}};" }));
@@ -27,6 +28,7 @@ test("the real admin page offers separate categories and limits Super Admins to 
   new Function("require", "module", "exports", result.outputFiles[0].text)(createRequire(import.meta.url), module, module.exports);
   const ceo = module.exports.render("ceo");
   assert.ok(ceo.includes("Full reset · keep credits"));
+  assert.match(ceo, /href="\/admin\?tab=rewards"/, "reward seasons are reachable from progression controls");
   const plain = ceo.replace(/<[^>]+>/g, "").replaceAll("&amp;", "&");
   for (const category of PROGRESSION_CATEGORIES) assert.ok(plain.includes(category.label), category.label);
   assert.equal((ceo.match(/type="checkbox"/g) || []).length, PROGRESSION_CATEGORIES.length);

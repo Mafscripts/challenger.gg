@@ -1,4 +1,6 @@
 .reward-admin { padding: 24px; display: grid; gap: 22px; color: #e7eff8; }
+.reward-admin fieldset { min-width:0; border:0; padding:0; margin:0; }
+.reward-admin fieldset:disabled { opacity:.7; }
 .reward-admin > header { display: flex; justify-content: space-between; align-items: flex-start; gap: 15px; }
 .reward-admin h2 { margin-top: 8px; font-size: 25px; font-weight: 900; }
 .reward-admin header p:not(.reward-eyebrow), .reward-admin-help { max-width: 105ch; color: #9cb0c3; font-size: 12px; line-height: 1.8; margin-block: 10px; }

@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { effectiveRoleForUser } from "@/lib/roles";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import BanAppealConversation, { appealDate, appealStatus } from "@/components/support/BanAppealConversation";
+import { notifyAdminChanged, openAdminPlayer } from "@/lib/adminWorkspace";
 
 export default function AdminBanAppeals() {
   const { user } = useAuth();
@@ -32,6 +33,7 @@ function AppealInbox({ userId }) {
       await base44.banAppeals.status(selected.id, next);
       setSelected((current) => ({ ...current, status: next }));
       await Promise.all([refresh(), client.invalidateQueries({ queryKey: ["ban-appeal-conversation", `${userId}:${selected.id}`] })]);
+      notifyAdminChanged();
     } catch (issue) { setError(issue.message); }
     finally { setBusy(false); }
   };
@@ -44,8 +46,8 @@ function AppealInbox({ userId }) {
     <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 p-4"><p className="text-xs text-vapor">{rows.length} loaded · 25 per page</p>{query.hasNextPage && <button type="button" disabled={query.isFetchingNextPage} onClick={() => query.fetchNextPage()} className="rounded-lg border border-cyan/25 bg-cyan/10 px-4 py-2 text-xs font-bold text-cyan disabled:opacity-40">{query.isFetchingNextPage ? "Loading…" : "Load next 25"}</button>}</footer>
     <Dialog open={Boolean(selected)} onOpenChange={(open) => { if (!open) setSelected(null); }}><DialogContent className="admin-action-dialog max-h-[92dvh] max-w-[860px] overflow-y-auto p-5 sm:p-6">
       <DialogTitle className="pr-8">{selected?.user.display_name || selected?.user.username} · Ban appeal</DialogTitle><DialogDescription>Private CEO conversation. Closing this conversation does not remove the ban.</DialogDescription>
-      {selected && <><div className="rounded-xl border border-white/10 bg-background/40 p-4"><p className="text-[10px] font-black uppercase tracking-wider text-vapor">Ban reason</p><p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6">{selected.ban_reason}</p><button type="button" onClick={changeStatus} disabled={busy} className="mt-3 rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-cyan disabled:opacity-40">{busy ? "Saving…" : selected.status === "closed" ? "Reopen conversation" : "Close conversation"}</button>{error && <p role="alert" className="mt-2 text-xs text-red-300">{error}</p>}</div>
-        <BanAppealConversation key={selected.id} appealId={selected.id} ceo scope={`${userId}:${selected.id}`} onUpdated={() => { setSelected((current) => current ? { ...current, status: "awaiting_user" } : current); refresh(); }} /></>}
+      {selected && <><div className="rounded-xl border border-white/10 bg-background/40 p-4"><p className="text-[10px] font-black uppercase tracking-wider text-vapor">Ban reason</p><p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6">{selected.ban_reason}</p><div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => openAdminPlayer(selected.user.id)} className="rounded-lg border border-cyan/20 px-3 py-2 text-xs font-bold text-cyan">Open player dossier</button><button type="button" onClick={changeStatus} disabled={busy} className={`rounded-lg border px-3 py-2 text-xs font-bold disabled:opacity-40 ${selected.status === "closed" ? "border-green/25 text-green" : "border-orange/25 text-orange"}`}>{busy ? "Saving…" : selected.status === "closed" ? "Reopen conversation" : "Close conversation"}</button></div>{error && <p role="alert" className="mt-2 text-xs text-red-300">{error}</p>}</div>
+        <BanAppealConversation key={selected.id} appealId={selected.id} ceo scope={`${userId}:${selected.id}`} onUpdated={() => { setSelected((current) => current ? { ...current, status: "awaiting_user" } : current); refresh(); notifyAdminChanged(); }} /></>}
     </DialogContent></Dialog>
   </section>;
 }

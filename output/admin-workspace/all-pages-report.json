@@ -1,0 +1,190 @@
+{
+  "reports": [
+    {
+      "id": "dashboard",
+      "status": "passed",
+      "reads": [
+        "getAdminDashboard",
+        "syncTournamentLifecycle"
+      ]
+    },
+    {
+      "id": "users",
+      "status": "passed",
+      "reads": [
+        "getAdminUsers"
+      ]
+    },
+    {
+      "id": "roles",
+      "status": "passed",
+      "reads": [
+        "getAdminUsers"
+      ]
+    },
+    {
+      "id": "alerts",
+      "status": "passed",
+      "reads": [
+        "entity:AdminAlert",
+        "entity:Ticket"
+      ]
+    },
+    {
+      "id": "tickets",
+      "status": "passed",
+      "reads": [
+        "getAdminTickets",
+        "getAdminTicketCounts"
+      ]
+    },
+    {
+      "id": "banAppeals",
+      "status": "passed",
+      "reads": [
+        "banAppeals.list"
+      ]
+    },
+    {
+      "id": "matches",
+      "status": "passed",
+      "reads": [
+        "getAdminMatches"
+      ]
+    },
+    {
+      "id": "wagers",
+      "status": "passed",
+      "reads": [
+        "getAdminMatches"
+      ]
+    },
+    {
+      "id": "live8s",
+      "status": "passed",
+      "reads": [
+        "getAdminMatches"
+      ]
+    },
+    {
+      "id": "challenges",
+      "status": "passed",
+      "reads": [
+        "getAdminMatches"
+      ]
+    },
+    {
+      "id": "eightsGames",
+      "status": "passed",
+      "reads": [
+        "getFreeEightsGames"
+      ]
+    },
+    {
+      "id": "ranked",
+      "status": "passed",
+      "reads": [
+        "getAdminUsers",
+        "getAdminMatches"
+      ]
+    },
+    {
+      "id": "progression",
+      "status": "passed",
+      "reads": [
+        "getProgressionResetOverview"
+      ]
+    },
+    {
+      "id": "verifyRank",
+      "status": "passed",
+      "reads": [
+        "rankVerification.list"
+      ]
+    },
+    {
+      "id": "tournaments",
+      "status": "passed",
+      "reads": [
+        "entity:Tournament",
+        "entity:TournamentMatch",
+        "entity:MarketplaceItem",
+        "syncTournamentLifecycle"
+      ]
+    },
+    {
+      "id": "tournamentMatches",
+      "status": "passed",
+      "reads": [
+        "syncTournamentLifecycle",
+        "getAdminMatches"
+      ]
+    },
+    {
+      "id": "wallets",
+      "status": "passed",
+      "reads": [
+        "getAdminWallets",
+        "getAdminWalletSummary"
+      ]
+    },
+    {
+      "id": "websiteUpdates",
+      "status": "passed",
+      "reads": [
+        "getSiteAnnouncement"
+      ]
+    },
+    {
+      "id": "referrals",
+      "status": "passed",
+      "reads": [
+        "getReferralProgram"
+      ]
+    },
+    {
+      "id": "freeTrials",
+      "status": "passed",
+      "reads": [
+        "getAdminUserCount",
+        "getAnimatedNameFreeTrialStatus"
+      ]
+    },
+    {
+      "id": "withdrawals",
+      "status": "passed",
+      "reads": [
+        "getAdminWithdrawals"
+      ]
+    },
+    {
+      "id": "rewards",
+      "status": "passed",
+      "reads": [
+        "getAdminRewardOverview"
+      ]
+    },
+    {
+      "id": "marketplace",
+      "status": "passed",
+      "reads": [
+        "entity:MarketplaceItem"
+      ]
+    },
+    {
+      "id": "inventory",
+      "status": "passed",
+      "reads": [
+        "getAdminInventory"
+      ]
+    },
+    {
+      "id": "audit",
+      "status": "passed",
+      "reads": [
+        "getAdminAuditLogs"
+      ]
+    }
+  ],
+  "failures": []
+}

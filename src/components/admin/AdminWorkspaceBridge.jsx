@@ -14,7 +14,9 @@ export default function AdminWorkspaceBridge({ user }) {
   useEffect(() => { setRequestedPlayer(null); }, [user?.id]);
   useEffect(() => {
     if (!allowed) return;
-    const player = location.pathname === "/admin" ? new URLSearchParams(location.search).get("player") : null;
+    const params = new URLSearchParams(location.search);
+    // Rank-review notifications use player to select the submission itself.
+    const player = location.pathname === "/admin" && params.get("tab") !== "verifyRank" ? params.get("player") : null;
     if (player) setRequestedPlayer(player);
     else if (previousUrlPlayer.current) setRequestedPlayer(null);
     previousUrlPlayer.current = player;

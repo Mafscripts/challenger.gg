@@ -44,9 +44,23 @@ test("first match page is capped at 25 and batches players and linked support on
   assert.equal(f.reads[1].values.includes("ticket-25"), false);
   assert.match(f.reads[1].sql, /position <= 5/);
   assert.equal(result.rows[0].players[0].user_name, "dev", "the visible player name wins over the account username");
+  assert.equal(result.rows[0].title, "dev vs ouji", "match headings use current player names as well as roster rows");
   assert.equal(result.rows[0].details, undefined, "full match details load on demand");
   assert.equal(result.rows[0].messages, undefined);
   assert.deepEqual(result.rows[0].support_cases[0], { id: "ticket:ticket-0", record_id: "ticket-0", kind: "ticket", title: "Help", status: "open", assigned_admin_name: "" });
+});
+
+test("result filters cover every displayed terminal status and linked support prioritizes an open case", async () => {
+  const f = fixture([row("room")], { support: [
+    { id: "newer-closed", kind: "ticket", metadata: { match_id: "room", match_type: "xp", status: "closed" } },
+    { id: "older-open", kind: "dispute", metadata: { match_id: "room", match_type: "xp", status: "under_review" } },
+  ] });
+  const result = await getAdminMatches(f.db, actor, { state: "cancelled" });
+  assert.match(f.reads[0].sql, /status IN \('cancelled', 'canceled', 'expired', 'closed', 'rejected'\)/);
+  assert.deepEqual(result.rows[0].support_cases.map(item => item.record_id), ["older-open", "newer-closed"]);
+  const completed = fixture();
+  await getAdminMatches(completed.db, actor, { state: "completed" });
+  assert.match(completed.reads[0].sql, /status IN \('completed', 'finished', 'resolved'\)/);
 });
 
 test("filters and cursors stay parameterized and cursors cannot leak across different filters", async () => {
@@ -65,6 +79,20 @@ test("filters and cursors stay parameterized and cursors cannot leak across diff
   await assert.rejects(getAdminMatches(next.db, actor, { mode: "ranked", state: "disputed", search: "dev' OR TRUE --", cursor: result.next_cursor }), { status: 400 });
   await assert.rejects(getAdminMatches(next.db, actor, { cursor: "bad cursor" }), { status: 400 });
   await assert.rejects(getAdminMatches(next.db, actor, { mode: "forged" }), { status: 400 });
+});
+
+test("combined 8s view includes Free and Money 8s only with active state and scoped paging", async () => {
+  const candidates = Array.from({ length: 26 }, (_, index) => row(`room-${index}`, index % 2 ? "money8s" : "free8s"));
+  const f = fixture(candidates);
+  const result = await getAdminMatches(f.db, actor, { mode: "eights", state: "active" });
+  assert.equal(result.rows.length, 25);
+  assert.match(f.reads[0].sql, /mode IN \('free8s', 'money8s'\)/);
+  assert.match(f.reads[0].sql, /status NOT IN/);
+  assert.equal(result.rows[0].mode, "free8s");
+  const next = fixture();
+  await getAdminMatches(next.db, actor, { mode: "eights", state: "active", cursor: result.next_cursor });
+  assert.match(next.reads[0].sql, /\(created_date, id, mode\) </);
+  await assert.rejects(getAdminMatches(next.db, actor, { mode: "wagers", state: "active", cursor: result.next_cursor }), { status: 400 });
 });
 
 test("selected match lookup is bounded and provides current map data without fetching chat logs", async () => {

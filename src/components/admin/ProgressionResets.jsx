@@ -1,10 +1,12 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { CalendarDays, Check, Loader2, RefreshCw, RotateCcw } from "lucide-react";
+import { ArrowUpRight, CalendarDays, Check, Loader2, RefreshCw, RotateCcw } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { hasRolePower, effectiveRoleForUser } from "@/lib/roles";
 import { FULL_RESET_CATEGORIES, PROGRESSION_CATEGORIES, SEASON_LADDERS, seasonLadder } from "@/lib/progressionResets";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { adminTargetUrl } from "@/lib/adminWorkspace";
 
 const field = "w-full rounded-lg border border-white/10 bg-background/70 px-3 py-2.5 text-sm focus:border-cyan/50 focus:outline-none disabled:opacity-50";
 const localDate = (value) => new Date(value.getTime() - value.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
@@ -12,6 +14,7 @@ const defaultDates = () => { const start = new Date(), end = new Date(start); en
 
 export default function ProgressionResets({ user, onChanged }) {
   const role = effectiveRoleForUser(user), allowed = hasRolePower(role, "super_admin"), client = useQueryClient();
+  const refresh = useRef(null);
   const [overview, setOverview] = useState(null), [loading, setLoading] = useState(true), [error, setError] = useState("");
   const [mode, setMode] = useState(role === "ceo" ? "reset" : "season"), [selected, setSelected] = useState([]);
   const [reason, setReason] = useState(""), [confirmation, setConfirmation] = useState("");
@@ -19,12 +22,18 @@ export default function ProgressionResets({ user, onChanged }) {
   const [requestId, setRequestId] = useState("");
   const [form, setForm] = useState(() => ({ season_number: "2", season_name: "Season 2", ranked_policy: "soft", ...defaultDates() }));
   const load = async () => {
-    setLoading(true);
+    setLoading(true); setError("");
     try { const response = await base44.functions.invoke("getProgressionResetOverview", {}); if (!response.data?.success) throw new Error(response.data?.error || "Could not load progression."); setOverview(response.data); }
     catch (error) { setError(error.message); }
     finally { setLoading(false); }
   };
   useEffect(() => { if (allowed) void load(); }, [allowed]);
+  refresh.current = () => { if (allowed && !busy && !loading && !review) void load(); };
+  useEffect(() => {
+    const listener = event => { if (event.detail?.refreshRequested) refresh.current?.(); };
+    window.addEventListener("topfragg:admin-changed", listener);
+    return () => window.removeEventListener("topfragg:admin-changed", listener);
+  }, []);
   const categories = mode === "season" ? SEASON_LADDERS : PROGRESSION_CATEGORIES;
   const choices = PROGRESSION_CATEGORIES.filter((entry) => selected.includes(entry.id));
   const active = (overview?.seasons || []).filter((season) => season.is_active);
@@ -57,7 +66,7 @@ export default function ProgressionResets({ user, onChanged }) {
   };
   return <div className="space-y-5 p-5 sm:p-6">
     <header className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-[10px] font-black uppercase tracking-[.18em] text-cyan">Progression management</p><h2 className="mt-1 text-xl font-black">Resets & Seasons</h2><p className="mt-2 max-w-3xl text-xs leading-relaxed text-vapor">Choose the categories to reset. New seasons archive the previous ladder standings. Match history, payment history, accounts and purchased cosmetics are kept.</p></div><button type="button" disabled={loading || busy} onClick={() => void load()} className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-vapor"><RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />Refresh</button></header>
-    <p className="rounded-xl border border-purple-400/25 bg-purple-400/5 p-4 text-xs leading-6 text-purple-200">Automatic two-month reward seasons are configured in Reward Items &amp; Seasons and preserve global progression. The controls below are manual progression resets.</p>
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-purple-400/25 bg-purple-400/5 p-4 text-xs leading-6 text-purple-200"><p>Automatic two-month reward seasons are configured in Reward Items &amp; Seasons and preserve global progression. The controls below are manual progression resets.</p><Link to={adminTargetUrl({ tab: "rewards" })} className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-purple-400/25 px-3 py-2 text-xs font-bold">Open reward seasons<ArrowUpRight className="h-3.5 w-3.5" /></Link></div>
     <div className="flex flex-wrap gap-2" role="group" aria-label="Reset action">{[["full", "Full reset · keep credits", RotateCcw], ["reset", "Category reset", RotateCcw], ["season", "New season", CalendarDays]].map(([value, label, Icon]) => <button key={value} type="button" disabled={busy || value !== "season" && role !== "ceo"} aria-pressed={mode === value} onClick={() => changeMode(value)} className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2.5 text-xs font-bold disabled:opacity-40 ${mode === value ? "border-cyan/30 bg-cyan/10 text-cyan" : "border-white/10 text-vapor"}`}><Icon className="h-4 w-4" />{label}</button>)}</div>
     {mode === "full" && <div className="rounded-xl border border-red-400/30 bg-red-400/5 p-4 text-xs leading-6"><strong className="block text-sm text-red-300">Full website progression reset — credits are protected</strong>Resets wallet money, earnings, trophies, XP / TP ranks, Ranked ELO, Free 8s ELO, Wager / Money 8s records, verified game ranks, Challenge standings and team records for all accounts. Credits, accounts, team membership, purchased cosmetics and payment / match history are kept. Pending payments, held funds or withdrawals must be resolved first.</div>}
     {role !== "ceo" && <p className="text-xs text-vapor">Category resets are CEO only. Super Admins can start ladder seasons.</p>}

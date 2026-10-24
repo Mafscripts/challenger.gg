@@ -40,7 +40,7 @@ try {
   assert.equal(await page.locator(".am-maps li").count(), 1, "generated map is shown rather than every map in the pool");
   assert.equal(await page.locator(".am-maps strong").innerText(), "Raid");
   assert.match(await page.locator(".am-button.am-open").getAttribute("href"), /^\/xp-match\/one\?support_view=1$/);
-  assert.match(await page.locator(".am-button.am-support").getAttribute("href"), /^\/admin\?tab=tickets&case=ticket%3Ahelp$/);
+  assert.match(await page.locator(".am-button.am-support").getAttribute("href"), /^\/admin\?tab=tickets&case=ticket%3Ahelp&status=all$/);
   await page.locator(".am-team button").first().click();
   assert.equal(await page.evaluate(() => window.openedPlayer), "dev-id");
   assert.equal(await page.locator(".am-status[data-tone=disputed]").count(), 2);

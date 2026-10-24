@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { ArrowRight, ChevronDown, Coins, Equal, Loader2, LockKeyhole, Minus, Plus, Search, ShieldCheck, SlidersHorizontal, Wallet, X } from "lucide-react";
+import { ArrowDownToLine, ArrowRight, ChevronDown, Coins, Equal, Loader2, LockKeyhole, Minus, Plus, RefreshCw, Search, ShieldCheck, SlidersHorizontal, Wallet, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { effectiveRoleForUser, hasRolePower } from "@/lib/roles";
-import { openAdminPlayer } from "@/lib/adminWorkspace";
+import { adminTargetUrl, openAdminPlayer } from "@/lib/adminWorkspace";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/use-toast";
 import "@/styles/admin-wallets.css";
@@ -91,7 +91,7 @@ export default function AdminWallets({ user, onRefresh }) {
   const total = query.data?.pages[0]?.total ?? 0, searching = search.trim() !== debounced;
   if (!canView) return <p className="p-6 text-sm text-vapor">Admin access is required to view wallets. Only the CEO can adjust balances.</p>;
   return <section className="admin-wallets">
-    <header className="aw-heading"><div><span className="aw-eyebrow">ECONOMY &amp; BALANCES</span><h2><Wallet size={21} /> Wallets</h2><p>Account balances, credits and funds held in play.</p></div><span className="aw-access"><LockKeyhole size={13} /> {canAdjust ? "CEO controls enabled" : "View only · CEO controls"}</span></header>
+    <header className="aw-heading"><div><span className="aw-eyebrow">ECONOMY &amp; BALANCES</span><h2><Wallet size={21} /> Wallets</h2><p>Account balances, credits and funds held in play.</p></div><div className="aw-heading-actions"><span className="aw-access"><LockKeyhole size={13} /> {canAdjust ? "CEO controls enabled" : "View only · CEO controls"}</span><Link to={adminTargetUrl({ tab: "withdrawals" })}><ArrowDownToLine size={13} />Review withdrawals</Link><button type="button" disabled={query.isFetching || summary.isFetching} onClick={() => { void query.refetch(); void summary.refetch(); }}><RefreshCw size={13} className={query.isFetching || summary.isFetching ? "animate-spin" : ""} />Refresh</button></div></header>
     <div className="aw-summary">{[["Available funds", "available", Wallet, money], ["Credits", "credits", Coins, credits], ["Pending", "pending", Wallet, money], ["In escrow", "escrow", LockKeyhole, money]].map(([label, key, Icon, format]) => <div key={key}><span><Icon size={14} /> {label}</span><strong>{summary.data ? format(summary.data[key]) : "—"}</strong></div>)}</div>
     {summary.isError && <p className="aw-feedback aw-error" role="alert">Wallet totals could not be loaded. <button onClick={() => summary.refetch()}>Try again</button></p>}
     <div className="aw-toolbar"><div className="aw-search"><Search size={16} /><input aria-label="Search wallets" placeholder="Search player, email or account ID..." value={search} onChange={(event) => setSearch(event.target.value)} />{search && <button aria-label="Clear wallet search" onClick={() => setSearch("")}><X size={14} /></button>}</div><div className="aw-filters" aria-label="Wallet filter">{[["all", "All accounts"], ["funded", "With balance"], ["held", "Funds held"]].map(([value, label]) => <button key={value} aria-pressed={filter === value} onClick={() => setFilter(value)}>{label}</button>)}</div></div>
@@ -106,6 +106,6 @@ export default function AdminWallets({ user, onRefresh }) {
     {query.isError && <div className="aw-feedback aw-error" role="alert"><span>{query.error?.message || "Could not load wallets."}</span><button disabled={query.isFetching} onClick={() => query.isFetchNextPageError ? query.fetchNextPage() : query.refetch()}>Try again</button></div>}
     {!query.isPending && !searching && !query.isError && !rows.length && <div className="aw-empty"><Wallet size={28} /><strong>No accounts found</strong><p>Try another search or filter.</p></div>}
     {!!rows.length && <footer className="aw-footer"><p>{rows.length} of {total.toLocaleString()} accounts loaded</p>{query.hasNextPage && <button disabled={query.isFetching || searching} onClick={() => query.fetchNextPage()}>{query.isFetchingNextPage ? <Loader2 size={14} className="animate-spin" /> : <ChevronDown size={14} />} Load next 25</button>}</footer>}
-    {editing && canAdjust && <WalletEditor key={editing.id} row={editing} onClose={() => setEditing(null)} onSaved={() => { void onRefresh(); }} />}
+    {editing && canAdjust && <WalletEditor key={editing.id} row={editing} onClose={() => setEditing(null)} onSaved={() => { if (onRefresh) void onRefresh(); else { void query.refetch(); void summary.refetch(); } }} />}
   </section>;
 }
