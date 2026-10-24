@@ -1,3 +1,4 @@
+import { playerDisplayName } from "@/lib/playerIdentity";
 import React, { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
@@ -162,7 +163,7 @@ export default function TournamentJoinModal({
                       const memberId = String(member.user_id || "");
                       const isCaptain = memberId === captainId;
                       const selected = isCaptain || selectedSponsorIds.includes(memberId);
-                      const memberName = member.user_name || member.username || member.display_name || member.handle || "Player";
+                      const memberName = playerDisplayName(member);
                       return (
                         <button
                           key={memberId}

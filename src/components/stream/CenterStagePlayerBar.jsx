@@ -27,7 +27,7 @@ export default function CenterStagePlayerBar({ data, stale, theme, money, trophi
       <div className="centerbar-brand"><TopfraggLogo showWordmark={false} markClassName="centerbar-logo" /><div><strong>TOP<span>FRAGG</span>.GG</strong><small>{design.label}</small></div></div>
       <Metric label="Ranked ELO" value={format(stats.elo)} /><Metric label="8s ELO" value={format(stats.free_eights_elo)} /><Metric label="8s SR" value={stats.free_eights_sr || "Newb"} />
     </div>
-    <div className="centerbar-identity"><span className="centerbar-handle">{player.username ? `@${player.username}` : "TOPFRAGG PLAYER"}</span><h1 title={player.display_name}>{player.display_name}</h1><span className="centerbar-live" data-stale={stale}><i />{stale ? "RECONNECTING · LAST SAVED STATS" : "LIVE PLAYER STATS"}</span></div>
+    <div className="centerbar-identity"><span className="centerbar-handle">{"TOPFRAGG PLAYER"}</span><h1 title={player.display_name}>{player.display_name}</h1><span className="centerbar-live" data-stale={stale}><i />{stale ? "RECONNECTING · LAST SAVED STATS" : "LIVE PLAYER STATS"}</span></div>
     <div className="centerbar-wing centerbar-right">
       <Metric label={`XP · level ${format(stats.xp_level || 1)}`} value={format(stats.total_xp)} /><Metric label="Record" value={`${format(stats.wins)}W / ${format(stats.losses)}L`} /><Metric label="Earnings" value={money} />
       <div className="centerbar-trophies">{trophies.map(trophy => <div key={trophy.key} title={trophy.label}><img src={trophy.image} alt={trophy.label} /><strong>{format(data.trophies?.[trophy.key])}</strong></div>)}</div>

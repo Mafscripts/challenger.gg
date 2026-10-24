@@ -1,3 +1,4 @@
+import { playerDisplayName } from "@/lib/playerIdentity";
 import React from "react";
 import { Check, ChevronDown, Crown, GripVertical, MousePointer2, Users } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -6,7 +7,7 @@ import { captainDraftSide, captainDraftTurn, captainDraftPlayerIds } from "@/lib
 import { freeEightsTeamSize, eightsMajorityVotes } from "@/lib/freeEightsFormat";
 
 const dragType = "application/x-topfragg-captain-pick";
-const nameFor = (player) => player?.full_name || player?.user_name || player?.username || "Player";
+const nameFor = (player) => playerDisplayName(player);
 const teamName = (side) => side === "host" ? "Team Alpha" : "Team Bravo";
 const pickInput = (draft, playerId) => ({ draft_id: draft.id, expected_pick: draft.picks.length, player_id: playerId });
 

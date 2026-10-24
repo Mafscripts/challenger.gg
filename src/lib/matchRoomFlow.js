@@ -1,8 +1,9 @@
+import { playerDisplayName } from "./playerIdentity.js";
 import { captainDraftTurn } from "@/lib/freeEightsCaptainDraft";
 
 const idFor = (player) => player.user_id || player.id;
 const same = (left, right) => left != null && right != null && String(left) === String(right);
-const nameFor = (player) => player.user_name || player.name || player.display_name || player.full_name || player.username || "Player";
+const nameFor = player => playerDisplayName(player);
 const namesFor = (players) => players.slice(0, 3).map(nameFor).join(", ") + (players.length > 3 ? ` +${players.length - 3} more` : "");
 
 // Presentation only: room permissions and mutations stay with each existing mode.

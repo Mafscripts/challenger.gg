@@ -1,3 +1,4 @@
+import { playerDisplayName } from "@/lib/playerIdentity";
 import { retainDataSnapshot } from "@/lib/dataSnapshot";
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
@@ -66,7 +67,7 @@ function PlayerName({ player, className = "" }) {
       style={effect ? { "--player-name-color": effect } : undefined}
       className={`${className} ${effect ? "player-name-color" : ""}`.trim()}
     >
-      {player?.name || "Player"}
+      {playerDisplayName(player)}
     </span>
   );
 }
@@ -258,7 +259,7 @@ export default function Messages() {
   const visibleConversations = conversations.filter(conversation => {
     const player = players[conversation.playerId];
     const fallbackName = conversation.lastMessage.sender_id === currentUser?.id ? conversation.lastMessage.recipient_name : conversation.lastMessage.sender_name;
-    return [player?.name, player?.handle, player?.username, fallbackName]
+    return [playerDisplayName(player), player?.username, fallbackName]
       .filter(Boolean).some(value => String(value).toLowerCase().includes(conversationQuery.trim().toLowerCase()));
   });
   const unreadCount = conversations.reduce((total, conversation) => total + conversation.unread, 0) + invitations.filter((invitation) => !invitation.is_read).length;
@@ -442,7 +443,7 @@ export default function Messages() {
               <header className="messages-thread-heading">
                 <button type="button" onClick={closeThread} className="messages-back" aria-label="Back to conversations"><ArrowLeft size={18} /></button>
                 <PlayerAvatar player={activePlayer} />
-                <div className="messages-thread-identity"><div><PlayerName player={activePlayer} /><UserBadges user={activePlayer} size="xs" iconOnly showForceStream={false} tooltipPlacement="bottom" /></div><p>@{activePlayer.handle || activePlayer.username || "player"}</p></div>
+                <div className="messages-thread-identity"><div><PlayerName player={activePlayer} /><UserBadges user={activePlayer} size="xs" iconOnly showForceStream={false} tooltipPlacement="bottom" /></div><p>{activePlayer.activision_id || "TopFragg player"}</p></div>
                 <ConversationSafety playerId={activePlayer.id} userId={currentUser.id} messages={activeMessages} />
                 <Link to={`/profile/${activePlayer.username || activePlayer.id}`} className="messages-profile-link"><User size={13} /><span>View profile</span><ArrowRight size={12} /></Link>
               </header>
@@ -473,7 +474,7 @@ export default function Messages() {
               </div>
               <form onSubmit={sendMessage} className="messages-composer">
                 <div className="messages-composer-field">
-                  <textarea ref={composerRef} value={draft} onChange={event => setDraft(event.target.value.slice(0, 1000))} onKeyDown={event => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); sendMessage(event); } }} rows={1} placeholder={`Message ${activePlayer.name}…`} aria-label={`Message ${activePlayer.name}`} />
+                  <textarea ref={composerRef} value={draft} onChange={event => setDraft(event.target.value.slice(0, 1000))} onKeyDown={event => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); sendMessage(event); } }} rows={1} placeholder={`Message ${playerDisplayName(activePlayer)}…`} aria-label={`Message ${playerDisplayName(activePlayer)}`} />
                   <EmojiPicker onSelect={insertEmoji} closeSignal={emojiPickerCloseSignal} />
                   <button type="submit" disabled={!draft.trim() || sending} aria-label={sending ? "Sending message" : "Send message"}><Send size={18} /></button>
                 </div>
@@ -510,7 +511,7 @@ export default function Messages() {
                 ) : searchResults.map(player => (
                   <button key={player.id} onClick={() => selectPlayer(player)} className="flex w-full items-center gap-3 rounded-xl p-3 text-left hover:bg-white/[0.05]">
                     <PlayerAvatar player={player} />
-                    <span className="min-w-0 flex-1"><span className="flex items-center gap-1.5"><PlayerName player={player} className="truncate text-sm font-black" /><UserBadges user={player} size="xs" iconOnly showForceStream={false} tooltipPlacement="bottom" /></span><span className="block truncate text-xs text-vapor">@{player.handle || player.username || "player"}</span></span>
+                    <span className="min-w-0 flex-1"><span className="flex items-center gap-1.5"><PlayerName player={player} className="truncate text-sm font-black" /><UserBadges user={player} size="xs" iconOnly showForceStream={false} tooltipPlacement="bottom" /></span><span className="block truncate text-xs text-vapor">{player.activision_id || "TopFragg player"}</span></span>
                     <ArrowRight className="h-4 w-4 text-vapor" />
                   </button>
                 ))}

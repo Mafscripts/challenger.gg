@@ -52,6 +52,8 @@ export default function Matchfinder() {
   const autoOpenedWagerId = useRef("");
   const autoOpenedXPMatchId = useRef("");
   const [activeCategory, setActiveCategory] = useState(() => categories.some(category => category.key === searchParams.get("category")) ? searchParams.get("category") : "xp");
+  const [visibleCount, setVisibleCount] = useState(20);
+  useEffect(() => { setVisibleCount(20); }, [activeCategory]);
   const [user, setUser] = useState(null);
   const [xpMatches, setXpMatches] = useState([]);
   const [rankedMatches, setRankedMatches] = useState([]);
@@ -79,12 +81,12 @@ export default function Matchfinder() {
   const [loadingWagerTeams, setLoadingWagerTeams] = useState(false);
   const [cancellingWagerId, setCancellingWagerId] = useState("");
 
-  const loadMatches = async () => {
+  const loadMatches = async ({ silent = false } = {}) => {
     const generation = ++requestGeneration.current;
-    setLoadingSources(["xp", "elo", "wagers", "tournaments"]);
+    if (!silent) setLoadingSources(["xp", "elo", "wagers", "tournaments"]);
     await Promise.all([
       base44.auth.me().catch(() => null).then(currentUser => {
-        if (generation === requestGeneration.current) setUser(currentUser);
+        if (generation === requestGeneration.current) setUser(previous => retainDataSnapshot(previous, currentUser));
       }),
       loadMatchfinderSources(base44, (source, rows) => {
         if (generation !== requestGeneration.current) return;
@@ -92,7 +94,7 @@ export default function Matchfinder() {
         if (source === "elo") setRankedMatches(previous => retainDataSnapshot(previous, rows));
         if (source === "wagers") setWagerMatches(previous => retainDataSnapshot(previous, rows));
         if (source === "tournaments") setTournaments(previous => retainDataSnapshot(previous, rows.filter(tournament => openTournamentStatuses.has(String(tournament.status || "").toLowerCase()) && !tournament.is_streamer_tournament)));
-        setLoadingSources(previous => previous.filter(key => key !== source));
+        setLoadingSources(previous => previous.includes(source) ? previous.filter(key => key !== source) : previous);
       }),
     ]);
   };
@@ -112,10 +114,10 @@ export default function Matchfinder() {
       try {
         const overview = await loadFreeEightsOverview(base44);
         if (!cancelled) {
-          if (overview.current_user?.id === user.id) setUser(overview.current_user);
-          setFreeMembership({ userId: user.id, match: overview.active_lobby });
-          setEightsCounts(overview.counts);
-          setWagerMatches((rows) => [...rows.filter((row) => wagerType(row) !== "8s"), ...(overview.lobbies || [])]);
+          if (overview.current_user?.id === user.id) setUser(previous => retainDataSnapshot(previous, overview.current_user));
+          setFreeMembership(previous => retainDataSnapshot(previous, { userId: user.id, match: overview.active_lobby }));
+          setEightsCounts(previous => retainDataSnapshot(previous, overview.counts));
+          setWagerMatches(rows => retainDataSnapshot(rows, [...rows.filter(row => wagerType(row) !== "8s"), ...(overview.lobbies || [])]));
         }
       } catch (error) { console.error("Could not check active Free 8s match:", error); }
       finally { inFlight = false; }
@@ -142,7 +144,7 @@ export default function Matchfinder() {
           const participants = await base44.entities.WagerParticipant.filterFresh({ wager_id: lobby.id }, "joined_date", 8).catch(() => null);
           return [lobby.id, participants?.length ?? null];
         }));
-        if (!cancelled) setEightsCounts(Object.fromEntries(counts));
+        if (!cancelled) setEightsCounts(previous => retainDataSnapshot(previous, Object.fromEntries(counts)));
       } finally { countsInFlight = false; }
     };
     refreshCounts();
@@ -265,7 +267,7 @@ export default function Matchfinder() {
       navigate(`/wagers-match/${response.data.wager?.id || wagerToAccept.id}`);
     } catch (error) {
       toast({ title: "Could not accept wager", description: error.message || "Please try again.", variant: "destructive" });
-      await loadMatches();
+      await loadMatches({ silent: true });
     } finally {
       setAcceptingId("");
     }
@@ -282,7 +284,7 @@ export default function Matchfinder() {
       if (!response.data?.success) throw new Error(response.data?.error || "This wager could not be cancelled.");
       window.dispatchEvent(new CustomEvent("topfragg:credits-updated"));
       toast({ title: "Wager cancelled", description: "Your entry fee has been returned." });
-      await loadMatches();
+      await loadMatches({ silent: true });
     } catch (error) {
       toast({ title: "Could not cancel wager", description: error.message || "Please try again.", variant: "destructive" });
     } finally {
@@ -359,7 +361,7 @@ export default function Matchfinder() {
         return;
       }
       toast({ title: "Could not accept match", description: error.message || "Please try again.", variant: "destructive" });
-      await loadMatches();
+      await loadMatches({ silent: true });
     } finally {
       setAcceptingId("");
     }
@@ -422,7 +424,7 @@ export default function Matchfinder() {
           </header>
 
           <CompetitionMatchfinder variant={activeCategory === "xp" ? "xp" : undefined} loading={loading} emptyMessage={`No ${currentCategory.label.toLowerCase()} available right now.`}>
-            {activeRows.map((item) => {
+            {activeRows.slice(0, visibleCount).map((item) => {
               const slots = teamSlots(item.team_size);
               const joined = new Set([...(item.team_alpha_player_ids || [item.host_id]), ...(item.team_bravo_player_ids || (item.challenger_id ? [item.challenger_id] : []))].filter(Boolean)).size;
               const isTournament = activeCategory === "tournaments";
@@ -446,6 +448,7 @@ export default function Matchfinder() {
               );
             })}
           </CompetitionMatchfinder>
+          {!loading && visibleCount < activeRows.length && <div className="border-t border-white/[0.07] p-4 text-center"><button type="button" onClick={() => setVisibleCount(count => count + 20)} className="rounded-lg border border-cyan/25 bg-cyan/5 px-5 py-2.5 text-xs font-bold text-cyan">Show more matches · {Math.min(visibleCount, activeRows.length)} / {activeRows.length}</button></div>}
         </section>
 
         <div className="mt-4 flex items-center gap-2 text-[10px] text-vapor"><CalendarDays className="h-3.5 w-3.5 text-yellow-300" /> Scheduled tournaments show their announced start time; open matches can be accepted immediately.</div>

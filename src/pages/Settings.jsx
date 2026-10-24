@@ -71,7 +71,9 @@ export default function Settings() {
   const GroupIcon = icons[activeGroup.icon];
   const searchResults = searchSettings(query);
 
-  const loadUser = useCallback(async ({ force = true } = {}) => {
+  const loadUser = useCallback(async (updatedUser) => {
+    if (updatedUser?.id) { setUser(updatedUser); return; }
+    const { force = true } = updatedUser || {};
     const me = await base44.auth.me({ force });
     setUser(me);
   }, []);

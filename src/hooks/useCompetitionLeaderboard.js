@@ -22,6 +22,7 @@ export function useLeaderboardAvatars(userIds, enabled = true) {
   const ids = [...new Set(userIds.filter(Boolean))].sort();
   return useQuery({
     ...leaderboardQueryOptions,
+    staleTime: 5 * 60_000,
     queryKey: ["leaderboard-avatars", user?.id, ids.join("|")],
     queryFn: async () => {
       const response = await base44.functions.invoke("getLeaderboardAvatars", { user_ids: ids });

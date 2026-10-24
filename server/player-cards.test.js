@@ -63,7 +63,7 @@ test("the real match roster retains readable identity, rank, record and actions 
     import MatchTeamTable from './src/components/match/MatchTeamTable.jsx';
     import PlayerCardSection from './src/components/settings/PlayerCardSection.jsx';
     const user={id:'player',user_id:'player',display_name:'TestPlayer',name:'TestPlayer',activision_id:'Example#123',wins:12,losses:4,elo:1600};
-    export const render=theme=>renderToStaticMarkup(<MemoryRouter><MatchTeamTable ranked label="Alpha" name="Alpha" players={[{...user,player_card_theme:theme}]} playerActions={()=> <button>Player action</button>} /></MemoryRouter>);
+    export const render=(theme,identity={})=>renderToStaticMarkup(<MemoryRouter><MatchTeamTable ranked label="Alpha" name="Alpha" players={[{...user,...identity,player_card_theme:theme}]} playerActions={()=> <button>Player action</button>} /></MemoryRouter>);
     export const studio=()=>renderToStaticMarkup(<PlayerCardSection user={{...user,player_card_theme:'tokyo-afterglow'}}/>);
   ` }, bundle: true, write: false, platform: "node", format: "cjs", mainFields: ["module", "main"], external: ["react", "react-dom/server", "react-router-dom"], alias: { "@": `${root}/src` }, loader: { ".css": "empty" }, plugins: [{ name: "card-fixture", setup(plugin) {
     plugin.onResolve({ filter: /^@\/(api\/base44Client|lib\/AuthContext)$/ }, args => ({ path: args.path, namespace: "card-fixture" }));
@@ -79,6 +79,9 @@ test("the real match roster retains readable identity, rank, record and actions 
     for (const text of ["TestPlayer", "Example#123", "12W", "4L", "Player action"]) assert.ok(html.includes(text), text);
   }
   assert.doesNotMatch(mod.exports.render(""), /data-player-card=/);
+  const identity = mod.exports.render("astral-tide", { display_name: "dev", username: "topfragg-dev", user_name: "topfragg-dev", name: "Old roster name", handle: "twitter-handle" });
+  assert.match(identity, />dev<\/a>/);
+  assert.doesNotMatch(identity, />topfragg-dev<|>Old roster name<|>twitter-handle</);
   const studio = mod.exports.studio();
   assert.match(studio, /Choose a player card/);
   assert.doesNotMatch(studio, /class="player-card-option"/);

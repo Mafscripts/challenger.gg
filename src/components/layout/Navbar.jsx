@@ -23,6 +23,7 @@ import "@/styles/navbar-profile.css";
 import "@/styles/topbar.css";
 import { base44 } from "@/api/base44Client";
 import { retainHeaderSnapshot } from "@/lib/headerSnapshot";
+import { profilePresentationPatch } from "@/lib/playerIdentity";
 import { useAuth } from "@/lib/AuthContext";
 import { effectiveRoleForUser, getPublicRoleConfig } from "@/lib/roles";
 import { excludeCancelledHeaderMatches, matchCancelledEvent } from "@/lib/cancelledMatchRoom";
@@ -601,7 +602,13 @@ export default function Navbar() {
 
   useEffect(() => {
     const handleProfileUpdated = (event) => {
+      if (event.detail?.userId !== authUser?.id) return;
       if (event.detail?.avatarUrl !== undefined) setProfileAvatar(event.detail.avatarUrl || "");
+      const patch = profilePresentationPatch(event.detail);
+      if (Object.keys(patch).length) {
+        setUser(current => current ? retainHeaderSnapshot(current, { ...current, ...patch }) : current);
+        return;
+      }
       loadUser(authUser);
     };
     window.addEventListener("topfragg:profile-updated", handleProfileUpdated);

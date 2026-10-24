@@ -5,6 +5,7 @@ import { RESTRICTION_EVENT, readRestriction, clearRestriction, isRestriction } f
 import { NETWORK_RESTRICTION_EVENT, readNetworkRestriction, clearNetworkRestriction } from "@/lib/networkAccess";
 import { isNativeApp, NATIVE_RESUME_EVENT } from "@/lib/nativeApp";
 import { queryClientInstance } from "@/lib/query-client";
+import { profilePresentationPatch } from "@/lib/playerIdentity";
 
 const AuthContext = createContext();
 
@@ -22,12 +23,7 @@ export const AuthProvider = ({ children }) => {
     const refreshProfile = (event) => {
       const detail = event.detail;
       if (!user?.id || detail?.userId !== user.id) return;
-      const patch = {
-        ...(detail.avatarUrl !== undefined ? { avatar_url: detail.avatarUrl } : {}),
-        ...(detail.playerCardMotion !== undefined ? { player_card_motion: detail.playerCardMotion } : {}),
-        ...(detail.playerCardTheme !== undefined ? { player_card_theme: detail.playerCardTheme } : {}),
-        ...(detail.displayNameColor !== undefined ? { display_name_color: detail.displayNameColor } : {}),
-      };
+      const patch = profilePresentationPatch(detail);
       setUser((current) => current?.id === detail.userId ? { ...current, ...patch } : current);
       queryClientInstance.setQueriesData({ queryKey: ["leaderboard-users"] }, (players) => (
         Array.isArray(players) ? players.map((player) => player.id === detail.userId ? { ...player, ...patch } : player) : players

@@ -30,9 +30,9 @@ export default function NameColorSection({ user, onUserUpdate }) {
     if (!allowed || saving) return;
     setSaving(true); setResult(null);
     try {
-      await base44.auth.updateMe({ display_name_color: draft });
-      window.dispatchEvent(new CustomEvent("topfragg:profile-updated", { detail: { displayNameColor: draft } }));
-      await onUserUpdate?.();
+      const updatedUser = await base44.auth.updateMe({ display_name_color: draft });
+      window.dispatchEvent(new CustomEvent("topfragg:profile-updated", { detail: { userId: user.id, displayNameColor: draft } }));
+      await onUserUpdate?.(updatedUser);
       setResult({ success: true, message: "Name color saved." });
     } catch (error) { setResult({ success: false, message: error.message || "Could not save name color." }); }
     finally { setSaving(false); }

@@ -1,3 +1,4 @@
+import { playerDisplayName } from "@/lib/playerIdentity";
 import { monthlyEightsPrizeLabel } from "@/lib/commerce";
 import StreamRequirementNotice from "@/components/competition/StreamRequirementNotice";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -37,7 +38,7 @@ import { useRoomRecord } from "@/components/match/useRoomRecord";
 const closedStatuses = new Set(["completed", "cancelled"]);
 const scoreStatuses = new Set(["in_progress", "awaiting_team_alpha_report", "awaiting_team_bravo_report", "awaiting_completion"]);
 const displayStatus = (value) => ({ open: "Lobby open", in_progress: "Match live", awaiting_team_alpha_report: "Score confirmation", awaiting_team_bravo_report: "Score confirmation", awaiting_completion: "Completing", score_conflict: "Under review", disputed: "Under review", completed: "Complete", cancelled: "Cancelled" }[value] || String(value || "open").replaceAll("_", " "));
-const playerName = (player) => player?.full_name || player?.user_name || player?.username || "Open slot";
+const playerName = (player) => playerDisplayName(player, "Open slot");
 const seriesModeName = (mode) => ({ hp: "Hardpoint", snd: "Search & Destroy" }[mode] || mode || "Mode pending");
 const RoomMapSeries = React.memo(MatchMapSeries);
 const formatMoney = (value) => `$${Number(value || 0).toFixed(2)}`;

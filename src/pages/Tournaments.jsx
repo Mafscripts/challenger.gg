@@ -1,4 +1,7 @@
+import { playerDisplayName } from "@/lib/playerIdentity";
 import { competitionStreamRequiredMessage, hasCompetitionStream } from "@/lib/competitionStreaming";
+import { loadPlayTeams } from "@/lib/playTeams";
+import { retainDataSnapshot } from "@/lib/dataSnapshot";
 import StreamRequirementNotice from "@/components/competition/StreamRequirementNotice";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -335,7 +338,7 @@ export default function Tournaments() {
       const rows = tournamentRows || [];
       const officialRows = rows.filter((tournament) => !isStreamerTournament(tournament));
 
-      setTournaments(rows);
+      setTournaments(previous => retainDataSnapshot(previous, rows));
 
       const currentSelectedId = selectedTournamentIdRef.current;
       const requestedTournamentId = typeof window !== "undefined"
@@ -367,9 +370,9 @@ export default function Tournaments() {
       const currentUser = await currentUserPromise;
       if (!silent) setUser(currentUser);
       if (!silent && currentUser?.id) {
-        const [allParticipants, memberships] = await Promise.all([
+        const [allParticipants, teams] = await Promise.all([
           base44.profile.tournamentParticipants(currentUser.id).catch(() => []),
-          base44.entities.TeamMember.filter({ user_id: currentUser.id }, "-joined_date", 20).catch(() => []),
+          loadPlayTeams(base44).catch(() => []),
         ]);
         const joined = (allParticipants || []).filter((participant) => (
           participant.captain_id === currentUser.id
@@ -377,14 +380,7 @@ export default function Tournaments() {
           || (participant.members || []).some((member) => member.user_id === currentUser.id)
         ));
         setJoinedTournamentIds(new Set(joined.map((participant) => participant.tournament_id)));
-        const teams = await Promise.all((memberships || [])
-          .filter((membership) => membership.is_active !== false)
-          .map(async (membership) => {
-            const team = await base44.entities.Team.get(membership.team_id).catch(() => null);
-            const members = team ? await base44.entities.TeamMember.filter({ team_id: team.id }, "-joined_date", 20).catch(() => []) : [];
-            return team ? { ...team, membership, members: (members || []).filter((member) => member.is_active !== false) } : null;
-          }));
-        setUserTeams(teams.filter(Boolean));
+        setUserTeams(teams.map(team => ({ ...team, members: team.members.filter(member => member.is_active !== false) })));
       } else if (!silent) {
         setJoinedTournamentIds(new Set());
         setUserTeams([]);
@@ -545,10 +541,16 @@ export default function Tournaments() {
           ? base44.entities.TournamentParticipant.filterFresh({ tournament_id: tournamentId }, "seed", 256).catch(() => null)
           : Promise.resolve(null),
       ]);
-      setMatchesByTournament((current) => ({ ...current, [tournamentId]: matches || [] }));
+      setMatchesByTournament(current => {
+        const next = retainDataSnapshot(current[tournamentId], matches || []);
+        return next === current[tournamentId] ? current : { ...current, [tournamentId]: next };
+      });
       if (participants) {
         participantsLoadedRef.current.add(tournamentId);
-        setParticipantsByTournament((current) => ({ ...current, [tournamentId]: participants }));
+        setParticipantsByTournament(current => {
+          const next = retainDataSnapshot(current[tournamentId], participants);
+          return next === current[tournamentId] ? current : { ...current, [tournamentId]: next };
+        });
       }
     } catch (error) {
       console.error("Failed to load tournament matches:", error);
@@ -600,7 +602,7 @@ export default function Tournaments() {
       membership: { user_id: user?.id, team_id: team.id, is_active: true, role: "captain" },
       members: [{
         user_id: user?.id,
-        user_name: user?.display_name || user?.username || user?.full_name || user?.email || "Captain",
+        user_name: playerDisplayName(user, "Captain"),
         role: "captain",
         is_active: true,
       }],

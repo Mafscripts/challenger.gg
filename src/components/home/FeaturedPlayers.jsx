@@ -1,3 +1,4 @@
+import { playerDisplayName } from "@/lib/playerIdentity";
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -61,7 +62,7 @@ export default function FeaturedPlayers() {
                     </div>
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <Link to={`/profile/${player.username || player.user_id || player.id || ""}`} data-name-effect={player.user?.display_name_color || undefined} style={player.user?.display_name_color ? { "--player-name-color": player.user.display_name_color } : undefined} className={`player-name-wrap font-bold hover:text-cyan transition-colors ${player.user?.display_name_color ? "player-name-color" : ""}`}>{player.username || player.display_name || player.full_name || "Unnamed player"}</Link>
+                        <Link to={`/profile/${player.username || player.user_id || player.id || ""}`} data-name-effect={player.user?.display_name_color || undefined} style={player.user?.display_name_color ? { "--player-name-color": player.user.display_name_color } : undefined} className={`player-name-wrap font-bold hover:text-cyan transition-colors ${player.user?.display_name_color ? "player-name-color" : ""}`}>{playerDisplayName(player, "Unnamed player")}</Link>
                         <UserBadges user={player.user} size="xs" iconOnly showForceStream={false} tooltipPlacement="bottom" />
                       </div>
                       <p className="text-xs text-vapor">{rank.name}</p>

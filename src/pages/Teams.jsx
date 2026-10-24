@@ -1,3 +1,4 @@
+import { playerDisplayName } from "@/lib/playerIdentity";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { matchAfterProgressionReset } from "@/lib/progressionResets";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
@@ -436,7 +437,7 @@ export default function Teams() {
     const member = membership || {
       team_id: team.id,
       user_id: currentUser?.id,
-      user_name: currentUser?.display_name || currentUser?.username || currentUser?.full_name || currentUser?.email || "Player",
+      user_name: playerDisplayName(currentUser),
       role: String(team.captain_id) === String(currentUser?.id) ? "captain" : "member",
       is_active: true,
     };
@@ -514,7 +515,7 @@ export default function Teams() {
     showTeamImmediately(team, {
       team_id: team.id,
       user_id: currentUser?.id,
-      user_name: currentUser?.display_name || currentUser?.username || currentUser?.full_name || currentUser?.email || "Captain",
+      user_name: playerDisplayName(currentUser, "Captain"),
       role: "captain",
       is_active: true,
     });
@@ -1021,7 +1022,7 @@ function InvitePlayerModal({ isOpen, onClose, team, value, onChange, onSubmit, b
   const selectPlayer = (player) => {
     setSelectedPlayer(player);
     setSuggestions([]);
-    onChange(player.name || player.username || player.handle || player.id);
+    onChange(playerDisplayName(player, player.id));
   };
 
   const closeModal = () => {
@@ -1031,7 +1032,7 @@ function InvitePlayerModal({ isOpen, onClose, team, value, onChange, onSubmit, b
   };
 
   return (
-    <AnimatePresence>{isOpen && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4" onClick={closeModal}><motion.form initial={{ opacity: 0, y: 10, scale: 0.99 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 6, scale: 0.99 }} transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }} onSubmit={(event) => onSubmit(event, selectedPlayer?.id || "")} onClick={(event) => event.stopPropagation()} className="w-full max-w-md transform-gpu rounded-2xl border border-white/10 bg-card p-6 shadow-[0_24px_70px_rgba(0,0,0,.5)]"><div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan">Roster invite</p><h2 className="mt-1 text-xl font-black">Invite to {team?.name}</h2><p className="mt-1 text-xs text-vapor">Search the player database and select the correct teammate.</p></div><button type="button" onClick={closeModal} className="rounded-lg p-2 text-vapor hover:bg-white/5"><X className="h-4 w-4" /></button></div><label className="relative mt-6 block"><FieldLabel>Player name or username</FieldLabel><div className={`mt-2 flex items-center rounded-xl border bg-secondary focus-within:border-cyan/30 ${selectedPlayer ? "border-cyan/25" : "border-white/5"}`}><Search className="ml-3 h-4 w-4 shrink-0 text-vapor" /><input autoFocus value={value} onChange={handleInputChange} placeholder="Start typing a full name..." className="min-w-0 flex-1 bg-transparent px-3 py-3 text-sm focus:outline-none" />{searching && <span className="mr-3 h-4 w-4 animate-spin rounded-full border-2 border-cyan/20 border-t-cyan" />}{selectedPlayer && <CheckCircle className="mr-3 h-4 w-4 text-cyan" />}</div>{suggestions.length > 0 && <div className="absolute inset-x-0 top-full z-10 mt-2 max-h-56 overflow-y-auto rounded-xl border border-white/10 bg-[#151e28] p-1.5 shadow-2xl">{suggestions.map((player) => <button key={player.id} type="button" onClick={() => selectPlayer(player)} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-cyan/[0.07]"><span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-cyan/20 bg-background font-mono text-xs font-black text-cyan"><PlayerAvatarImage user={player} src={player.avatar_url} /></span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-black text-white">{player.name || player.username || "Player"}</span><span className="mt-0.5 block truncate text-[10px] text-vapor">{player.username ? `@${player.username}` : player.handle ? `@${player.handle}` : "TopFragg player"}</span></span><ArrowRight className="h-3.5 w-3.5 shrink-0 text-cyan" /></button>)}</div>}</label><div className="mt-5 flex justify-end gap-2"><button type="button" onClick={closeModal} className="rounded-lg bg-secondary px-4 py-2.5 text-xs font-black text-vapor">Cancel</button><button disabled={busy || !selectedPlayer} className="inline-flex items-center gap-2 rounded-lg bg-cyan px-4 py-2.5 text-xs font-black text-background disabled:opacity-40"><UserPlus className="h-3.5 w-3.5" /> Send Invite</button></div></motion.form></motion.div>}</AnimatePresence>
+    <AnimatePresence>{isOpen && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4" onClick={closeModal}><motion.form initial={{ opacity: 0, y: 10, scale: 0.99 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 6, scale: 0.99 }} transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }} onSubmit={(event) => onSubmit(event, selectedPlayer?.id || "")} onClick={(event) => event.stopPropagation()} className="w-full max-w-md transform-gpu rounded-2xl border border-white/10 bg-card p-6 shadow-[0_24px_70px_rgba(0,0,0,.5)]"><div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan">Roster invite</p><h2 className="mt-1 text-xl font-black">Invite to {team?.name}</h2><p className="mt-1 text-xs text-vapor">Search the player database and select the correct teammate.</p></div><button type="button" onClick={closeModal} className="rounded-lg p-2 text-vapor hover:bg-white/5"><X className="h-4 w-4" /></button></div><label className="relative mt-6 block"><FieldLabel>Player name or username</FieldLabel><div className={`mt-2 flex items-center rounded-xl border bg-secondary focus-within:border-cyan/30 ${selectedPlayer ? "border-cyan/25" : "border-white/5"}`}><Search className="ml-3 h-4 w-4 shrink-0 text-vapor" /><input autoFocus value={value} onChange={handleInputChange} placeholder="Start typing a full name..." className="min-w-0 flex-1 bg-transparent px-3 py-3 text-sm focus:outline-none" />{searching && <span className="mr-3 h-4 w-4 animate-spin rounded-full border-2 border-cyan/20 border-t-cyan" />}{selectedPlayer && <CheckCircle className="mr-3 h-4 w-4 text-cyan" />}</div>{suggestions.length > 0 && <div className="absolute inset-x-0 top-full z-10 mt-2 max-h-56 overflow-y-auto rounded-xl border border-white/10 bg-[#151e28] p-1.5 shadow-2xl">{suggestions.map((player) => <button key={player.id} type="button" onClick={() => selectPlayer(player)} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-cyan/[0.07]"><span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-cyan/20 bg-background font-mono text-xs font-black text-cyan"><PlayerAvatarImage user={player} src={player.avatar_url} /></span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-black text-white">{playerDisplayName(player)}</span><span className="mt-0.5 block truncate text-[10px] text-vapor">{player.activision_id || "TopFragg player"}</span></span><ArrowRight className="h-3.5 w-3.5 shrink-0 text-cyan" /></button>)}</div>}</label><div className="mt-5 flex justify-end gap-2"><button type="button" onClick={closeModal} className="rounded-lg bg-secondary px-4 py-2.5 text-xs font-black text-vapor">Cancel</button><button disabled={busy || !selectedPlayer} className="inline-flex items-center gap-2 rounded-lg bg-cyan px-4 py-2.5 text-xs font-black text-background disabled:opacity-40"><UserPlus className="h-3.5 w-3.5" /> Send Invite</button></div></motion.form></motion.div>}</AnimatePresence>
   );
 }
 

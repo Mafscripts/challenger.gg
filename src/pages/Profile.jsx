@@ -592,7 +592,7 @@ export default function Profile() {
                     </span>
                   )}
                 </div>
-                <p className="profile-handle">@{user.username || user.handle || "player"}</p>
+                <p className="profile-handle">{user.activision_id || "TopFragg player"}</p>
                 <div className="profile-player-badges" aria-label="Player badges">
                   <RoleBadge role={user.role || "user"} />
                   <ScreenshotRankPill rank={user.screenshot_rank} />

@@ -1,4 +1,5 @@
 import PlayerCardEffects from "@/components/ui/PlayerCardEffects";
+import { playerDisplayName } from "@/lib/playerIdentity";
 import { playerCardAppearance } from "@/lib/playerCards";
 import "@/styles/player-cards.css";
 import React from "react";
@@ -23,7 +24,7 @@ const number = (value) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 const money = (value) => `$${number(value).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
-const playerName = (player) => player?.user_name || player?.name || player?.full_name || player?.username || player?.display_name || player?.email || "Unknown player";
+const playerName = player => playerDisplayName(player, "Unknown player");
 const teamMonogram = (name) => {
   const words = String(name || "").trim().split(/\s+/).filter(Boolean);
   if (words.length > 1) return words.slice(0, 2).map((word) => word.charAt(0)).join("").toUpperCase();

@@ -1,3 +1,4 @@
+import { playerDisplayName } from "@/lib/playerIdentity";
 import PlayerCardEffects from "@/components/ui/PlayerCardEffects";
 import { playerCardAppearance } from "@/lib/playerCards";
 import "@/styles/player-cards.css";
@@ -106,7 +107,7 @@ const isStreamerTournament = (tournament) => Boolean(
   || ["streamer", "streamer_tournament"].includes(String(tournament?.tournament_type || "").toLowerCase())
   || ["streamer", "streamer_tournament"].includes(String(tournament?.source || "").toLowerCase())
 );
-const playerName = (player) => player?.user_name || player?.username || player?.display_name || player?.full_name || player?.email || "Unknown player";
+const playerName = player => playerDisplayName(player, "Unknown player");
 const identityKeys = (value) => [
   value?.id,
   value?.user_id,

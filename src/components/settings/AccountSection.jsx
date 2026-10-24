@@ -59,12 +59,13 @@ export default function AccountSection({ user, onUserUpdate }) {
     setIdentitySaving(true);
     setIdentityResult(null);
     try {
-      await base44.auth.updateMe({
+      const updatedUser = await base44.auth.updateMe({
         username: normalizedUsername,
         display_name: cleanDisplayName,
       });
+      window.dispatchEvent(new CustomEvent("topfragg:profile-updated", { detail: { userId: user.id, displayName: cleanDisplayName, username: normalizedUsername } }));
       setIdentityResult({ success: true, message: "Account identity updated." });
-      onUserUpdate();
+      onUserUpdate(updatedUser);
     } catch (e) {
       setIdentityResult({ success: false, message: e.message || "Failed to update account identity." });
     } finally {

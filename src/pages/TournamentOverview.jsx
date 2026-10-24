@@ -1,3 +1,4 @@
+import { playerDisplayName } from "@/lib/playerIdentity";
 import PlayerCardEffects from "@/components/ui/PlayerCardEffects";
 import { playerCardAppearance } from "@/lib/playerCards";
 import "@/styles/player-cards.css";
@@ -200,7 +201,7 @@ function DetailRow({ icon: Icon, label, value }) {
   );
 }
 
-const rosterMemberName = (member) => member?.display_name || member?.user_name || member?.username || member?.full_name || "Player";
+const rosterMemberName = (member) => playerDisplayName(member);
 
 function TournamentRosterPlayerCard({ player, captain }) {
   const wins = Number(player?.total_wins ?? player?.wins ?? 0);
@@ -214,7 +215,7 @@ function TournamentRosterPlayerCard({ player, captain }) {
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-center gap-1.5"><p className="truncate text-sm font-black text-white">{rosterMemberName(player)}</p>{captain && <Crown className="h-3.5 w-3.5 shrink-0 text-yellow-300" aria-label="Team captain" />}</div>
-          <p className="mt-1 truncate font-mono text-[10px] text-vapor">{player?.activision_id || player?.handle || player?.username || "Topfragg player"}</p>
+          <p className="mt-1 truncate font-mono text-[10px] text-vapor">{player?.activision_id || "TopFragg player"}</p>
         </div>
         <div className="rounded-lg border border-cyan/15 bg-cyan/[0.06] px-2.5 py-1.5 text-center"><p className="font-mono text-sm font-black text-cyan">{Number(player?.elo || 0).toLocaleString()}</p><p className="text-[7px] font-black uppercase tracking-wider text-vapor">ELO</p></div>
       </div>
@@ -490,7 +491,7 @@ export default function TournamentOverview() {
       membership: { user_id: user?.id, team_id: team.id, is_active: true, role: "captain" },
       members: [{
         user_id: user?.id,
-        user_name: user?.display_name || user?.username || user?.full_name || user?.email || "Captain",
+        user_name: playerDisplayName(user, "Captain"),
         role: "captain",
         is_active: true,
       }],

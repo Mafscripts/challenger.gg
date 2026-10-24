@@ -1,3 +1,4 @@
+import { playerDisplayName } from "@/lib/playerIdentity";
 import { trophyAssets } from "@/lib/trophyAssets";
 import React, { useContext, useLayoutEffect, useMemo, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
@@ -96,8 +97,8 @@ const trophyTypes = [
 ];
 
 const number = (value) => Number(value || 0);
-const playerName = (user, row) => user?.display_name || user?.username || user?.full_name || row?.username || row?.user_name || "Player";
-const playerSlug = (user, row) => user?.username || user?.handle || row?.username || row?.user_id || user?.id || "";
+const playerName = (user, row) => playerDisplayName({ ...row, user });
+const playerSlug = (user, row) => user?.username || row?.user_id || user?.id || row?.username || "";
 const monthLabel = () => new Intl.DateTimeFormat("en", { month: "long", year: "numeric" }).format(new Date());
 const trophyCount = (user) => {
   const detailed = trophyTypes.reduce((sum, trophy) => {

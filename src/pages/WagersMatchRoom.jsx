@@ -1,3 +1,4 @@
+import { playerDisplayName } from "@/lib/playerIdentity";
 import { retainDataSnapshot } from "@/lib/dataSnapshot";
 import StreamRequirementNotice from "@/components/competition/StreamRequirementNotice";
 import React, { useRef, useState, useEffect } from "react";
@@ -32,7 +33,7 @@ const formatCountdown = (seconds) => {
   const minutes = Math.floor(safeSeconds / 60);
   return `${String(minutes).padStart(2, "0")}:${String(safeSeconds % 60).padStart(2, "0")}`;
 };
-const playerName = (player) => player?.full_name || player?.username || player?.user_name || "Open slot";
+const playerName = (player) => playerDisplayName(player, "Open slot");
 const wagerMapText = (match, pendingText = "Map pending") => {
   const seriesMaps = Array.isArray(match?.series_maps) ? match.series_maps.filter(Boolean) : [];
   return seriesMaps.length > 0 ? seriesMaps.join(" · ") : (match?.final_map_name || pendingText);

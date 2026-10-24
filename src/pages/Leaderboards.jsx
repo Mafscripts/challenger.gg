@@ -1,4 +1,5 @@
 import RewardSeasonBoard from "@/components/competition/RewardSeasonBoard";
+import { playerDisplayName } from "@/lib/playerIdentity";
 import XPFormatSelect from "@/components/competition/XPFormatSelect";
 import XPFormatStandings from "@/components/competition/XPFormatStandings";
 import useRouteSection from "@/hooks/useRouteSection";
@@ -36,7 +37,7 @@ const tabs = [
 
 const regions = ["Global", "NA", "EU", "APAC", "SA", "OCE"];
 
-const playerName = (row) => row.username || row.display_name || row.full_name || row.email || "Unnamed player";
+const playerName = row => playerDisplayName(row, "Unnamed player");
 const playerSlug = (row) => row.username || row.user_id || row.id || "";
 
 function PlayerName({ row }) {

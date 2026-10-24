@@ -1,4 +1,5 @@
 import { normalizeFreeEightsElo } from "./freeEightsRanks.js";
+import { playerDisplayName } from "./playerIdentity.js";
 
 const count = (value) => Math.max(0, Number(value) || 0);
 
@@ -9,8 +10,8 @@ export function buildFreeEightsStandings(statsRows, usersById = new Map(), limit
       id: row.id || row.user_id,
       userId: row.user_id,
       user,
-      name: user?.display_name || user?.username || user?.full_name || row.username || row.user_name || "Player",
-      slug: user?.username || user?.handle || row.username || row.user_id || user?.id || "",
+      name: playerDisplayName({ ...row, user }),
+      slug: user?.username || row.user_id || user?.id || row.username || "",
       wins: count(row.wins),
       losses: count(row.losses),
       streak: count(row.win_streak ?? user?.current_win_streak),
