@@ -287,6 +287,8 @@ export const ruleSections = [
   },
 ];
 
+ruleSections.push({ id: "topfragg-variant", group: "essentials", title: "Topfragg Variant Rules", icon: "Swords", description: "The published rules for Topfragg Variant matches.", rules: [] });
+
 export const ruleQuickLinks = [
   { id: "no-shows", value: "15 min", label: "Match readiness", detail: "From the official start", icon: "Clock" },
   { id: "stream-requirements", value: "Every map", label: "PC & console streams", detail: "Cash · Money 8s · Tournaments", icon: "Radio" },
@@ -298,13 +300,18 @@ export function ruleText(rule) {
   return typeof rule === "string" ? rule : [rule.label, rule.text, ...(rule.items || [])].filter(Boolean).join(" ");
 }
 
-export function searchRulebook(query) {
+export function searchRulebook(query, sections = ruleSections) {
   const words = String(query || "").trim().toLowerCase().split(/\s+/).filter(Boolean);
-  return ruleSections.map((section, sectionIndex) => ({
+  return sections.map((section, sectionIndex) => ({
     ...section, sectionIndex,
     entries: section.rules.map((rule, ruleIndex) => ({ rule, ruleIndex })).filter(({ rule }) => {
       const text = `${section.title} ${section.description} ${ruleText(rule)}`.toLowerCase();
       return words.every(word => text.includes(word));
     }),
   })).filter(section => section.entries.length);
+}
+
+export function withTopfraggVariantRules(body) {
+  const rules = String(body || "").split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+  return ruleSections.map(section => section.id === "topfragg-variant" ? { ...section, rules } : section);
 }

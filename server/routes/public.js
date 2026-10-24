@@ -9,6 +9,12 @@ import { EIGHTS_CONFIG_ID } from "../free-eights-games.js";
 import { DEFAULT_EIGHTS_GAMES, withMw4Preview } from "../../src/lib/freeEightsGames.js";
 
 const router = Router();
+router.get("/topfragg-variant-rules", async (_req, res, next) => {
+  try {
+    const rules = await prisma.ruleSet.findUnique({ where: { id: "topfragg-variant" } });
+    res.set("Cache-Control", "no-store").json({ success: true, rules: rules ? { body: rules.body, revision: rules.revision, updated_date: rules.updated_date } : null });
+  } catch (error) { next(error); }
+});
 router.get("/free-eights-games", async (_req, res, next) => {
   try {
     const row = await prisma.mapPool.findUnique({ where: { id: EIGHTS_CONFIG_ID } });

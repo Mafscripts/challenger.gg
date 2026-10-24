@@ -781,10 +781,19 @@ model CompetitionRewardCampaign {
 }
 
 model SiteAnnouncement {
+  kind         String   @default("website")
   id           String   @id @default("current")
   enabled      Boolean  @default(false)
   title        String
   message      String
+  revision     String
+  updated_by   String?
+  updated_date DateTime @updatedAt
+}
+
+model RuleSet {
+  id           String   @id
+  body         String
   revision     String
   updated_by   String?
   updated_date DateTime @updatedAt

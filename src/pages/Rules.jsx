@@ -1,14 +1,16 @@
+import { useQuery } from "@tanstack/react-query";
+import { base44 } from "@/api/base44Client";
 import CommercePausedNotice from "@/components/commerce/CommercePausedNotice";
 import { publicCommerceEnabled } from "@/lib/commerce";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight, ArrowLeftRight, Ban, BookOpen, Camera, Check, ChevronRight, ClipboardCheck, Clock, Copy, DollarSign, Flag, Gamepad2, Handshake, List, Medal, MessageCircle, MessageSquare, Radio, Scale, Search, Shield, ShieldAlert, ShieldCheck, SlidersHorizontal, Sparkles, Swords, Trophy, Unplug, Users, Video, Wifi, X } from "lucide-react";
 import CompetitionHero from "@/components/competition/CompetitionHero";
-import { ruleGroups, ruleQuickLinks, ruleSections, searchRulebook } from "@/lib/rulebook";
+import { ruleGroups, ruleQuickLinks, ruleSections as defaultRuleSections, searchRulebook, withTopfraggVariantRules } from "@/lib/rulebook";
 import "@/styles/rules.css";
 
 const icons = { ArrowLeftRight, Ban, Camera, ClipboardCheck, Clock, DollarSign, Flag, Gamepad2, Handshake, Medal, MessageCircle, MessageSquare, Radio, Scale, Shield, ShieldAlert, ShieldCheck, SlidersHorizontal, Sparkles, Swords, Trophy, Unplug, Users, Video, Wifi };
-const sectionFromHash = hash => ruleSections.find(section => `#${section.id}` === hash)?.id || ruleSections[0].id;
+const sectionFromHash = hash => defaultRuleSections.find(section => `#${section.id}` === hash)?.id || defaultRuleSections[0].id;
 const groupTones = { essentials: "cyan", "in-match": "purple", integrity: "green", platform: "gold" };
 const quickTones = ["gold", "green", "cyan", "purple"];
 
@@ -21,6 +23,8 @@ function Highlight({ text, query }) {
 export default function Rules() {
   const location = useLocation();
   const navigate = useNavigate();
+  const variantRules = useQuery({ queryKey: ["topfragg-variant-rules"], queryFn: () => base44.public.topfraggVariantRules(), staleTime: 15000, refetchInterval: 30000, retry: 1 });
+  const ruleSections = useMemo(() => withTopfraggVariantRules(variantRules.data?.rules?.body), [variantRules.data?.rules?.body]);
   const [activeId, setActiveId] = useState(() => sectionFromHash(location.hash));
   const [query, setQuery] = useState("");
   const [showAll, setShowAll] = useState(false);
@@ -32,7 +36,7 @@ export default function Rules() {
   const group = ruleGroups.find(item => item.id === active.group);
   const activeIndex = ruleSections.indexOf(active);
   const searching = Boolean(query.trim());
-  const results = searchRulebook(query);
+  const results = searchRulebook(query, ruleSections);
   const displayed = searching || showAll ? results : results.filter(section => section.id === active.id);
   const resultCount = results.reduce((total, section) => total + section.entries.length, 0);
 
@@ -109,7 +113,8 @@ export default function Rules() {
         <div className="rules-content" ref={readerRef} tabIndex={-1}>
           <div className="rules-reader">
             <div className="rules-reader-bar"><span><BookOpen size={13} />{searching ? "Search results" : showAll ? "Complete rulebook" : group.title}</span><span>{searching ? `${displayed.length} topics` : showAll ? `${ruleSections.length} topics` : `Topic ${String(activeIndex + 1).padStart(2, "0")} / ${ruleSections.length}`}</span></div>
-            {!displayed.length ? <div className="rules-empty"><Search size={30} /><h2>No rules found</h2><p>Try “stream”, “Hardpoint”, “roster” or a shorter search.</p><button type="button" className="rules-support-link" onClick={() => setQuery("")}>Clear search <X size={14} /></button></div> : displayed.map(section => {
+            {active.id === "topfragg-variant" && !searching && !showAll && !active.rules.length && <div className="rules-empty"><BookOpen size={30} /><h2>{variantRules.isPending ? "Loading Topfragg Variant rules..." : variantRules.isError ? "Could not load Topfragg Variant rules" : "No Topfragg Variant rules published yet"}</h2>{variantRules.isError && <button onClick={() => variantRules.refetch()}>Retry</button>}</div>}
+            {!displayed.length && !(active.id === "topfragg-variant" && !searching && !showAll) ? <div className="rules-empty"><Search size={30} /><h2>No rules found</h2><p>Try “stream”, “Hardpoint”, “roster” or a shorter search.</p><button type="button" className="rules-support-link" onClick={() => setQuery("")}>Clear search <X size={14} /></button></div> : displayed.map(section => {
               const Icon = icons[section.icon];
               return <section key={section.id} id={section.id} className="rules-section" data-tone={groupTones[section.group]} aria-labelledby={`heading-${section.id}`}>
                 <header className="rules-section-header"><div className="rules-section-icon"><Icon size={23} /></div><div><p className="rules-eyebrow">{ruleGroups.find(item => item.id === section.group).title}</p><h2 id={`heading-${section.id}`}><Highlight text={section.title} query={query} /></h2><p className="rules-section-description">{section.description}</p></div><button type="button" className="rules-icon-button rules-copy" title="Copy link to this topic" aria-label={copiedId === section.id ? `Link copied for ${section.title}` : `Copy link to ${section.title}`} onClick={() => copySection(section.id)}>{copiedId === section.id ? <Check size={16} /> : <Copy size={16} />}</button></header>
