@@ -21,7 +21,7 @@
   [data-roster-layout="standard"] .match-player-card { align-items: center; column-gap: 12px; }
 }
 @container (min-width: 1020px) {
-  [data-roster-layout="ladder"] .match-roster-columns { grid-template-columns: minmax(190px, 1.3fr) minmax(170px, .9fr) minmax(110px, .8fr) 85px 70px minmax(170px, 1fr) 86px; }
+  [data-roster-layout="ladder"] .match-roster-columns { grid-template-columns: minmax(190px, 1.3fr) minmax(170px, .9fr) minmax(110px, .8fr) minmax(170px, 1fr) 85px 70px 86px; }
   [data-roster-layout="ladder"] .match-roster-head { display: grid; }
   [data-roster-layout="ladder"] .match-player-identity { grid-column: auto; }
   [data-roster-layout="ladder"] .match-player-field-label { display: none; }
