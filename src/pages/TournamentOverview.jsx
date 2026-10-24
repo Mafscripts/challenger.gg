@@ -36,7 +36,7 @@ import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import PageLoader from "@/components/ui/PageLoader";
 import { tournamentGameId, tournamentGameName } from "@/lib/tournamentGames";
-import { visibleTournamentMatches } from "@/lib/tournamentBracketView";
+import TournamentOverviewBracket from "@/components/tournaments/TournamentOverviewBracket";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -188,47 +188,6 @@ function TournamentRosterPlayerCard({ player, captain }) {
         <div className="px-2 py-2"><p className="text-[7px] font-black uppercase tracking-wider text-vapor">Level</p><p className="mt-1 font-mono text-xs font-black text-cyan">{player?.xp_level || 1}</p></div>
       </div>
     </article>
-  );
-}
-
-function BracketPreview({ matches }) {
-  const rounds = useMemo(() => {
-    const groups = new Map();
-    visibleTournamentMatches(matches).forEach((match) => {
-      const key = `${match.bracket || "winner"}-${match.round || 1}`;
-      if (!groups.has(key)) groups.set(key, []);
-      groups.get(key).push(match);
-    });
-    return [...groups.entries()];
-  }, [matches]);
-
-  if (!rounds.length) {
-    return (
-      <div className="overview-panel overview-empty px-5 py-16 text-center">
-        <Layers3 className="mx-auto h-9 w-9 text-vapor/25" />
-        <p className="mt-3 text-sm font-black">Bracket not generated yet</p>
-        <p className="mt-1 text-xs text-vapor">The bracket appears here as soon as registration is locked.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="overview-panel overview-bracket overflow-x-auto p-4">
-      <div className="grid min-w-max gap-5" style={{ gridTemplateColumns: `repeat(${rounds.length}, minmax(210px, 1fr))` }}>
-        {rounds.map(([key, roundMatches]) => (
-          <div key={key} className="space-y-3">
-            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan">{key.replace("-", " · Round ")}</p>
-            {roundMatches.map((match) => (
-              <Link key={match.id} to={`/tournament-match/${match.id}`} className="block rounded-lg border border-white/[0.07] bg-background/60 p-3 transition-colors hover:border-cyan/25">
-                {match.bye && <p className="mb-2 text-[9px] font-bold uppercase tracking-wide text-cyan">Bye · auto advance</p>}
-                <div className="flex items-center justify-between gap-3 border-b border-white/[0.05] pb-2 text-xs font-bold"><span className="truncate">{match.team_a_name || (match.team_a_bye ? "Bye" : "TBD")}</span><span>{match.bye ? "—" : match.team_a_score ?? "—"}</span></div>
-                <div className="flex items-center justify-between gap-3 pt-2 text-xs font-bold"><span className="truncate">{match.team_b_name || (match.team_b_bye ? "Bye" : "TBD")}</span><span>{match.bye ? "—" : match.team_b_score ?? "—"}</span></div>
-              </Link>
-            ))}
-          </div>
-        ))}
-      </div>
-    </div>
   );
 }
 
@@ -611,7 +570,7 @@ export default function TournamentOverview() {
           </div>
         )}
 
-        {activeTab === "bracket" && <div className="mt-7">{matchesLoading ? <p role="status" className="p-6 text-sm text-vapor">Loading bracket…</p> : matchesError ? <div className="to-load-error" role="alert">The bracket could not be loaded.<button type="button" onClick={loadPage}>Try again</button></div> : <BracketPreview matches={matches} />}</div>}
+        {activeTab === "bracket" && <div className="mt-7">{matchesLoading ? <p role="status" className="p-6 text-sm text-vapor">Loading bracket…</p> : matchesError ? <div className="to-load-error" role="alert">The bracket could not be loaded.<button type="button" onClick={loadPage}>Try again</button></div> : <TournamentOverviewBracket matches={matches} tournament={tournament} />}</div>}
         {activeTab === "participants" && (
           <div className="mt-7">
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
