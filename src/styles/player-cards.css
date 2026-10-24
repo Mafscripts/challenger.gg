@@ -88,6 +88,44 @@
 [data-atmosphere="solar"] .pc-mote{width:2px;height:2px}
 [data-atmosphere="petals"] .pc-mote{width:7px;height:3.5px}
 [data-atmosphere="mist"] .pc-mote{width:36px;height:12px;background:radial-gradient(ellipse,#c7badb99,transparent 70%);box-shadow:none;animation:pc-silk-mist var(--mote-time) linear infinite}
+/* Fifteen additional scenes: looping textures and one-way particles, never ping-pong. */
+[data-atmosphere="tracer"] .pc-scene-haze{background:radial-gradient(ellipse at 80% 65%,#c6b99a85,transparent 48%);animation:pc-silk-mist 12s linear infinite}
+[data-atmosphere="tracer"] .pc-mote{width:20px;height:1px;background:linear-gradient(90deg,transparent,#eadbb8);animation:pc-side-stream var(--mote-time) linear infinite}
+[data-atmosphere="road"] .pc-scene-light{inset:65% 0 0 30%;opacity:.65;background:repeating-linear-gradient(100deg,transparent 0 120px,#b2dbff80 140px,transparent 180px 240px);background-size:240px 100%;animation:pc-road-light 5s linear infinite}
+[data-atmosphere="road"] .pc-mote{width:25px;height:1px;background:#bad6e9;animation:pc-side-stream var(--mote-time) linear infinite}
+[data-atmosphere="dust"] .pc-mote,[data-atmosphere="sand"] .pc-mote{width:3px;height:2px;background:#dac29b;animation:pc-side-stream var(--mote-time) linear infinite}
+[data-atmosphere="dust"] .pc-scene-haze,[data-atmosphere="sand"] .pc-scene-haze{background:radial-gradient(ellipse at 85% 80%,#d3b38c90,transparent 55%);animation:pc-silk-mist 8s linear infinite}
+[data-atmosphere="sand"] .pc-scene-light{inset:70% 0 0 30%;background:repeating-linear-gradient(110deg,transparent 0 80px,#c7b08a65 100px,transparent 160px);background-size:160px 100%;opacity:.5;animation:pc-salt-road 3s linear infinite}
+[data-atmosphere="contrail"] .pc-mote{width:95px;height:2px;background:linear-gradient(90deg,transparent,#d6e8ef95,transparent);animation:pc-side-stream calc(var(--mote-time) * 1.5) linear infinite}
+[data-atmosphere="contrail"] .pc-scene-haze{background:radial-gradient(ellipse at 80% 90%,#cbd9e990,transparent 55%);animation:pc-silk-mist 14s linear infinite}
+[data-atmosphere="bubbles"] .pc-mote{width:5px;height:5px;border:1px solid #bde9eab0;background:transparent;animation:pc-bubble-rise var(--mote-time) linear infinite}
+[data-atmosphere="bubbles"] .pc-scene-light{background:repeating-linear-gradient(110deg,transparent 0 80px,#8ecbc445 120px,transparent 180px 240px);background-size:240px 100%;opacity:.4;animation:pc-road-light 16s linear infinite}
+[data-atmosphere="moon"] .pc-mote{background:#dce5ee;animation:pc-lunar-drift var(--mote-time) linear infinite}
+[data-atmosphere="moon"] .pc-scene-haze{background:radial-gradient(ellipse at 85% 95%,#c5cddc80,transparent 50%);animation:pc-silk-mist 17s linear infinite}
+[data-atmosphere="harbor"] .pc-mote{width:1px;height:12px;background:linear-gradient(transparent,#c4dfeb);animation:pc-soft-rain calc(var(--mote-time) * .6) linear infinite}
+[data-atmosphere="harbor"] .pc-scene-light{background:linear-gradient(105deg,transparent 42%,#d1e1e975 50%,transparent 58%);animation:pc-silver-pass 10s linear infinite}
+[data-atmosphere="orbit"] .pc-mote{background:#c7e6d8;animation:pc-orbit-travel var(--mote-time) linear infinite}
+[data-atmosphere="orbit"] .pc-scene-haze{background:radial-gradient(ellipse at 80% 65%,#93baa760,transparent 50%);animation:pc-quiet-glow 10s linear infinite}
+[data-atmosphere="speed"] .pc-mote{width:60px;height:1px;background:linear-gradient(90deg,transparent,#c4e7f2);animation:pc-side-stream calc(var(--mote-time) * .65) linear infinite}
+[data-atmosphere="speed"] .pc-scene-light{background:linear-gradient(100deg,transparent 40%,#abcdd875 50%,transparent 60%);animation:pc-silver-pass 6s linear infinite}
+[data-atmosphere="signal"] .pc-scene-light{inset:auto 5% -60px auto;width:220px;height:220px;border-radius:50%;opacity:.4;background:conic-gradient(from 0deg,transparent 0deg 290deg,#a8d8c480 355deg,transparent 360deg);animation:pc-round-sweep 12s linear infinite}
+[data-atmosphere="signal"] .pc-mote{width:2px;height:2px;background:#d3e6e0;animation:pc-snowfall var(--mote-time) linear infinite}
+[data-atmosphere="gears"] .pc-scene-light{inset:auto 8% -50px auto;width:180px;height:180px;border:1px dashed #d7c6a785;border-radius:50%;opacity:.55;background:repeating-conic-gradient(#cfbc9245 0deg 4deg,transparent 4deg 30deg);mask-image:radial-gradient(transparent 50%,#000 52%,#000 66%,transparent 68%);animation:pc-round-sweep 30s linear infinite}
+[data-atmosphere="gears"] .pc-mote{background:#decb9b;animation:pc-orbit-travel var(--mote-time) linear infinite}
+[data-atmosphere="jelly"] .pc-mote{width:4px;height:4px;background:#d9d1f0;animation:pc-bubble-rise calc(var(--mote-time) * 1.4) linear infinite}
+[data-atmosphere="jelly"] .pc-scene-haze{background:radial-gradient(ellipse at 82% 60%,#baafd385,transparent 50%);animation:pc-silk-mist 11s linear infinite}
+[data-atmosphere="runes"] .pc-mote{width:5px;height:7px;border:1px solid #bedaca;background:transparent;border-radius:1px;animation:pc-rune-rise var(--mote-time) linear infinite}
+[data-atmosphere="runes"] .pc-scene-haze{background:radial-gradient(ellipse at 80% 85%,#9ebca180,transparent 52%);animation:pc-silk-mist 14s linear infinite}
+[data-atmosphere="vinyl"] .pc-scene-light{inset:auto 7% -75px auto;width:230px;height:230px;border-radius:50%;opacity:.4;background:conic-gradient(transparent 0deg 60deg,#d8c7a580 85deg,transparent 115deg 240deg,#d8c7a560 270deg,transparent 300deg);mask-image:radial-gradient(transparent 20%,#000 22%,#000 65%,transparent 67%);animation:pc-round-sweep 9s linear infinite}
+[data-atmosphere="vinyl"] .pc-mote{background:#ddd0b8;animation:pc-lunar-drift var(--mote-time) linear infinite}
+@keyframes pc-side-stream{0%{opacity:0;transform:translate3d(100px,0,0)}20%,70%{opacity:.65}100%{opacity:0;transform:translate3d(-120px,8px,0)}}
+@keyframes pc-road-light{from{background-position:0 0}to{background-position:-240px 0}}
+@keyframes pc-salt-road{from{background-position:0 0}to{background-position:-160px 0}}
+@keyframes pc-bubble-rise{0%{opacity:0;transform:translate3d(0,45px,0) scale(.6)}20%,70%{opacity:.65}100%{opacity:0;transform:translate3d(var(--mote-drift),-75px,0) scale(1.2)}}
+@keyframes pc-lunar-drift{0%{opacity:0;transform:translate3d(25px,15px,0)}30%,65%{opacity:.6}100%{opacity:0;transform:translate3d(-40px,-20px,0)}}
+@keyframes pc-orbit-travel{0%{opacity:0;transform:translate3d(-30px,20px,0)}25%,70%{opacity:.6}100%{opacity:0;transform:translate3d(50px,-25px,0)}}
+@keyframes pc-round-sweep{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes pc-rune-rise{0%{opacity:0;transform:translate3d(0,35px,0) rotate(0deg)}25%,65%{opacity:.6}100%{opacity:0;transform:translate3d(var(--mote-drift),-55px,0) rotate(90deg)}}
 .pc-atmosphere[data-motion-paused="true"]>i{animation-play-state:paused!important}
 .player-card-option .pc-atmosphere>i{animation-play-state:paused}
 .player-card-option:is(:hover,:focus-visible,[aria-pressed="true"]) .pc-atmosphere>i{animation-play-state:running}

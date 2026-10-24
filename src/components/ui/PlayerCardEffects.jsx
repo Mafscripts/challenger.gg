@@ -29,7 +29,7 @@ export default function PlayerCardEffects({ player }) {
     return () => { observer?.disconnect(); resize?.disconnect(); cancelAnimationFrame(frame); document.removeEventListener("visibilitychange", update); };
   }, [theme?.id]);
   if (!theme) return null;
-  const count = { rain: 16, embers: 12, tide: 14, solar: 8, snow: 16, mist: 7, fireflies: 12, chrome: 9, lava: 12, petals: 12 }[theme.motion];
+  const count = { rain: 16, embers: 12, tide: 14, solar: 8, snow: 16, mist: 7, fireflies: 12, chrome: 9, lava: 12, petals: 12, tracer: 10, road: 12, dust: 16, contrail: 8, bubbles: 14, moon: 10, harbor: 16, sand: 16, orbit: 12, speed: 14, signal: 12, gears: 8, jelly: 14, runes: 10, vinyl: 8 }[theme.motion] ?? 8;
   return <span ref={element} className="pc-atmosphere" data-atmosphere={theme.motion} aria-hidden="true">
     <i className="pc-scene-light" /><i className="pc-scene-haze" />
     {Array.from({ length: count }, (_, index) => <i key={index} className="pc-mote" style={{ "--mote-x": `${38 + ((index * 17) % 58)}%`, "--mote-y": `${12 + ((index * 23) % 72)}%`, "--mote-delay": `${-index * 2.73}s`, "--mote-time": `${4.5 + (index % 4) * 1.3}s`, "--mote-drift": `${index % 2 ? -28 : 34}px` }} />)}

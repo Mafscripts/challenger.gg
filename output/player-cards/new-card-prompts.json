@@ -1,0 +1,65 @@
+{
+  "generator": "Built-in imagegen",
+  "prompts": [
+    {
+      "id": "midnight-armory",
+      "prompt": "Use case: stylized-concept. Production artwork texture atlas for a game player card. Overall image landscape 3:1. FOUR equal-height horizontal rows stacked exactly edge to edge, no borders, no lettering. Each row is a complete extremely wide cinematic 12:1 panorama of the SAME scene: M16 rifle side profile on a dark armory workbench, brushed steel, restrained amber light. Full main subject fits entirely within each narrow row height, at right 25%, no cropping. Left 65% quiet dark environmental scenery, seamless soft atmosphere across width, no hard vertical division. Premium detailed realistic concept art, restrained colors, readable as a very thin game banner. Each row repeats the scene with a slight variation. No logos, UI, labels, writing, watermarks. Subject fully visible in second row especially."
+    },
+    {
+      "id": "apex-runner",
+      "prompt": "Use case: stylized-concept. Production artwork texture atlas for a game player card. Overall image landscape 3:1. FOUR equal-height horizontal rows stacked exactly edge to edge, no borders, no lettering. Each row is a complete extremely wide cinematic 12:1 panorama of the SAME scene: silver exotic sports car at night on a wet coastal highway, cool blue headlight reflections. Full main subject fits entirely within each narrow row height, at right 25%, no cropping. Left 65% quiet dark environmental scenery, seamless soft atmosphere across width, no hard vertical division. Premium detailed realistic concept art, restrained colors, readable as a very thin game banner. Each row repeats the scene with a slight variation. No logos, UI, labels, writing, watermarks. Subject fully visible in second row especially."
+    },
+    {
+      "id": "iron-bastion",
+      "prompt": "Use case: stylized-concept. Production artwork texture atlas for a game player card. Overall image landscape 3:1. FOUR equal-height horizontal rows stacked exactly edge to edge, no borders, no lettering. Each row is a complete extremely wide cinematic 12:1 panorama of the SAME scene: modern main battle tank in a dusty desert canyon at dusk, full vehicle low silhouette. Full main subject fits entirely within each narrow row height, at right 25%, no cropping. Left 65% quiet dark environmental scenery, seamless soft atmosphere across width, no hard vertical division. Premium detailed realistic concept art, restrained colors, readable as a very thin game banner. Each row repeats the scene with a slight variation. No logos, UI, labels, writing, watermarks. Subject fully visible in second row especially."
+    },
+    {
+      "id": "falcon-flight",
+      "prompt": "Use case: stylized-concept. Production artwork texture atlas for a game player card. Overall image landscape 3:1. FOUR equal-height horizontal rows stacked exactly edge to edge, no borders, no lettering. Each row is a complete extremely wide cinematic 12:1 panorama of the SAME scene: F-16 fighter jet flying sideways above a cloud ocean at dusk, full wings visible. Full main subject fits entirely within each narrow row height, at right 25%, no cropping. Left 65% quiet dark environmental scenery, seamless soft atmosphere across width, no hard vertical division. Premium detailed realistic concept art, restrained colors, readable as a very thin game banner. Each row repeats the scene with a slight variation. No logos, UI, labels, writing, watermarks. Subject fully visible in second row especially."
+    },
+    {
+      "id": "abyss-station",
+      "prompt": "Use case: stylized-concept. Production artwork texture atlas for a game player card. Overall image landscape 3:1. FOUR equal-height horizontal rows stacked exactly edge to edge, no borders, no lettering. Each row is a complete extremely wide cinematic 12:1 panorama of the SAME scene: deep sea research submarine beside bioluminescent reef, navy ocean and pale teal. Full main subject fits entirely within each narrow row height, at right 25%, no cropping. Left 65% quiet dark environmental scenery, seamless soft atmosphere across width, no hard vertical division. Premium detailed realistic concept art, restrained colors, readable as a very thin game banner. Each row repeats the scene with a slight variation. No logos, UI, labels, writing, watermarks. Subject fully visible in second row especially."
+    },
+    {
+      "id": "lunar-rover",
+      "prompt": "Use case: stylized-concept. Production artwork texture atlas for a game player card. Overall image landscape 3:1. FOUR equal-height horizontal rows stacked exactly edge to edge, no borders, no lettering. Each row is a complete extremely wide cinematic 12:1 panorama of the SAME scene: lunar rover on moon surface beneath earthrise and distant crater rim, silver grey. Full main subject fits entirely within each narrow row height, at right 25%, no cropping. Left 65% quiet dark environmental scenery, seamless soft atmosphere across width, no hard vertical division. Premium detailed realistic concept art, restrained colors, readable as a very thin game banner. Each row repeats the scene with a slight variation. No logos, UI, labels, writing, watermarks. Subject fully visible in second row especially."
+    },
+    {
+      "id": "storm-harbor",
+      "prompt": "Use case: stylized-concept. Production artwork texture atlas for a game player card. Overall image landscape 3:1. FOUR equal-height horizontal rows stacked exactly edge to edge, no borders, no lettering. Each row is a complete extremely wide cinematic 12:1 panorama of the SAME scene: stealth destroyer ship in rain at a stormy harbor, distant lighthouse, steel blue. Full main subject fits entirely within each narrow row height, at right 25%, no cropping. Left 65% quiet dark environmental scenery, seamless soft atmosphere across width, no hard vertical division. Premium detailed realistic concept art, restrained colors, readable as a very thin game banner. Each row repeats the scene with a slight variation. No logos, UI, labels, writing, watermarks. Subject fully visible in second row especially."
+    },
+    {
+      "id": "desert-interceptor",
+      "prompt": "Use case: stylized-concept. Production artwork texture atlas for a game player card. Overall image landscape 3:1. FOUR equal-height horizontal rows stacked exactly edge to edge, no borders, no lettering. Each row is a complete extremely wide cinematic 12:1 panorama of the SAME scene: black rally supercar racing over a dusty salt flat at sunset, restrained copper. Full main subject fits entirely within each narrow row height, at right 25%, no cropping. Left 65% quiet dark environmental scenery, seamless soft atmosphere across width, no hard vertical division. Premium detailed realistic concept art, restrained colors, readable as a very thin game banner. Each row repeats the scene with a slight variation. No logos, UI, labels, writing, watermarks. Subject fully visible in second row especially."
+    },
+    {
+      "id": "orbital-garden",
+      "prompt": "Use case: stylized-concept. Production artwork texture atlas for a game player card. Overall image landscape 3:1. FOUR equal-height horizontal rows stacked exactly edge to edge, no borders, no lettering. Each row is a complete extremely wide cinematic 12:1 panorama of the SAME scene: orbital space station greenhouse windows around curved habitat ring, distant planet, sage blue. Full main subject fits entirely within each narrow row height, at right 25%, no cropping. Left 65% quiet dark environmental scenery, seamless soft atmosphere across width, no hard vertical division. Premium detailed realistic concept art, restrained colors, readable as a very thin game banner. Each row repeats the scene with a slight variation. No logos, UI, labels, writing, watermarks. Subject fully visible in second row especially."
+    },
+    {
+      "id": "ghost-rider",
+      "prompt": "Use case: stylized-concept. Production artwork texture atlas for a game player card. Overall image landscape 3:1. FOUR equal-height horizontal rows stacked exactly edge to edge, no borders, no lettering. Each row is a complete extremely wide cinematic 12:1 panorama of the SAME scene: sleek futuristic motorcycle beside a misty industrial tunnel, quiet silver and cyan. Full main subject fits entirely within each narrow row height, at right 25%, no cropping. Left 65% quiet dark environmental scenery, seamless soft atmosphere across width, no hard vertical division. Premium detailed realistic concept art, restrained colors, readable as a very thin game banner. Each row repeats the scene with a slight variation. No logos, UI, labels, writing, watermarks. Subject fully visible in second row especially."
+    },
+    {
+      "id": "polar-signal",
+      "prompt": "Use case: stylized-concept. Production artwork texture atlas for a game player card. Overall image landscape 3:1. FOUR equal-height horizontal rows stacked exactly edge to edge, no borders, no lettering. Each row is a complete extremely wide cinematic 12:1 panorama of the SAME scene: radar dish station on snowy arctic plateau beneath soft aurora, ice blue and sage. Full main subject fits entirely within each narrow row height, at right 25%, no cropping. Left 65% quiet dark environmental scenery, seamless soft atmosphere across width, no hard vertical division. Premium detailed realistic concept art, restrained colors, readable as a very thin game banner. Each row repeats the scene with a slight variation. No logos, UI, labels, writing, watermarks. Subject fully visible in second row especially."
+    },
+    {
+      "id": "clockwork-vault",
+      "prompt": "Use case: stylized-concept. Production artwork texture atlas for a game player card. Overall image landscape 3:1. FOUR equal-height horizontal rows stacked exactly edge to edge, no borders, no lettering. Each row is a complete extremely wide cinematic 12:1 panorama of the SAME scene: intricate antique brass mechanical watch movement and gears in shadow, warm bronze. Full main subject fits entirely within each narrow row height, at right 25%, no cropping. Left 65% quiet dark environmental scenery, seamless soft atmosphere across width, no hard vertical division. Premium detailed realistic concept art, restrained colors, readable as a very thin game banner. Each row repeats the scene with a slight variation. No logos, UI, labels, writing, watermarks. Subject fully visible in second row especially."
+    },
+    {
+      "id": "jellyfish-dream",
+      "prompt": "Use case: stylized-concept. Production artwork texture atlas for a game player card. Overall image landscape 3:1. FOUR equal-height horizontal rows stacked exactly edge to edge, no borders, no lettering. Each row is a complete extremely wide cinematic 12:1 panorama of the SAME scene: translucent jellyfish floating underwater in deep indigo, luminous muted lilac. Full main subject fits entirely within each narrow row height, at right 25%, no cropping. Left 65% quiet dark environmental scenery, seamless soft atmosphere across width, no hard vertical division. Premium detailed realistic concept art, restrained colors, readable as a very thin game banner. Each row repeats the scene with a slight variation. No logos, UI, labels, writing, watermarks. Subject fully visible in second row especially."
+    },
+    {
+      "id": "obsidian-temple",
+      "prompt": "Use case: stylized-concept. Production artwork texture atlas for a game player card. Overall image landscape 3:1. FOUR equal-height horizontal rows stacked exactly edge to edge, no borders, no lettering. Each row is a complete extremely wide cinematic 12:1 panorama of the SAME scene: ancient black stone temple and floating mineral shards over misty lake, muted jade. Full main subject fits entirely within each narrow row height, at right 25%, no cropping. Left 65% quiet dark environmental scenery, seamless soft atmosphere across width, no hard vertical division. Premium detailed realistic concept art, restrained colors, readable as a very thin game banner. Each row repeats the scene with a slight variation. No logos, UI, labels, writing, watermarks. Subject fully visible in second row especially."
+    },
+    {
+      "id": "vinyl-afterhours",
+      "prompt": "Use case: stylized-concept. Production artwork texture atlas for a game player card. Overall image landscape 3:1. FOUR equal-height horizontal rows stacked exactly edge to edge, no borders, no lettering. Each row is a complete extremely wide cinematic 12:1 panorama of the SAME scene: high end vinyl turntable and spinning record in a cinematic late night recording studio, warm grey and amber. Full main subject fits entirely within each narrow row height, at right 25%, no cropping. Left 65% quiet dark environmental scenery, seamless soft atmosphere across width, no hard vertical division. Premium detailed realistic concept art, restrained colors, readable as a very thin game banner. Each row repeats the scene with a slight variation. No logos, UI, labels, writing, watermarks. Subject fully visible in second row especially."
+    }
+  ]
+}

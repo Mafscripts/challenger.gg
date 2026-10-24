@@ -30,15 +30,15 @@ test("only known card identifiers can be saved on the authenticated account; exi
   for (const value of ["javascript:alert(1)", "/external.png", "https://example.com/image.png", null, {}, ["frostbite"]]) assert.equal((await request({ player_card_theme: value })).status, 400);
   assert.equal((await request({ user_id: "other", player_card_theme: "frostbite" })).status, 403);
   assert.equal((await request({ player_card_theme: "" })).status, 200);
-  assert.equal(account.metadata.player_card_theme, ""); assert.equal(updates.length, 11);
+  assert.equal(account.metadata.player_card_theme, ""); assert.equal(updates.length, playerCardThemes.length + 1);
   for (const motion of ["auto", "on", "off"]) {
     assert.equal((await request({ player_card_motion: motion })).status, 200);
     assert.equal(account.metadata.player_card_motion, motion);
   }
   for (const motion of ["fast", null, {}, true]) assert.equal((await request({ player_card_motion: motion })).status, 400);
 });
-test("ten original optimized images and safe card presentation support the classic fallback", async () => {
-  assert.equal(playerCardThemes.length, 10); assert.equal(new Set(playerCardThemes.map(theme => theme.id)).size, 10);
+test("25 original optimized images and safe card presentation support the classic fallback", async () => {
+  assert.equal(playerCardThemes.length, 25); assert.equal(new Set(playerCardThemes.map(theme => theme.id)).size, 25);
   let total = 0;
   for (const theme of playerCardThemes) {
     const url = new URL(`../public/images/player-cards/${theme.id}.webp`, import.meta.url);
@@ -52,7 +52,7 @@ test("ten original optimized images and safe card presentation support the class
     assert.ok(playerCardAppearance(theme.id).style["--pc-desktop-art"].includes(`/desktop-fit/${theme.id}.webp`));
     assert.ok(!playerCardAppearance(theme.id).style["--pc-art"].includes("/desktop/"));
   }
-  assert.ok(total < 1500000);
+  assert.ok(total < 4000000);
   assert.deepEqual(playerCardAppearance({ player_card_theme: "https://evil.example" }), {});
   assert.deepEqual(playerCardAppearance({}), {});
 });

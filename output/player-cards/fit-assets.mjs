@@ -1,12 +1,13 @@
 import sharp from 'sharp';
 import {mkdir,readFile,writeFile} from 'node:fs/promises';
-const manifest=JSON.parse(await readFile('output/player-cards/atlas-manifest.json','utf8'));
+const manifest=JSON.parse(await readFile(process.argv[2] || 'output/player-cards/atlas-manifest.json','utf8'));
 const shapes=[['desktop-fit',2160,160],['desktop-fit-wide',3200,160],['desktop-fit-compact',1080,200]];
 for(const [dir]of shapes)await mkdir(`public/images/player-cards/${dir}`,{recursive:true});
 for(const item of manifest){
  const meta=await sharp(item.path).metadata();
  const rowH=Math.floor(meta.height/4),top=rowH+3,height=rowH-6;
  const strip=await sharp(item.path).extract({left:0,top,width:meta.width,height}).png().toBuffer();
+ if(process.argv.includes('--mobile'))await sharp(strip).resize(1080,300,{fit:'cover',position:'right'}).webp({quality:87,effort:6}).toFile(`public/images/player-cards/${item.id}.webp`);
  for(const[dir,width,outH]of shapes){
   const ambient=await sharp(strip).extract({left:0,top:0,width:Math.floor(meta.width*.55),height}).resize(width,outH,{fit:'fill'}).blur(.6).png().toBuffer();
   let fg=await sharp(strip).resize({height:Math.round(outH*.92)}).png().toBuffer();let fm=await sharp(fg).metadata();
