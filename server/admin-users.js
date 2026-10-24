@@ -59,6 +59,7 @@ const directoryFields = ["id", "username", "handle", "display_name", "full_name"
 export async function getAdminUsers(db, actor, body = {}) {
   if (!hasRole(actor, "moderator")) fail("Moderator access required", 403);
   const admin = hasRole(actor, "admin");
+  const includeWallets = admin && body.include_wallets !== false;
   const search = String(body.search || "").trim().toLowerCase().slice(0, 200);
   const sharedOnly = admin && body.shared_only === true;
   const includeSecurity = admin && (body.include_security !== false || sharedOnly);
@@ -96,6 +97,13 @@ export async function getAdminUsers(db, actor, body = {}) {
     db.$queryRaw`SELECT COUNT(*)::int AS total FROM "User" WHERE ${sharedWhere} AND ${searchWhere}`,
   ]);
   const page = candidates.slice(0, 25);
+  // The directory only needs balances for its current page. Use the same
+  // canonical wallet as wallet management, without returning whole wallets.
+  const wallets = includeWallets && page.length ? await db.$queryRaw`SELECT DISTINCT ON (metadata->>'user_id')
+    metadata->>'user_id' AS user_id, metadata->'available_balance' AS available_balance
+    FROM "Wallet" WHERE metadata->>'user_id' IN (${Prisma.join(page.map((user) => user.id))})
+    ORDER BY metadata->>'user_id', created_date ASC, id ASC` : [];
+  const availableBalanceByUser = new Map(wallets.map((wallet) => [wallet.user_id, wallet.available_balance ?? 0]));
   const rows = page.map((user) => {
     const flat = { ...user.metadata, ...user };
     const result = Object.fromEntries(directoryFields.filter((key) => flat[key] !== undefined).map((key) => [key, flat[key]]));
@@ -103,6 +111,7 @@ export async function getAdminUsers(db, actor, body = {}) {
     if (hasRole(actor, "ceo")) result.vpn_access_allowed = user.vpn_access_allowed === true;
     if (admin) {
       for (const key of ["credits", "wallet_balance", "ban_reason"]) result[key] = user[key];
+      if (includeWallets) result.available_balance = availableBalanceByUser.get(user.id) ?? 0;
       if (includeSecurity) {
         for (const key of ["registration_ip", "last_login_ip", "last_seen_ip", "ip_history"]) result[key] = user.metadata?.[key];
         result.shared_ip_account_count = shared.get(user.id)?.size || 0;

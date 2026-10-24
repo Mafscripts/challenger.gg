@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useInfiniteQuery, useQueries, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { canAccessAdminPanel, canManageRoles, canManageWallets, effectiveRoleForUser } from "@/lib/roles";
 
@@ -15,11 +15,11 @@ const entities = {
 const overviewKeys = ["dashboardOverview"];
 const sectionKeys = {
   dashboard: overviewKeys,
-  users: ["wallets"], roles: [], alerts: ["adminAlerts", "tickets"],
+  users: [], roles: [], alerts: ["adminAlerts", "tickets"],
   websiteUpdates: [], tickets: [], banAppeals: [], wagers: ["wagers"],
   challenges: [], live8s: [], eightsGames: [], ranked: ["users", "rankedMatches", "rankedStats"],
   verifyRank: ["users"], progression: [],
-  tournaments: ["tournaments", "tournamentMatches", "tournamentParticipants", "users", "marketplace"],
+  tournaments: ["tournaments", "tournamentMatches", "marketplace"],
   tournamentMatches: ["tournamentMatches"], wallets: [],
   referrals: ["referralProgram"], freeTrials: ["animatedNameFreeTrial", "users"],
   withdrawals: ["withdrawals", "users"], marketplace: ["marketplace"],
@@ -34,7 +34,7 @@ const combineQueries = (results) => ({
   }])),
 });
 
-async function loadRows(key) {
+async function loadRows(key, tournamentRosterId) {
   if (key === "dashboardOverview") {
     const response = await base44.functions.invoke("getAdminDashboard", {});
     if (!response.data?.success) throw new Error(response.data?.error || "Could not load dashboard totals");
@@ -67,7 +67,8 @@ async function loadRows(key) {
   }
   if (entities[key]) {
     try {
-      return await base44.entities[entities[key]].filterFresh({}, "-created_date", 500);
+      const filter = key === "tournamentParticipants" ? { tournament_id: tournamentRosterId } : {};
+      return await base44.entities[entities[key]].filterFresh(filter, "-created_date", 500);
     } catch (error) {
       // Some lists are intentionally unavailable to moderators.
       if (error.status === 403) return [];
@@ -84,18 +85,22 @@ async function loadRows(key) {
   return response.data.trial;
 }
 
-export function useAdminConsoleData(user, activeTab, userFilters = {}) {
+export function useAdminConsoleData(user, activeTab, userFilters = {}, options = {}) {
   const queryClient = useQueryClient();
   const role = effectiveRoleForUser(user);
   const allowed = Boolean(user?.id) && canAccessAdminPanel(role);
   const scope = `${user?.id}:${role}`;
   const directoryTab = ["users", "roles"].includes(activeTab);
   const sharedOnly = activeTab === "users" && Boolean(userFilters.sharedOnly);
-  const [overviewScope, setOverviewScope] = useState(null);
-  const overviewReady = overviewScope === scope;
+  const tournamentRosterId = options.tournamentRosterId || null;
   const required = sectionKeys[activeTab] || sectionKeys.dashboard;
-  // Give the opened section priority before starting unrelated overview reads.
-  const enabledKeys = new Set([...required, ...(overviewReady ? overviewKeys : [])]);
+  const enabledKeys = new Set(required);
+  // Closed panels do not need platform-wide totals, rosters or player lists.
+  if (options.overviewOpen) enabledKeys.add("dashboardOverview");
+  if (activeTab === "tournaments") {
+    if (options.tournamentInviteOnly || tournamentRosterId) enabledKeys.add("users");
+    if (tournamentRosterId) enabledKeys.add("tournamentParticipants");
+  }
   const [directorySearches, setDirectorySearches] = useState({});
   const searchScope = `${scope}:${activeTab}`;
   const userSearch = directorySearches[searchScope] || "";
@@ -107,7 +112,7 @@ export function useAdminConsoleData(user, activeTab, userFilters = {}) {
     queryKey: ["admin-console", user?.id, role, "userDirectory", activeTab, userSearch, sharedOnly],
     initialPageParam: null,
     queryFn: async ({ pageParam }) => {
-      const response = await base44.functions.invoke("getAdminUsers", { cursor: pageParam, search: userSearch, shared_only: sharedOnly, include_security: activeTab !== "roles" });
+      const response = await base44.functions.invoke("getAdminUsers", { cursor: pageParam, search: userSearch, shared_only: sharedOnly, include_security: activeTab !== "roles", include_wallets: activeTab === "users" });
       if (!response.data?.success) throw new Error(response.data?.error || "Could not load users");
       return response.data;
     },
@@ -120,11 +125,12 @@ export function useAdminConsoleData(user, activeTab, userFilters = {}) {
     .flatMap((page) => page.rows).map((row) => [row.id, row])).values()], [userDirectory.data]);
   const queries = useQueries({
     queries: queryKeys.map((key) => ({
-      queryKey: ["admin-console", user?.id, role, key],
-      queryFn: () => key === "referralProgram" && !canManageRoles(role) ? null : loadRows(key),
+      queryKey: ["admin-console", user?.id, role, key, ...(key === "tournamentParticipants" ? [tournamentRosterId] : [])],
+      queryFn: () => key === "referralProgram" && !canManageRoles(role) ? null : loadRows(key, tournamentRosterId),
       enabled: allowed && enabledKeys.has(key),
       staleTime: 30000,
-      refetchInterval: key === "dashboardOverview" && activeTab === "dashboard" ? 60_000 : false,
+      refetchInterval: key === "dashboardOverview" && activeTab === "dashboard" ? 60_000
+        : key === "marketplace" && activeTab === "marketplace" ? 10_000 : false,
       refetchIntervalInBackground: false,
       refetchOnWindowFocus: false,
     })),
@@ -134,23 +140,24 @@ export function useAdminConsoleData(user, activeTab, userFilters = {}) {
   const data = useMemo(() => directoryTab ? { ...queries.data, users: directoryRows } : queries.data,
     [directoryTab, queries.data, directoryRows]);
 
-  useEffect(() => {
-    if (allowed && !sectionLoading) setOverviewScope(scope);
-  }, [allowed, sectionLoading, scope]);
-
-  useEffect(() => {
-    if (!allowed || !overviewReady || !canManageWallets(role)) return;
-    let active = true;
-    // Keep lifecycle updates, but never make opening the console wait for them.
-    base44.functions.invoke("syncTournamentLifecycle", {}).then((response) => {
-      if (!active || !response.data?.synced?.length) return;
-      void queryClient.invalidateQueries({
-        queryKey: ["admin-console", user.id, role],
-        predicate: (query) => ["dashboardOverview", "tournaments", "tournamentMatches", "tournamentParticipants"].includes(query.queryKey[3]),
-      });
-    }).catch((error) => console.warn("Tournament lifecycle sync failed:", error));
-    return () => { active = false; };
-  }, [allowed, overviewReady, user?.id, role, queryClient]);
+  useQuery({
+    queryKey: ["admin-console", user?.id, role, "tournamentLifecycle"],
+    queryFn: async () => {
+      const response = await base44.functions.invoke("syncTournamentLifecycle", {});
+      if (response.data?.synced?.length) {
+        void queryClient.invalidateQueries({
+          queryKey: ["admin-console", user.id, role],
+          predicate: (query) => ["dashboardOverview", "tournaments", "tournamentMatches", "tournamentParticipants"].includes(query.queryKey[3]),
+        });
+      }
+      return response.data;
+    },
+    enabled: allowed && canManageWallets(role) && !sectionLoading
+      && ["dashboard", "tournaments", "tournamentMatches"].includes(activeTab),
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+    retry: false,
+  });
 
   return {
     ...queries,

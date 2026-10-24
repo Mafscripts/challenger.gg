@@ -1,4 +1,3 @@
-import SiteAnnouncementAdmin from "@/components/admin/SiteAnnouncementAdmin";
 import useRouteSection from "@/hooks/useRouteSection";
 import { retainDataSnapshot } from "@/lib/dataSnapshot";
 import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
@@ -64,21 +63,33 @@ import { canAccessAdminPanel, canManageWallets, canViewUserIps, effectiveRoleFor
 import { getRankForElo } from "@/lib/ranks";
 import { consoleRestrictedFor } from "@/lib/playerRestrictions";
 
-const CompetitionRewardsAdmin = lazy(() => import("@/components/admin/CompetitionRewardsAdmin"));
-const ProgressionResets = lazy(() => import("@/components/admin/ProgressionResets"));
+const lazyAdminSection = (load) => {
+  let promise;
+  const preload = () => (promise ||= load());
+  return Object.assign(lazy(preload), { preload });
+};
+const CompetitionRewardsAdmin = lazyAdminSection(() => import("@/components/admin/CompetitionRewardsAdmin"));
+const ProgressionResets = lazyAdminSection(() => import("@/components/admin/ProgressionResets"));
 const UserSecurityPanel = lazy(() => import("@/components/admin/UserSecurityPanel"));
 const DeleteUserAccount = lazy(() => import("@/components/admin/DeleteUserAccount"));
 const ModerateUserDialog = lazy(() => import("@/components/admin/ModerateUserDialog"));
 const UserVpnAccess = lazy(() => import("@/components/admin/UserVpnAccess"));
-const AdminDashboard = lazy(() => import("@/components/admin/AdminDashboard"));
-const RankVerificationAdmin = lazy(() => import("@/components/admin/RankVerificationAdmin"));
-const AdminTickets = lazy(() => import("@/components/admin/AdminTickets"));
-const RoleManagement = lazy(() => import("@/components/admin/RoleManagement"));
-const AuditLog = lazy(() => import("@/components/admin/AuditLog"));
-const AdminWallets = lazy(() => import("@/components/admin/AdminWallets"));
-const AdminBanAppeals = lazy(() => import("@/components/admin/AdminBanAppeals"));
-const FreeEightsGamesAdmin = lazy(() => import("@/components/admin/FreeEightsGamesAdmin"));
-const ChallengeTeamAdmin = lazy(() => import("@/components/admin/ChallengeTeamAdmin"));
+const AdminDashboard = lazyAdminSection(() => import("@/components/admin/AdminDashboard"));
+const RankVerificationAdmin = lazyAdminSection(() => import("@/components/admin/RankVerificationAdmin"));
+const AdminTickets = lazyAdminSection(() => import("@/components/admin/AdminTickets"));
+const RoleManagement = lazyAdminSection(() => import("@/components/admin/RoleManagement"));
+const AuditLog = lazyAdminSection(() => import("@/components/admin/AuditLog"));
+const AdminWallets = lazyAdminSection(() => import("@/components/admin/AdminWallets"));
+const AdminBanAppeals = lazyAdminSection(() => import("@/components/admin/AdminBanAppeals"));
+const FreeEightsGamesAdmin = lazyAdminSection(() => import("@/components/admin/FreeEightsGamesAdmin"));
+const ChallengeTeamAdmin = lazyAdminSection(() => import("@/components/admin/ChallengeTeamAdmin"));
+const SiteAnnouncementAdmin = lazyAdminSection(() => import("@/components/admin/SiteAnnouncementAdmin"));
+const sectionComponents = {
+  dashboard: AdminDashboard, verifyRank: RankVerificationAdmin, tickets: AdminTickets,
+  roles: RoleManagement, audit: AuditLog, wallets: AdminWallets, banAppeals: AdminBanAppeals,
+  eightsGames: FreeEightsGamesAdmin, challenges: ChallengeTeamAdmin,
+  websiteUpdates: SiteAnnouncementAdmin, progression: ProgressionResets, rewards: CompetitionRewardsAdmin,
+};
 
 const marketplaceCategories = ["cosmetic", "badge", "frame", "calling_card", "trophy", "knife", "ranked_reward", "weapon_skin", "gloves", "agent", "sticker", "patch", "music_kit"];
 const tournamentRewardCategories = new Set(["knife", "weapon_skin", "trophy"]);
@@ -546,6 +557,7 @@ export default function Admin() {
   const [searchQuery, setSearchQuery] = useState("");
   const [roleSearch, setRoleSearch] = useState("");
   const [sharedIpOnly, setSharedIpOnly] = useState(false);
+  const [overviewTab, setOverviewTab] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const [marketplaceForm, setMarketplaceForm] = useState(defaultMarketplaceForm);
   const [editingMarketplaceId, setEditingMarketplaceId] = useState(null);
@@ -581,7 +593,9 @@ export default function Admin() {
     if (!loading && canAccessAdminPanel(currentRole) && !allowedTabs.some(tab => tab.id === activeTab)) setActiveTab("dashboard");
   }, [activeTab, allowedTabs, currentRole, loading]);
 
-  const adminQueries = useAdminConsoleData(currentUser, activeTab, { search: activeTab === "roles" ? roleSearch : searchQuery, sharedOnly: sharedIpOnly });
+  const adminQueries = useAdminConsoleData(currentUser, activeTab,
+    { search: activeTab === "roles" ? roleSearch : searchQuery, sharedOnly: sharedIpOnly },
+    { overviewOpen: overviewTab === activeTab, tournamentInviteOnly: tournamentForm.invite_only, tournamentRosterId: expandedTournamentRosterId });
   const receivedRows = useRef({});
   const receivedScope = useRef(null);
   const loadAdminData = adminQueries.refresh;
@@ -617,27 +631,12 @@ export default function Admin() {
 
   useEffect(() => {
     setOpenManageUserId(null);
+    setOverviewTab(null);
     window.sessionStorage.setItem("adminActiveTab", activeTab);
-
-    if (["tournaments", "marketplace"].includes(activeTab) && currentUser?.id && canAccessAdminPanel(currentRole)) {
-      let active = true, refreshing = false;
-      const refreshMarketplaceItems = async () => {
-        if (!active || refreshing || document.visibilityState === "hidden") return;
-        refreshing = true;
-        try {
-          const marketplace = await base44.entities.MarketplaceItem.filterFresh({}, "-created_date", 500);
-          if (active) setData((current) => {
-            const rows = retainDataSnapshot(current.marketplace, marketplace.filter(isVisibleMarketplaceItem));
-            return rows === current.marketplace ? current : { ...current, marketplace: rows };
-          });
-        } catch (error) { console.warn("Failed to refresh marketplace items:", error); }
-        finally { refreshing = false; }
-      };
-      // Initial marketplace data comes from the section query.
-      const refreshTimer = window.setInterval(refreshMarketplaceItems, 10000);
-      return () => { active = false; window.clearInterval(refreshTimer); };
+    // Fetch this section's code alongside its data instead of waiting for the data first.
+    if (currentUser?.id && canAccessAdminPanel(currentRole)) {
+      void sectionComponents[activeTab]?.preload().catch(() => {});
     }
-    return undefined;
   }, [activeTab, currentUser?.id, currentRole]);
 
   useEffect(() => {
@@ -668,10 +667,6 @@ export default function Admin() {
       window.clearInterval(timer);
     };
   }, [activeTab, currentUser?.id]);
-
-  const walletByUserId = useMemo(() => (
-    Object.fromEntries(data.wallets.map((wallet) => [wallet.user_id, wallet]))
-  ), [data.wallets]);
 
   const userById = useMemo(() => (
     Object.fromEntries(data.users.map((user) => [user.id, user]))
@@ -1041,8 +1036,12 @@ export default function Admin() {
       });
 
       if (response.data?.success) {
-        const updatedUser = response.data.user;
         const updatedWallet = response.data.wallet;
+        const updatedUser = {
+          id: targetUser.id,
+          ...response.data.user,
+          ...(updatedWallet?.available_balance != null ? { available_balance: updatedWallet.available_balance } : {}),
+        };
         const action = response.data.action;
         if (updatedUser) adminQueries.updateUser(updatedUser);
         setData((prev) => ({
@@ -1881,8 +1880,9 @@ export default function Admin() {
             <div className="admin-console-header-tools"><RoleBadge role={currentRole} /><Link to="/" className="admin-console-button">View website<ArrowUpRight size={15} aria-hidden="true" /></Link><button type="button" onClick={loadAdminData} disabled={adminQueries.refreshing} className="admin-console-button admin-console-primary"><RefreshCw size={15} className={adminQueries.refreshing ? "animate-spin" : undefined} aria-hidden="true" />{adminQueries.refreshing ? "Refreshing…" : "Refresh data"}</button></div>
           </header>
 
-        {activeTab !== "dashboard" && <details className="admin-overview" key={activeTab}>
+        {activeTab !== "dashboard" && <details className="admin-overview" key={activeTab} onToggle={event => setOverviewTab(event.currentTarget.open ? activeTab : null)}>
           <summary><LayoutDashboard size={16} aria-hidden="true" /><span>Platform overview<small>Players, queues & competition totals</small></span><ChevronDown size={16} aria-hidden="true" /></summary>
+        {!adminQueries.status.dashboardOverview.ready && adminQueries.status.dashboardOverview.error && <div role="alert" className="px-5 pt-4 text-xs text-vapor">Could not load platform totals. <button type="button" onClick={loadAdminData} className="text-cyan">Try again</button></div>}
         <div className="admin-stat-grid">
           <StatCard icon={Users} label="Users" value={adminQueries.status.dashboardOverview.ready ? stats.totalUsers : "…"} />
           <StatCard icon={Shield} label="Banned users" value={adminQueries.status.dashboardOverview.ready ? stats.bannedUsers : "…"} color="text-red-400" />
@@ -2130,7 +2130,7 @@ export default function Admin() {
                             )}
                           </div>
                         </td>
-                        <td data-label="Wallet" className="py-3 px-4 text-sm font-mono">{formatMoney(walletByUserId[user.id]?.available_balance ?? 0)}</td>
+                        <td data-label="Wallet" className="py-3 px-4 text-sm font-mono">{formatMoney(user.available_balance ?? user.wallet_balance ?? 0)}</td>
                         {canViewUserIps(currentRole) && (
                           <td data-label="IP addresses" className="py-3 px-4 text-xs text-vapor" title={ipHistoryText(user)}>
                             {knownIpAddresses(user).length > 0 ? (
@@ -2921,7 +2921,11 @@ export default function Admin() {
                         />
                       </div>
                       <div className="mt-3 grid max-h-56 gap-2 overflow-y-auto sm:grid-cols-2 xl:grid-cols-3">
-                        {data.users
+                        {!adminQueries.status.users.ready && adminQueries.status.users.error ? (
+                          <p role="alert" className="text-xs text-vapor">Could not load players. <button type="button" onClick={loadAdminData} className="text-cyan">Try again</button></p>
+                        ) : !adminQueries.status.users.ready ? (
+                          <p role="status" className="text-xs text-vapor">Loading players…</p>
+                        ) : data.users
                           .filter((candidate) => `${userName(candidate)} ${candidate.email || ""}`.toLowerCase().includes(tournamentInviteSearch.toLowerCase()))
                           .map((candidate) => {
                             const checked = (tournamentForm.invited_user_ids || []).includes(candidate.id);
@@ -2966,7 +2970,7 @@ export default function Admin() {
                   <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-8 text-center text-sm text-vapor">No tournaments.</div>
                 ) : (data.tournaments || []).map((tournament) => {
                   const hasMatches = (data.tournamentMatches || []).some((match) => match.tournament_id === tournament.id);
-                  const registeredParticipants = (data.tournamentParticipants || [])
+                  const registeredParticipants = (adminQueries.data.tournamentParticipants || [])
                     .filter((participant) => String(participant.tournament_id) === String(tournament.id))
                     .sort((a, b) => Number(a.seed || 0) - Number(b.seed || 0));
                   const rosterIsOpen = expandedTournamentRosterId === tournament.id;
@@ -3028,7 +3032,7 @@ export default function Admin() {
                             <div className="h-full rounded-full bg-cyan" style={{ width: `${progressPct}%` }} />
                           </div>
                           <button onClick={() => setExpandedTournamentRosterId((current) => current === tournament.id ? null : tournament.id)} className="mt-3 text-[10px] font-black uppercase tracking-wider text-cyan hover:underline">
-                            {rosterIsOpen ? "Hide registered teams" : `Manage ${registeredParticipants.length} registered team${registeredParticipants.length === 1 ? "" : "s"}`}
+                            {rosterIsOpen ? "Hide registered teams" : `Manage ${Number(tournament.registered_teams || 0)} registered team${Number(tournament.registered_teams || 0) === 1 ? "" : "s"}`}
                           </button>
                         </section>
 
@@ -3064,14 +3068,18 @@ export default function Admin() {
                               <p className="text-[9px] font-black uppercase tracking-[0.16em] text-cyan">Registered rosters</p>
                               <p className="mt-1 text-xs text-vapor">Manage seeds and remove teams before the tournament starts.</p>
                             </div>
-                            {registeredParticipants.length > 0 && (
+                            {adminQueries.status.tournamentParticipants.ready && registeredParticipants.length > 0 && (
                               <button onClick={() => handleAdminDisbandTournamentTeams(tournament)} disabled={busyId === `disband-tournament-teams:${tournament.id}`} className="text-[10px] font-black uppercase tracking-wider text-red-300 hover:underline disabled:opacity-50">
                                 {busyId === `disband-tournament-teams:${tournament.id}` ? "Removing..." : "Remove all"}
                               </button>
                             )}
                           </div>
                           <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-                            {registeredParticipants.length === 0 ? (
+                            {(!adminQueries.status.tournamentParticipants.ready && adminQueries.status.tournamentParticipants.error) || (!adminQueries.status.users.ready && adminQueries.status.users.error) ? (
+                              <div role="alert" className="rounded-xl border border-white/[0.06] bg-secondary/25 p-4 text-xs text-vapor">Could not load registered teams. <button type="button" onClick={loadAdminData} className="text-cyan">Try again</button></div>
+                            ) : !adminQueries.status.tournamentParticipants.ready || !adminQueries.status.users.ready ? (
+                              <div role="status" className="rounded-xl border border-white/[0.06] bg-secondary/25 p-4 text-xs text-vapor">Loading registered teams…</div>
+                            ) : registeredParticipants.length === 0 ? (
                               <div className="rounded-xl border border-white/[0.06] bg-secondary/25 p-4 text-xs text-vapor">No teams are registered.</div>
                             ) : registeredParticipants.map((participant) => {
                               const roster = Array.isArray(participant.members) ? participant.members : [];
