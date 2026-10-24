@@ -16,5 +16,5 @@ export const validPlayerCardMotion = value => ["auto", "on", "off"].includes(val
 export function playerCardAppearance(player, motionOverride) {
   const theme = playerCardTheme(player);
   const motion = motionOverride || player?.player_card_motion || player?.metadata?.player_card_motion || "auto";
-  return theme ? { "data-player-card": theme.id, "data-card-animation": validPlayerCardMotion(motion) ? motion : "auto", "data-card-motion": theme.motion, style: { "--pc-art": `url("/images/player-cards/${theme.id}.webp")`, "--pc-desktop-art": `url("/images/player-cards/desktop/${theme.id}.webp")`, "--pc-accent": theme.accent, "--pc-focus": theme.focus || "right center" } } : {};
+  return theme ? { "data-player-card": theme.id, "data-card-animation": validPlayerCardMotion(motion) ? motion : "auto", "data-card-motion": theme.motion, style: { "--pc-art": `url("/images/player-cards/${theme.id}.webp")`, "--pc-desktop-art": `url("/images/player-cards/desktop-fit/${theme.id}.webp")`, "--pc-wide-art": `url("/images/player-cards/desktop-fit-wide/${theme.id}.webp")`, "--pc-compact-art": `url("/images/player-cards/desktop-fit-compact/${theme.id}.webp")`, "--pc-accent": theme.accent, "--pc-focus": theme.focus || "right center" } } : {};
 }

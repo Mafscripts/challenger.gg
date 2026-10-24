@@ -27,7 +27,7 @@ export default function TrophyCounts({ trophies, align = "start", className = ""
         const count = number(trophies?.[key]);
         return (
           <BadgeTooltip key={key} label={label} description={`${count} ${label.toLowerCase()}`} toneClass={toneClass.split(" ").find((token) => token.startsWith("text-"))}>
-            <span tabIndex={0} aria-label={`${label}: ${count}`} className={`relative inline-flex h-8 min-w-10 cursor-default select-none items-center justify-center gap-1.5 rounded-md border px-2 text-[11px] font-black transition-all duration-200 hover:-translate-y-0.5 ${count === 0 ? "opacity-70" : "ring-1 ring-current/10 shadow-[inset_0_1px_0_rgba(255,255,255,.08),0_5px_18px_-10px_currentColor]"} ${toneClass}`}>
+            <span tabIndex={0} aria-label={`${label}: ${count}`} className={`trophy-count-chip relative inline-flex h-8 min-w-10 cursor-default select-none items-center justify-center gap-1.5 rounded-md border px-2 text-[11px] font-black transition-all duration-200 hover:-translate-y-0.5 ${count === 0 ? "opacity-70" : "ring-1 ring-current/10 shadow-[inset_0_1px_0_rgba(255,255,255,.08),0_5px_18px_-10px_currentColor]"} ${toneClass}`}>
               <TrophySymbol type={key} className="h-6 w-4" />
               <span className={count === 0 ? "text-vapor/65" : "text-white"}>{count}</span>
             </span>

@@ -15,5 +15,13 @@ console.log('Visibly changed Chrome pixels:',changed,'of',a.info.width*a.info.he
 await page.emulateMedia({reducedMotion:'reduce'});console.log('Explicit On ignores device reduction:',await chrome.locator('.pc-scene-light').evaluate(n=>getComputedStyle(n).animationName!=='none'));
 const auto=page.locator('[data-player-card="tokyo-afterglow"]');console.log('Auto respects reduced motion:',await auto.locator('.pc-scene-light').evaluate(n=>getComputedStyle(n).animationName==='none'));
 await page.emulateMedia({reducedMotion:'no-preference'});await chrome.evaluate(node=>node.dataset.cardAnimation='off');console.log('Off hides effects:',await chrome.locator('.pc-atmosphere').evaluate(n=>getComputedStyle(n).display==='none'));
-await chrome.evaluate(node=>node.dataset.cardAnimation='on');await chrome.evaluate(node=>{for(const a of node.getAnimations({subtree:true}))a.play();});await page.screenshot({path:'output/player-cards/animated-match-cards.png',fullPage:true});
+await chrome.evaluate(node=>node.dataset.cardAnimation='on');await chrome.evaluate(node=>{for(const a of node.getAnimations({subtree:true}))a.play();});const layouts=[];
+for(const width of [600,1158,1600]){
+ await chrome.evaluate((node,width)=>node.closest('.match-team-card').parentElement.style.width=width+'px',width);
+ await page.waitForTimeout(1000);
+ layouts.push(await chrome.evaluate(node=>{const rect=node.getBoundingClientRect(),css=getComputedStyle(node,'::before');return{width:rect.width,height:rect.height,layout:node.dataset.cardLayout,image:css.backgroundImage.match(/desktop-fit[^/]*\/[^"\)]+/)?.[0],sizing:css.backgroundSize,transform:css.transform};}));
+}
+console.log('Measured responsive formats:',JSON.stringify(layouts));
+if(layouts[0].layout!=='compact'||layouts[1].layout!=='row'||layouts[2].layout!=='wide'||layouts.some(x=>x.transform!=='none'||!x.sizing.includes('auto 100%')))throw new Error('Card framing regression');
+await chrome.evaluate(node=>node.closest('.match-team-card').parentElement.style.width='1160px');await page.waitForTimeout(100);await page.screenshot({path:'output/player-cards/animated-match-cards.png',fullPage:true});
 }finally{await browser?.close();server.close();}

@@ -1,3 +1,4 @@
+import sharp from "sharp";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile, stat } from "node:fs/promises";
@@ -44,9 +45,11 @@ test("ten original optimized images and safe card presentation support the class
     const bytes = await readFile(url); assert.equal(bytes.toString("ascii", 8, 12), "WEBP"); total += (await stat(url)).size;
     assert.equal(playerCardAppearance({ player_card_theme: theme.id })["data-player-card"], theme.id);
     assert.ok(validPlayerCard(theme.id));
-    const banner = await readFile(new URL(`../public/images/player-cards/desktop/${theme.id}.webp`, import.meta.url));
-    assert.equal(banner.toString("ascii", 8, 12), "WEBP");
-    assert.ok(playerCardAppearance(theme.id).style["--pc-desktop-art"].includes(`/desktop/${theme.id}.webp`));
+    for (const [dir, width, height] of [["desktop-fit", 2160, 160], ["desktop-fit-wide", 3200, 160], ["desktop-fit-compact", 1080, 200]]) {
+      const banner = await readFile(new URL(`../public/images/player-cards/${dir}/${theme.id}.webp`, import.meta.url));
+      const meta = await sharp(banner).metadata(); assert.equal(meta.width, width); assert.equal(meta.height, height);
+    }
+    assert.ok(playerCardAppearance(theme.id).style["--pc-desktop-art"].includes(`/desktop-fit/${theme.id}.webp`));
     assert.ok(!playerCardAppearance(theme.id).style["--pc-art"].includes("/desktop/"));
   }
   assert.ok(total < 1500000);

@@ -12,8 +12,21 @@ export default function PlayerCardEffects({ player }) {
     const update = () => { node.dataset.motionPaused = String(!visible || document.hidden); };
     const observer = typeof IntersectionObserver === "function" ? new IntersectionObserver(entries => { visible = entries[0].isIntersecting; update(); }, { rootMargin: "60px" }) : null;
     observer?.observe(node);
+    const card = node.parentElement;
+    let frame;
+    const updateLayout = () => {
+      const { width, height } = card.getBoundingClientRect();
+      const ratio = width / Math.max(1, height);
+      const layout = ratio < 7 ? "compact" : ratio > 16 ? "wide" : "row";
+      if (card.dataset.cardLayout !== layout) card.dataset.cardLayout = layout;
+    };
+    const resize = typeof ResizeObserver === "function" ? new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(updateLayout);
+    }) : null;
+    if (card) resize?.observe(card, { box: "border-box" });
     document.addEventListener("visibilitychange", update); update();
-    return () => { observer?.disconnect(); document.removeEventListener("visibilitychange", update); };
+    return () => { observer?.disconnect(); resize?.disconnect(); cancelAnimationFrame(frame); document.removeEventListener("visibilitychange", update); };
   }, [theme?.id]);
   if (!theme) return null;
   const count = { rain: 7, embers: 6, tide: 4, solar: 3, snow: 7, mist: 0, fireflies: 6, chrome: 5, lava: 4, petals: 6 }[theme.motion];
