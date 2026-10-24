@@ -9,7 +9,9 @@ export default function StaffSupportCenter({ user, open, onOpenChange, selectedC
   const [position, setPosition] = useState(null);
   const constrain = (x, y) => {
     const rect = panel.current?.getBoundingClientRect();
-    return { x: Math.max(8, Math.min(x, window.innerWidth - (rect?.width || 0) - 8)), y: Math.max(8, Math.min(y, window.innerHeight - (rect?.height || 0) - 8)) };
+    const handleHeight = panel.current?.querySelector(".staff-center-return")?.getBoundingClientRect().height || 48;
+    // Allow the body below the viewport while keeping the drag handle and close controls reachable.
+    return { x: Math.max(8, Math.min(x, window.innerWidth - (rect?.width || 0) - 8)), y: Math.max(8, Math.min(y, window.innerHeight - handleHeight - 8)) };
   };
   useEffect(() => {
     const resize = () => setPosition(current => current ? constrain(current.x, current.y) : null);
