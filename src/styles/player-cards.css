@@ -33,8 +33,10 @@
 [data-atmosphere="embers"] .pc-scene-haze{background:radial-gradient(ellipse at 85% 80%,#a98d7155,transparent 48%);animation:pc-quiet-glow 19s ease-in-out infinite alternate}
 [data-atmosphere="tide"]{--atmosphere:#b3c7de}
 [data-atmosphere="tide"] .pc-scene-light{display:none}
-[data-atmosphere="tide"] .pc-scene-haze{inset:62% 0 0 25%;opacity:.55;background:repeating-radial-gradient(ellipse at 50% 110%,transparent 0 12px,#c3e6ff80 15px,transparent 19px 32px);background-size:220px 100%;mask-image:linear-gradient(transparent,#000 45%,#000 80%,transparent);-webkit-mask-image:linear-gradient(transparent,#000 45%,#000 80%,transparent);animation:pc-water-current 7s linear infinite}
-[data-atmosphere="tide"] .pc-mote{display:none}
+[data-atmosphere="tide"] .pc-scene-haze{inset:65% 0 0 25%;opacity:.6;background:radial-gradient(ellipse at 25% 100%,transparent 43%,#b9ddff80 48%,transparent 55%),radial-gradient(ellipse at 75% 0%,transparent 43%,#a6cfee65 48%,transparent 56%);background-size:360px 100%;mask-image:linear-gradient(transparent,#000 35%,#000 75%,transparent);-webkit-mask-image:linear-gradient(transparent,#000 35%,#000 75%,transparent);animation:pc-water-current 9s linear infinite}
+[data-atmosphere="tide"] .pc-mote{display:block;width:48px;height:1px;border-radius:50%;background:linear-gradient(90deg,transparent,#cceaff55 65%,#f1fbff);transform-origin:right center;animation:pc-shooting-star var(--mote-time) linear infinite;box-shadow:none}
+[data-atmosphere="tide"] .pc-mote::after{content:"";position:absolute;right:0;top:-1px;width:3px;height:3px;border-radius:50%;background:#eefaff;box-shadow:0 0 6px #b7dfff}
+[data-atmosphere="tide"] .pc-mote:nth-of-type(n+6){display:none}
 [data-atmosphere="solar"]{--atmosphere:#c7b28c}
 [data-atmosphere="solar"] .pc-scene-light{background:linear-gradient(112deg,transparent 40%,#d5c29d55 50%,transparent 60%);animation:pc-golden-pass 12s cubic-bezier(.4,0,.2,1) infinite}
 [data-atmosphere="solar"] .pc-mote{width:1px;height:1px;animation:pc-orbit-dust var(--mote-time) ease-in-out infinite}
@@ -63,7 +65,8 @@
 @keyframes pc-ember-rise{0%{opacity:0;transform:translate3d(0,24px,0) scale(.5)}25%{opacity:.58}65%{opacity:.22;transform:translate3d(var(--mote-drift),-5px,0) scale(1)}100%{opacity:0;transform:translate3d(5px,-45px,0) scale(.4)}}
 @keyframes pc-quiet-glow{from{opacity:.14;transform:scale(.96)}to{opacity:.46;transform:scale(1.06)}}
 @keyframes pc-swell{from{opacity:.1;transform:translate3d(3%,5%,0) rotate(-2deg) scale(.94)}to{opacity:.42;transform:translate3d(-4%,-4%,0) rotate(2deg) scale(1.08)}}
-@keyframes pc-water-current{from{background-position:0 0}to{background-position:-220px 0}}
+@keyframes pc-water-current{from{background-position:0 0}to{background-position:-360px 0}}
+@keyframes pc-shooting-star{0%,68%{opacity:0;transform:translate3d(0,-12px,0) rotate(24deg)}72%{opacity:.85}84%{opacity:0;transform:translate3d(105px,35px,0) rotate(24deg)}100%{opacity:0;transform:translate3d(105px,35px,0) rotate(24deg)}}
 @keyframes pc-starlight{0%,100%{opacity:.04;transform:scale(.65)}50%{opacity:.34;transform:scale(1.2)}}
 @keyframes pc-golden-pass{0%{opacity:0;transform:translate3d(-40%,0,0)}20%{opacity:.25}50%{opacity:.7}80%{opacity:.25}100%{opacity:0;transform:translate3d(40%,0,0)}}
 @keyframes pc-orbit-dust{0%,100%{opacity:0;transform:translate3d(-7px,4px,0)}50%{opacity:.28;transform:translate3d(5px,-6px,0)}}
