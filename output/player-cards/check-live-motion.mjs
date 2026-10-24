@@ -6,6 +6,17 @@ const html=`<!doctype html><html><head>${css.map(p=>`<link rel="stylesheet" href
 const app=express();app.use(express.static('dist'));app.get('/motion-review',(_q,r)=>r.type('html').send(html));app.get('/review.js',(_q,r)=>r.type('js').send(result.outputFiles[0].text));const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));
 const{chromium}=createRequire(import.meta.url)('C:/Users/livao/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');let browser;
 try{browser=await chromium.launch({headless:true,channel:'chrome'});const page=await browser.newPage({viewport:{width:1440,height:1400},reducedMotion:'no-preference'});await page.goto(`http://127.0.0.1:${server.address().port}/motion-review`);await page.waitForSelector('[data-player-card="chrome-circuit"] .pc-scene-light');await page.waitForTimeout(250);
+const themeMotion=[];
+for(const card of await page.locator('[data-player-card]').all()){
+ await card.scrollIntoViewIfNeeded();await page.waitForTimeout(60);
+ const frames=[];
+ for(const time of [1000,3000]){await card.evaluate((n,t)=>{for(const a of n.getAnimations({subtree:true})){a.pause();a.currentTime=t;}},time);frames.push(await card.screenshot());}
+ const first=await sharp(frames[0]).raw().toBuffer({resolveWithObject:true});const second=await sharp(frames[1]).raw().toBuffer();let pixels=0;
+ for(let i=0;i<second.length;i+=first.info.channels)if(Math.abs(first.data[i]-second[i])+Math.abs(first.data[i+1]-second[i+1])+Math.abs(first.data[i+2]-second[i+2])>18)pixels++;
+ themeMotion.push({theme:await card.getAttribute('data-player-card'),changedPixels:pixels});
+ await card.evaluate(n=>{for(const a of n.getAnimations({subtree:true}))a.play();});
+}
+console.log('All theme motion:',JSON.stringify(themeMotion));if(themeMotion.some(x=>x.changedPixels<100))throw new Error('Theme motion not visible');
 const chrome=page.locator('[data-player-card="chrome-circuit"]');await chrome.scrollIntoViewIfNeeded();await page.waitForTimeout(100);
 const box=await chrome.locator('.match-player-identity').boundingBox();
 console.log('Actual Chrome motion:',await chrome.evaluate(node=>({paused:node.querySelector('.pc-atmosphere').dataset.motionPaused,animation:getComputedStyle(node.querySelector('.pc-scene-light')).animationName,state:getComputedStyle(node.querySelector('.pc-scene-light')).animationPlayState})));
