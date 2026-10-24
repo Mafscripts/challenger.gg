@@ -1,6 +1,5 @@
 /* This surface is scoped to the topbar; sidebar controls retain their styling. */
 .app-topbar.topbar-clean {
-  --navigation-motion-duration: 180ms;
   height: 64px;
   border: 0;
   border-bottom: 1px solid rgb(255 255 255 / .07);
