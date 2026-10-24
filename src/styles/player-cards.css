@@ -96,7 +96,7 @@
 [data-player-card][data-card-animation="off"] .pc-atmosphere{display:none}
 
 /* Artwork is precomposed for each card shape. Fit its entire height: never zoom into a face. */
-[data-player-card]::before{-webkit-mask-image:linear-gradient(90deg,transparent 0%,#000 9%,#000 100%);mask-image:linear-gradient(90deg,transparent 0%,#000 9%,#000 100%)}
+[data-player-card]::before{-webkit-mask-image:linear-gradient(90deg,transparent 0%,#00000018 3%,#00000065 8%,#000000c4 14%,#000 20%);mask-image:linear-gradient(90deg,transparent 0%,#00000018 3%,#00000065 8%,#000000c4 14%,#000 20%)}
 @media(min-width:651px){
   [data-player-card]::before{background-size:100% 100%,auto 100%;background-position:center,right center;animation:none;transform:none;transform-origin:center}
   [data-player-card][data-card-layout="wide"]::before{background-image:linear-gradient(90deg,#06111cc4,#06111c90 35%,#06111c45 70%,#06111c22),var(--pc-wide-art)}
