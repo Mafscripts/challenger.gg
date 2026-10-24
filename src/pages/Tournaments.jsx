@@ -26,7 +26,7 @@ import { toast } from "@/components/ui/use-toast";
 import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
 import CreateTeamModal from "@/components/teams/CreateTeamModal";
 import TournamentJoinModal from "@/components/tournaments/TournamentJoinModal";
-import { TournamentDateTime, TournamentTimeZonePicker } from "@/components/tournaments/TournamentTime";
+import { TournamentDateTime } from "@/components/tournaments/TournamentTime";
 import NavigationHoverFill from "@/components/layout/NavigationHoverFill";
 import "@/styles/tournaments-page.css";
 import { activisionIdRequiredMessage, hasActivisionId } from "@/lib/activision";
@@ -688,7 +688,6 @@ export default function Tournaments() {
           <div className="px-1">
             <p className="text-sm font-black text-white">Browse tournaments</p>
             <p className="mt-0.5 text-[11px] text-vapor">{filteredTournaments.length} official event{filteredTournaments.length === 1 ? "" : "s"} available</p>
-            <TournamentTimeZonePicker className="mt-2" />
           </div>
           <div className="arena-tabs tournaments-filter-group flex items-center">
             {["All", "Open", "Registration", "In Progress", "Completed"].map((item) => (

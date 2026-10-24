@@ -1,5 +1,3 @@
-import { FALLBACK_TOURNAMENT_TIME_ZONES } from "./tournamentTimeZones.js";
-
 const timeZoneValidity = new Map();
 
 export function isValidTournamentTimeZone(value) {
@@ -27,31 +25,6 @@ export function resolvedBrowserTimeZone() {
 export function resolveTournamentTimeZone(value = "local") {
   return value !== "local" && isValidTournamentTimeZone(value) ? value : resolvedBrowserTimeZone();
 }
-
-export function tournamentTimeZoneOptions() {
-  let zones;
-  try {
-    zones = Intl.supportedValuesOf?.("timeZone");
-  } catch {
-    // Older browsers can format IANA zones without exposing the enumeration API.
-  }
-  const enumerated = Array.isArray(zones) && zones.length > 0;
-  if (enumerated) zones.forEach(value => timeZoneValidity.set(value, true));
-  const identifiers = new Set([
-    ...(enumerated ? zones : FALLBACK_TOURNAMENT_TIME_ZONES),
-    resolvedBrowserTimeZone(),
-  ]);
-  identifiers.delete("UTC");
-  return [
-    { value: "local", label: "Your local time" },
-    { value: "UTC", label: "UTC" },
-    ...[...identifiers].filter(value => enumerated || isValidTournamentTimeZone(value)).sort().map(value => ({
-      value, label: value.replaceAll("_", " "),
-    })),
-  ];
-}
-
-export const TOURNAMENT_TIME_ZONES = Object.freeze(tournamentTimeZoneOptions());
 
 const explicitTimestamp = /^(\d{4})-(\d{2})-(\d{2})[Tt ](\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,9}))?)?([Zz]|[+-]\d{2}:?\d{2})$/;
 
@@ -110,5 +83,5 @@ export function tournamentTimeParts(value, { timeZone } = {}) {
 export function formatTournamentTime(value, { timeZone, full = false } = {}) {
   const parts = tournamentTimeParts(value, { timeZone });
   if (!parts.valid) return parts.dateLabel;
-  return `${full ? `${parts.weekday}, ` : ""}${parts.dateLabel}, ${parts.timeLabel} ${parts.zoneLabel}`;
+  return `${full ? `${parts.weekday}, ` : ""}${parts.dateLabel}, ${parts.timeLabel}`;
 }

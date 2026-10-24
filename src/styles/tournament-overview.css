@@ -109,7 +109,6 @@
 .tournament-overview .to-schedule-step > div > span { display: block; margin-bottom: 6px; color: #b4c9d8; font-size: 11px; font-weight: 750; letter-spacing: .05em; text-transform: uppercase; }
 .tournament-overview .to-schedule-step strong { display: block; color: #eef5fa; font-size: 15px; font-weight: 750; line-height: 1.55; }
 .tournament-overview .to-schedule-step p { margin: 5px 0 0; color: var(--to-muted); font-size: 12px; line-height: 1.6; }
-.tournament-overview .to-timezone { display: flex; align-items: center; gap: 6px; margin-top: 11px; color: #a5bccc; font-size: 11px; line-height: 1.6; }
 .tournament-overview .to-event-details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 26px; padding: 3px 20px; }
 .tournament-overview .overview-detail-row { display: flex; align-items: center; gap: 10px; min-width: 0; padding-block: 15px; border-bottom: 1px solid var(--to-line); }
 .tournament-overview .to-event-details > .overview-detail-row:nth-last-child(-n+2) { border-bottom: 0; }

@@ -1,41 +1,18 @@
-import { useCallback, useEffect, useState } from "react";
-import { isValidTournamentTimeZone, resolveTournamentTimeZone, resolvedBrowserTimeZone } from "@/lib/tournamentTime";
+import { useEffect, useState } from "react";
+import { resolvedBrowserTimeZone } from "@/lib/tournamentTime";
 
-const storageKey = "topfragg:tournament-timezone";
-const changedEvent = "topfragg:tournament-timezone-changed";
-let sessionSelection = "local";
-const validSelection = value => value === "local" || isValidTournamentTimeZone(value) ? value : "local";
-const savedSelection = () => {
-  try { return validSelection(window.localStorage.getItem(storageKey) || sessionSelection); }
-  catch { return sessionSelection; }
-};
-
-// This is a display preference. Changing it never moves an event or its deadline.
+// Every visitor sees the event in their device's local time, worldwide.
 export function useTournamentTimeZone() {
-  const [selection, setSelectionState] = useState(savedSelection);
-  const [automaticZone, setAutomaticZone] = useState(resolvedBrowserTimeZone);
+  const [timeZone, setTimeZone] = useState(resolvedBrowserTimeZone);
   useEffect(() => {
-    const sync = () => setSelectionState(savedSelection());
-    const fromEvent = event => setSelectionState(validSelection(event.detail));
-    const fromStorage = event => {
-      if (event.key !== storageKey && event.key !== null) return;
-      sessionSelection = validSelection(event.newValue);
-      sync();
-    };
-    const refreshAutomaticZone = () => setAutomaticZone(resolvedBrowserTimeZone());
-    window.addEventListener(changedEvent, fromEvent);
-    window.addEventListener("storage", fromStorage);
-    window.addEventListener("focus", refreshAutomaticZone);
-    return () => { window.removeEventListener(changedEvent, fromEvent); window.removeEventListener("storage", fromStorage); window.removeEventListener("focus", refreshAutomaticZone); };
+    // Retire the previous manual override so it cannot keep showing another city's time.
+    try { window.localStorage.removeItem("topfragg:tournament-timezone"); } catch { /* Local time also works without storage. */ }
+    const refresh = () => setTimeZone(resolvedBrowserTimeZone());
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => { window.removeEventListener("focus", refresh); document.removeEventListener("visibilitychange", refresh); };
   }, []);
-  const setSelection = useCallback(value => {
-    const next = validSelection(value);
-    sessionSelection = next;
-    setSelectionState(next);
-    try { window.localStorage.setItem(storageKey, next); } catch { /* Still works for this page when storage is unavailable. */ }
-    window.dispatchEvent(new CustomEvent(changedEvent, { detail: next }));
-  }, []);
-  return { selection, setSelection, automaticZone, timeZone: selection === "local" ? automaticZone : resolveTournamentTimeZone(selection) };
+  return { timeZone };
 }
 
 export default useTournamentTimeZone;

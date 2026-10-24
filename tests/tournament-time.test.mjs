@@ -2,14 +2,13 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import test from "node:test";
 import {
-  TOURNAMENT_TIME_ZONES, formatTournamentTime, isValidTournamentTimeZone,
-  resolvedBrowserTimeZone, resolveTournamentTimeZone, tournamentTimeParts, tournamentTimestamp, tournamentTimeZoneOptions,
+  formatTournamentTime, isValidTournamentTimeZone,
+  resolvedBrowserTimeZone, resolveTournamentTimeZone, tournamentTimeParts, tournamentTimestamp,
 } from "../src/lib/tournamentTime.js";
-import { FALLBACK_TOURNAMENT_TIME_ZONES } from "../src/lib/tournamentTimeZones.js";
 
 const event = "2026-10-24T21:15:00Z";
 
-test("EU and NA displays preserve one instant while using each selected city's time", () => {
+test("EU and NA displays preserve one instant in each local timezone", () => {
   const expected = [
     ["Europe/Amsterdam", "23:15", "GMT+2"], ["Europe/London", "22:15", "GMT+1"],
     ["America/New_York", "17:15", "GMT-4"], ["America/Toronto", "17:15", "GMT-4"],
@@ -71,7 +70,7 @@ test("UTC and explicit positive or negative offsets keep their instant without a
   for (const value of [event, "2026-10-24T23:15:00+02:00", "2026-10-24T17:15:00-04:00", "2026-10-24T17:15-0400", "2026-10-24 21:15:00Z", new Date(event), expected]) {
     assert.equal(tournamentTimestamp(value), expected, String(value));
   }
-  assert.equal(formatTournamentTime("2026-10-24T23:15:00+02:00", { timeZone: "America/New_York" }), "24 Oct 2026, 17:15 GMT-4");
+  assert.equal(formatTournamentTime("2026-10-24T23:15:00+02:00", { timeZone: "America/New_York" }), "24 Oct 2026, 17:15");
 });
 
 test("unknown timezone-less origins and malformed or impossible dates are not guessed", () => {
@@ -87,10 +86,11 @@ test("unknown timezone-less origins and malformed or impossible dates are not gu
   assert.equal(tournamentTimeParts("2028-02-29T21:15:00Z", { timeZone: "UTC" }).dateLabel, "29 Feb 2028");
 });
 
-test("display labels are consistently 24-hour and include their event-specific UTC offset", () => {
-  assert.equal(formatTournamentTime(event, { timeZone: "Europe/Amsterdam", full: true }), "Sat, 24 Oct 2026, 23:15 GMT+2");
-  assert.equal(formatTournamentTime("2026-10-24T00:05:00Z", { timeZone: "UTC" }), "24 Oct 2026, 00:05 GMT");
-  assert.equal(formatTournamentTime(event, { timeZone: "Asia/Kolkata" }), "25 Oct 2026, 02:45 GMT+5:30");
+test("display labels contain only the local date and 24-hour time, with an optional weekday", () => {
+  assert.equal(formatTournamentTime(event, { timeZone: "Europe/Amsterdam", full: true }), "Sat, 24 Oct 2026, 23:15");
+  assert.equal(formatTournamentTime("2026-10-24T00:05:00Z", { timeZone: "UTC" }), "24 Oct 2026, 00:05");
+  assert.equal(formatTournamentTime(event, { timeZone: "Asia/Kolkata" }), "25 Oct 2026, 02:45");
+  assert.equal(formatTournamentTime(event, { timeZone: "America/Phoenix" }), "24 Oct 2026, 14:15");
 });
 
 test("invalid timezone preferences safely fall back to the browser zone without guessing EU or NA", () => {
@@ -103,7 +103,6 @@ test("invalid timezone preferences safely fall back to the browser zone without 
     assert.equal(resolveTournamentTimeZone(invalid), local);
     assert.equal(tournamentTimeParts(event, { timeZone: invalid }).valid, true);
   }
-  for (const choice of TOURNAMENT_TIME_ZONES.filter(({ value }) => value !== "local")) assert.equal(isValidTournamentTimeZone(choice.value), true);
 });
 
 test("viewer timezone changes formatting but never the event or countdown timestamp", () => {
@@ -116,38 +115,47 @@ test("viewer timezone changes formatting but never the event or countdown timest
   assert.deepEqual(snapshots.map(({ parts }) => parts.timeLabel), ["21:15", "23:15", "17:15", "14:15"]);
 });
 
-test("the timezone picker includes the entire worldwide catalog and readable local names", () => {
-  const byId = new Map(TOURNAMENT_TIME_ZONES.map(option => [option.value, option]));
-  assert.equal(TOURNAMENT_TIME_ZONES[0].value, "local");
-  assert.equal(TOURNAMENT_TIME_ZONES[1].value, "UTC");
-  assert.ok(TOURNAMENT_TIME_ZONES.length > 350);
-  assert.equal(byId.size, TOURNAMENT_TIME_ZONES.length, "each timezone appears once");
-  for (const zone of Intl.supportedValuesOf("timeZone")) assert.ok(byId.has(zone), zone);
-  for (const zone of ["Africa/Nairobi", "Asia/Tokyo", "Australia/Sydney", "Pacific/Auckland", "America/Guatemala", "America/Costa_Rica", "America/Panama", "America/Belize", "America/El_Salvador", "America/Tegucigalpa", "America/Managua"]) {
-    assert.ok(byId.has(zone), zone);
-    assert.equal(byId.get(zone).label, zone.replaceAll("_", " "));
+test("automatic worldwide local times do not depend on timezone enumeration", () => {
+  const moduleUrl = new URL("../src/lib/tournamentTime.js", import.meta.url).href;
+  for (const [TZ, expected] of [
+    ["Europe/Amsterdam", "24 Oct 2026, 23:15"],
+    ["Europe/London", "24 Oct 2026, 22:15"],
+    ["America/New_York", "24 Oct 2026, 17:15"],
+    ["America/Phoenix", "24 Oct 2026, 14:15"],
+    ["America/Guatemala", "24 Oct 2026, 15:15"],
+    ["America/Costa_Rica", "24 Oct 2026, 15:15"],
+    ["America/Panama", "24 Oct 2026, 16:15"],
+    ["Africa/Nairobi", "25 Oct 2026, 00:15"],
+    ["Asia/Kolkata", "25 Oct 2026, 02:45"],
+    ["Asia/Katmandu", "25 Oct 2026, 03:00"],
+    ["Asia/Tokyo", "25 Oct 2026, 06:15"],
+    ["Australia/Sydney", "25 Oct 2026, 08:15"],
+    ["Pacific/Auckland", "25 Oct 2026, 10:15"],
+    ["Pacific/Honolulu", "24 Oct 2026, 11:15"],
+  ]) {
+    const result = execFileSync(process.execPath, ["--input-type=module", "-e", `
+      Intl.supportedValuesOf = () => { throw new Error('Local display must not enumerate zones'); };
+      const { formatTournamentTime } = await import(${JSON.stringify(moduleUrl)});
+      console.log(formatTournamentTime(${JSON.stringify(event)}));
+    `], { env: { ...process.env, TZ }, encoding: "utf8" }).trim();
+    assert.equal(result, expected, TZ);
+    assert.doesNotMatch(result, /GMT|UTC|America\/|Europe\/|Your time/);
   }
-  assert.ok(byId.has(resolvedBrowserTimeZone()));
 });
 
-test("older browsers retain the complete worldwide picker when enumeration is unavailable or throws", () => {
+test("older browsers still use their own local time without an enumeration API", () => {
   const descriptor = Object.getOwnPropertyDescriptor(Intl, "supportedValuesOf");
   try {
     for (const unsupported of [undefined, () => { throw new RangeError("Unsupported enumeration"); }]) {
       Object.defineProperty(Intl, "supportedValuesOf", { ...descriptor, value: unsupported });
-      const options = tournamentTimeZoneOptions();
-      const ids = new Set(options.map(({ value }) => value));
-      assert.ok(options.length > 350);
-      for (const zone of FALLBACK_TOURNAMENT_TIME_ZONES) assert.ok(ids.has(zone), zone);
-      assert.ok(ids.has("UTC"));
-      assert.ok(ids.has(resolvedBrowserTimeZone()));
+      assert.equal(formatTournamentTime(event), formatTournamentTime(event, { timeZone: resolvedBrowserTimeZone() }));
     }
   } finally {
     Object.defineProperty(Intl, "supportedValuesOf", descriptor);
   }
 });
 
-test("a browser's valid alias is available even when absent from its canonical enumeration", () => {
+test("a browser's valid timezone alias works without a fixed catalog", () => {
   const OriginalDateTimeFormat = Intl.DateTimeFormat;
   const alias = "Asia/Kolkata";
   try {
@@ -155,10 +163,8 @@ test("a browser's valid alias is available even when absent from its canonical e
       if (locale === undefined && options === undefined) return { resolvedOptions: () => ({ timeZone: alias }) };
       return new OriginalDateTimeFormat(locale, options);
     };
-    const options = tournamentTimeZoneOptions();
-    assert.ok(options.some(({ value }) => value === alias));
-    assert.equal(options.filter(({ value }) => value === alias).length, 1);
     assert.equal(resolveTournamentTimeZone("local"), alias);
+    assert.equal(formatTournamentTime(event), "25 Oct 2026, 02:45");
   } finally {
     Intl.DateTimeFormat = OriginalDateTimeFormat;
   }
@@ -197,7 +203,7 @@ test("Pacific countries on opposite sides of the date line keep their own calend
   assert.equal(samoa.iso, hawaii.iso);
 });
 
-test("the full catalog does not construct hundreds of formatters when an admin or page imports it", () => {
+test("importing the helper creates no formatters and timezone validation stays cached", () => {
   const moduleUrl = new URL("../src/lib/tournamentTime.js", import.meta.url).href;
   const result = JSON.parse(execFileSync(process.execPath, ["--input-type=module", "-e", `
     const Original = Intl.DateTimeFormat;
@@ -210,10 +216,13 @@ test("the full catalog does not construct hundreds of formatters when an admin o
     helper.isValidTournamentTimeZone('Mars/Olympus');
     const invalidFirst = calls;
     for (let i = 0; i < 20; i++) helper.isValidTournamentTimeZone('Mars/Olympus');
-    console.log(JSON.stringify({ count:helper.TOURNAMENT_TIME_ZONES.length, importCalls, explicitCalls, invalidRepeatCalls:calls - invalidFirst }));
+    const invalidRepeatCalls = calls - invalidFirst;
+    const beforeFormat = calls;
+    for (let i = 0; i < 20; i++) helper.formatTournamentTime(${JSON.stringify(event)}, { timeZone: 'Europe/Amsterdam' });
+    console.log(JSON.stringify({ importCalls, explicitCalls, invalidRepeatCalls, displayCalls:calls - beforeFormat }));
   `], { env: { ...process.env, TZ: "America/New_York" }, encoding: "utf8" }));
-  assert.ok(result.count > 350);
-  assert.ok(result.importCalls <= 4, `module import constructed ${result.importCalls} formatters`);
-  assert.equal(result.explicitCalls, 0, "known supported zones reuse validation");
+  assert.equal(result.importCalls, 0, "module import does not enumerate or validate a timezone catalog");
+  assert.equal(result.explicitCalls, 1, "a timezone is only validated once");
   assert.equal(result.invalidRepeatCalls, 0, "invalid preferences are only checked once");
+  assert.equal(result.displayCalls, 1, "repeated labels reuse their display formatter");
 });

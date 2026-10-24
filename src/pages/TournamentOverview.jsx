@@ -7,8 +7,7 @@ import { loadPlayTeams } from "@/lib/playTeams";
 import { tournamentPayoutPolicy } from "@/lib/tournamentPayoutPolicy";
 import { tournamentFormat, tournamentPrizes, tournamentRegistration } from "@/lib/tournamentOverview";
 import { tournamentTimestamp } from "@/lib/tournamentTime";
-import useTournamentTimeZone from "@/hooks/useTournamentTimeZone";
-import { TournamentDateTime, TournamentTimeZonePicker } from "@/components/tournaments/TournamentTime";
+import { TournamentDateTime } from "@/components/tournaments/TournamentTime";
 import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import useRouteSection from "@/hooks/useRouteSection";
@@ -19,7 +18,6 @@ import {
   CalendarDays,
   CheckCircle2,
   ChevronRight,
-  Clock3,
   Coins,
   Crown,
   Gamepad2,
@@ -182,7 +180,6 @@ function TournamentRosterPlayerCard({ player, captain }) {
 export default function TournamentOverview() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { timeZone, selection: timeSelection } = useTournamentTimeZone();
   const [searchParams, setSearchParams] = useSearchParams();
   const [tournament, setTournament] = useState(null);
   const [user, setUser] = useState(null);
@@ -506,11 +503,10 @@ export default function TournamentOverview() {
           </div>
           <div className="to-quick-facts">
             <div className="to-total-prize"><Trophy size={20} /><div><span>Total prize pool</span><strong>{formatMoney(tournament.prize_pool)}</strong><small>{entryLabel(tournament)}</small></div></div>
-            <div><CalendarDays size={20} /><div><span>Tournament starts</span><strong><TournamentDateTime value={tournament.start_date} /></strong><small>{timeSelection === "local" ? "Your time" : "Selected time zone"} · {timeZone.replaceAll("_", " ")}</small></div></div>
+            <div><CalendarDays size={20} /><div><span>Tournament starts</span><strong><TournamentDateTime value={tournament.start_date} /></strong></div></div>
             <div><Layers3 size={20} /><div><span>Competition format</span><strong>{format.seriesLabel}</strong><small>{format.bracketLabel}</small></div></div>
           </div>
         </header>
-        <div className="to-time-preference"><p>Automatically shown in your local time, worldwide.</p><TournamentTimeZonePicker /></div>
       </div>
 
       <div className="page-container">
@@ -537,7 +533,6 @@ export default function TournamentOverview() {
                   <div className="to-schedule-step"><span className="to-step-icon"><Users size={18} /></span><div><span>Registration closes</span><strong><TournamentDateTime value={registrationDate} full /></strong><p>{joined ? "Your team is already registered." : "The captain registers the full team before this deadline."}</p></div></div>
                   <div className="to-schedule-step"><span className="to-step-icon"><Gamepad2 size={18} /></span><div><span>Tournament starts</span><strong><TournamentDateTime value={tournament.start_date} full /></strong><p>{tournament.check_in_required ? "Check-in is required. Follow the tournament instructions before the start." : "Automatic check-in. Have your team and streams ready at the start."}</p></div></div>
                 </div>
-                <p className="to-timezone"><Clock3 size={12} />Times shown in {timeZone.replaceAll("_", " ")}. Summer and winter time are applied automatically.</p>
               </section>
               <section className="to-section">
                 <div className="to-section-heading"><div><h2><Gamepad2 size={18} />Event details</h2></div></div>

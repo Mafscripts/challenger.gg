@@ -6,7 +6,6 @@ import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { tournamentTimeParts, tournamentTimestamp } from "@/lib/tournamentTime";
 import { useTournamentTimeZone } from "@/hooks/useTournamentTimeZone";
-import { TournamentTimeZonePicker } from "@/components/tournaments/TournamentTime";
 import "@/styles/upcoming-tournaments.css";
 
 const modeLabels = {
@@ -67,7 +66,7 @@ export default function UpcomingTournaments({ query }) {
             return <article key={tournament.id} className="play-upcoming-event" data-next={index === 0}>
               <div className="play-upcoming-schedule">
                 <span className="play-upcoming-calendar"><small>{date.valid ? date.month : "Date"}</small><strong>{date.valid ? date.day : "—"}</strong><span>{date.valid ? date.weekday : "TBA"}</span></span>
-                {date.valid ? <time dateTime={date.iso} title={date.zoneName}><span><Clock3 size={12} aria-hidden="true" />{date.timeLabel}</span><small>{date.zoneLabel} · {date.year}</small></time> : <span className="play-upcoming-date-tba">Date to be announced</span>}
+                {date.valid ? <time dateTime={date.iso}><span><Clock3 size={12} aria-hidden="true" />{date.timeLabel}</span><small>{date.year}</small></time> : <span className="play-upcoming-date-tba">Date to be announced</span>}
               </div>
               <div className="play-upcoming-identity">
                 <div className="play-upcoming-badges"><span className="play-upcoming-official"><ShieldCheck size={12} aria-hidden="true" />Official event</span>{index === 0 && <span className="play-upcoming-next"><Sparkles size={12} aria-hidden="true" />Up next</span>}<span className="play-upcoming-state" data-full={full}><span />{full ? "Full" : "Registration open"}</span></div>
@@ -82,6 +81,6 @@ export default function UpcomingTournaments({ query }) {
               </dl>
             </article>;
           })}</div>}
-    <footer className="play-upcoming-footer"><TournamentTimeZonePicker /><Link to="/tournaments">Full tournament center<ArrowRight size={12} /></Link></footer>
+    <footer className="play-upcoming-footer"><span>Times are shown in your local time.</span><Link to="/tournaments">Full tournament center<ArrowRight size={12} /></Link></footer>
   </section>;
 }
