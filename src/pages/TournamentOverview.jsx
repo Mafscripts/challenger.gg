@@ -6,6 +6,9 @@ import { competitionStreamRequiredMessage, hasCompetitionStream } from "@/lib/co
 import { loadPlayTeams } from "@/lib/playTeams";
 import { tournamentPayoutPolicy } from "@/lib/tournamentPayoutPolicy";
 import { tournamentFormat, tournamentPrizes, tournamentRegistration } from "@/lib/tournamentOverview";
+import { tournamentTimestamp } from "@/lib/tournamentTime";
+import useTournamentTimeZone from "@/hooks/useTournamentTimeZone";
+import { TournamentDateTime, TournamentTimeZonePicker } from "@/components/tournaments/TournamentTime";
 import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import useRouteSection from "@/hooks/useRouteSection";
@@ -60,21 +63,6 @@ const TournamentJoinModal = lazy(() => import("@/components/tournaments/Tourname
 const BLACK_OPS_7_ART = "/assets/tournaments/black-ops-7.webp";
 
 const formatMoney = (value) => `$${Number(value || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
-const formatDate = (value) => {
-  if (!value || !Number.isFinite(Date.parse(value))) return "To be announced";
-  return new Date(value).toLocaleString([], {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-};
-const formatShortDate = (value) => {
-  if (!value || !Number.isFinite(Date.parse(value))) return "To be announced";
-  return new Date(value).toLocaleString([], { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
-};
 const rosterSize = (teamSize) => Number.parseInt(String(teamSize || "1v1").split("v")[0], 10) || 1;
 const imageForTournament = (tournament) => {
   if (tournamentGameId(tournament) !== "bo7") {
@@ -117,14 +105,14 @@ const refundForUser = (participant, userId, tournament) => {
 function Countdown({ value, status, expiredLabel = "Closed" }) {
   const [now, setNow] = useState(Date.now);
   useEffect(() => {
-    const target = Date.parse(value || "");
+    const target = tournamentTimestamp(value);
     if (!Number.isFinite(target) || target <= Date.now()) return;
     const refresh = () => { if (document.visibilityState !== "hidden") setNow(Date.now()); };
     const timer = window.setInterval(() => { refresh(); if (Date.now() >= target) window.clearInterval(timer); }, 1000);
     document.addEventListener("visibilitychange", refresh);
     return () => { window.clearInterval(timer); document.removeEventListener("visibilitychange", refresh); };
   }, [value]);
-  const target = new Date(value || "").getTime();
+  const target = tournamentTimestamp(value);
   const difference = target - now;
   if (["cancelled", "completed", "live", "in_progress"].includes(status)) return <strong className="to-countdown-status">{status === "cancelled" ? "Cancelled" : status === "completed" ? "Completed" : "Live now"}</strong>;
   if (!Number.isFinite(target)) return <strong className="to-countdown-status">To be announced</strong>;
@@ -194,6 +182,7 @@ function TournamentRosterPlayerCard({ player, captain }) {
 export default function TournamentOverview() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { timeZone, selection: timeSelection } = useTournamentTimeZone();
   const [searchParams, setSearchParams] = useSearchParams();
   const [tournament, setTournament] = useState(null);
   const [user, setUser] = useState(null);
@@ -225,7 +214,7 @@ export default function TournamentOverview() {
   const [rosterLoading, setRosterLoading] = useState(false);
 
   useEffect(() => {
-    const deadline = Date.parse(tournament?.registration_end || tournament?.start_date || "");
+    const deadline = [tournament?.registration_end, tournament?.start_date].map(tournamentTimestamp).find(Number.isFinite);
     if (!Number.isFinite(deadline) || deadline <= registrationNow) return;
     const timer = window.setTimeout(() => setRegistrationNow(Date.now()), Math.min(deadline - Date.now() + 30, 2147483647));
     return () => window.clearTimeout(timer);
@@ -471,11 +460,10 @@ export default function TournamentOverview() {
   ));
   const leaveAvailable = joinedParticipant?.captain_id === user?.id && canLeave(tournament, matches);
   const prizes = tournamentPrizes(tournament);
-  const registrationDate = tournament.registration_end || tournament.start_date;
+  const registrationDate = registration.deadline;
   const gameName = tournamentGameName(tournament);
   const format = tournamentFormat(tournament);
   const capacity = Number(tournament.max_teams) || 0;
-  const localTimeZone = Intl.DateTimeFormat(undefined, { timeZoneName: "short" }).formatToParts(new Date()).find(part => part.type === "timeZoneName")?.value || "your local time";
   const eventStatus = String(tournament.status || "").toLowerCase();
   const eventActive = ["live", "in_progress"].includes(eventStatus);
   const eventFinished = ["completed", "cancelled"].includes(eventStatus);
@@ -518,10 +506,11 @@ export default function TournamentOverview() {
           </div>
           <div className="to-quick-facts">
             <div className="to-total-prize"><Trophy size={20} /><div><span>Total prize pool</span><strong>{formatMoney(tournament.prize_pool)}</strong><small>{entryLabel(tournament)}</small></div></div>
-            <div><CalendarDays size={20} /><div><span>Tournament starts</span><strong>{formatShortDate(tournament.start_date)}</strong><small>Your local time · {localTimeZone}</small></div></div>
+            <div><CalendarDays size={20} /><div><span>Tournament starts</span><strong><TournamentDateTime value={tournament.start_date} /></strong><small>{timeSelection === "local" ? "Your time" : "Selected time zone"} · {timeZone.replaceAll("_", " ")}</small></div></div>
             <div><Layers3 size={20} /><div><span>Competition format</span><strong>{format.seriesLabel}</strong><small>{format.bracketLabel}</small></div></div>
           </div>
         </header>
+        <div className="to-time-preference"><p>Automatically shown in your local time, worldwide.</p><TournamentTimeZonePicker /></div>
       </div>
 
       <div className="page-container">
@@ -545,10 +534,10 @@ export default function TournamentOverview() {
               <section className="to-section">
                 <div className="to-section-heading"><div><h2><CalendarDays size={18} />Schedule</h2><p>Plan your registration and be ready for the first match.</p></div></div>
                 <div className="overview-panel to-timeline">
-                  <div className="to-schedule-step"><span className="to-step-icon"><Users size={18} /></span><div><span>Registration closes</span><strong>{formatDate(registrationDate)}</strong><p>{joined ? "Your team is already registered." : "The captain registers the full team before this deadline."}</p></div></div>
-                  <div className="to-schedule-step"><span className="to-step-icon"><Gamepad2 size={18} /></span><div><span>Tournament starts</span><strong>{formatDate(tournament.start_date)}</strong><p>{tournament.check_in_required ? "Check-in is required. Follow the tournament instructions before the start." : "Automatic check-in. Have your team and streams ready at the start."}</p></div></div>
+                  <div className="to-schedule-step"><span className="to-step-icon"><Users size={18} /></span><div><span>Registration closes</span><strong><TournamentDateTime value={registrationDate} full /></strong><p>{joined ? "Your team is already registered." : "The captain registers the full team before this deadline."}</p></div></div>
+                  <div className="to-schedule-step"><span className="to-step-icon"><Gamepad2 size={18} /></span><div><span>Tournament starts</span><strong><TournamentDateTime value={tournament.start_date} full /></strong><p>{tournament.check_in_required ? "Check-in is required. Follow the tournament instructions before the start." : "Automatic check-in. Have your team and streams ready at the start."}</p></div></div>
                 </div>
-                <p className="to-timezone"><Clock3 size={12} />All times are shown in your local time ({localTimeZone}).</p>
+                <p className="to-timezone"><Clock3 size={12} />Times shown in {timeZone.replaceAll("_", " ")}. Summer and winter time are applied automatically.</p>
               </section>
               <section className="to-section">
                 <div className="to-section-heading"><div><h2><Gamepad2 size={18} />Event details</h2></div></div>

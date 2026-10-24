@@ -4,6 +4,9 @@ import { ArrowRight, CalendarDays, Clock3, RefreshCw, ShieldCheck, Sparkles, Swo
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
+import { tournamentTimeParts, tournamentTimestamp } from "@/lib/tournamentTime";
+import { useTournamentTimeZone } from "@/hooks/useTournamentTimeZone";
+import { TournamentTimeZonePicker } from "@/components/tournaments/TournamentTime";
 import "@/styles/upcoming-tournaments.css";
 
 const modeLabels = {
@@ -11,7 +14,7 @@ const modeLabels = {
   bo3_hp_overload_snd: "BO3 HP / Overload / SND", bo5_hp_overload_snd_hp_snd: "BO5 HP / Overload / SND / HP / SND",
   snd: "Search & Destroy", hp: "Hardpoint", overload: "Overload",
 };
-const startTime = tournament => Date.parse(tournament.start_date || "");
+const startTime = tournament => tournamentTimestamp(tournament.start_date);
 const isOfficial = tournament => !tournament.is_streamer_tournament
   && !["streamer", "streamer_tournament"].includes(String(tournament.tournament_type || "").toLowerCase())
   && !["streamer", "streamer_tournament"].includes(String(tournament.source || "").toLowerCase());
@@ -45,6 +48,7 @@ function entryLabel(tournament) {
 
 export default function UpcomingTournaments({ query }) {
   const tournaments = query.data || [];
+  const { timeZone } = useTournamentTimeZone();
   return <section className="play-upcoming-tournaments" aria-label="Upcoming tournaments" aria-busy={query.isPending || query.isFetching}>
     <header className="play-upcoming-heading">
       <span className="play-upcoming-heading-icon" aria-hidden="true"><CalendarDays size={26} /><span /></span>
@@ -55,16 +59,15 @@ export default function UpcomingTournaments({ query }) {
       : query.isError && !query.data ? <div className="play-upcoming-empty" role="alert"><CalendarDays size={28} /><strong>The schedule is temporarily unavailable.</strong><button type="button" onClick={() => query.refetch()}>Try again</button></div>
         : tournaments.length === 0 ? <div className="play-upcoming-empty"><CalendarDays size={28} /><strong>No upcoming tournaments announced.</strong><p>New events will appear here when registration opens.</p></div>
           : <div className="play-upcoming-events">{tournaments.map((tournament, index) => {
-            const scheduled = Number.isFinite(startTime(tournament));
-            const date = scheduled ? new Date(tournament.start_date) : null;
+            const date = tournamentTimeParts(tournament.start_date, { timeZone });
             const full = Number(tournament.max_teams) > 0 && Number(tournament.registered_teams || 0) >= Number(tournament.max_teams);
             const entry = entryLabel(tournament);
             const capacity = Number(tournament.max_teams);
             const filled = capacity > 0 ? Math.min(100, Math.max(0, Number(tournament.registered_teams || 0) / capacity * 100)) : 0;
             return <article key={tournament.id} className="play-upcoming-event" data-next={index === 0}>
               <div className="play-upcoming-schedule">
-                <span className="play-upcoming-calendar"><small>{date ? date.toLocaleDateString([], { month: "short" }) : "Date"}</small><strong>{date ? date.getDate() : "—"}</strong><span>{date ? date.toLocaleDateString([], { weekday: "short" }) : "TBA"}</span></span>
-                {date ? <time dateTime={tournament.start_date}><span><Clock3 size={12} aria-hidden="true" />{date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })}</span><small>{new Intl.DateTimeFormat([], { timeZoneName: "short" }).formatToParts(date).find(part => part.type === "timeZoneName")?.value} · {date.getFullYear()}</small></time> : <span className="play-upcoming-date-tba">Date to be announced</span>}
+                <span className="play-upcoming-calendar"><small>{date.valid ? date.month : "Date"}</small><strong>{date.valid ? date.day : "—"}</strong><span>{date.valid ? date.weekday : "TBA"}</span></span>
+                {date.valid ? <time dateTime={date.iso} title={date.zoneName}><span><Clock3 size={12} aria-hidden="true" />{date.timeLabel}</span><small>{date.zoneLabel} · {date.year}</small></time> : <span className="play-upcoming-date-tba">Date to be announced</span>}
               </div>
               <div className="play-upcoming-identity">
                 <div className="play-upcoming-badges"><span className="play-upcoming-official"><ShieldCheck size={12} aria-hidden="true" />Official event</span>{index === 0 && <span className="play-upcoming-next"><Sparkles size={12} aria-hidden="true" />Up next</span>}<span className="play-upcoming-state" data-full={full}><span />{full ? "Full" : "Registration open"}</span></div>
@@ -79,6 +82,6 @@ export default function UpcomingTournaments({ query }) {
               </dl>
             </article>;
           })}</div>}
-    <footer className="play-upcoming-footer"><span><Clock3 size={12} />Times are shown in your local timezone.</span><Link to="/tournaments">Full tournament center<ArrowRight size={12} /></Link></footer>
+    <footer className="play-upcoming-footer"><TournamentTimeZonePicker /><Link to="/tournaments">Full tournament center<ArrowRight size={12} /></Link></footer>
   </section>;
 }

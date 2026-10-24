@@ -1,3 +1,5 @@
+import { tournamentTimestamp } from "./tournamentTime.js";
+
 const modeNames = {
   hp: "Hardpoint",
   snd: "Search & Destroy",
@@ -52,7 +54,8 @@ export function tournamentFormat(tournament = {}) {
 
 const registrationDeadline = (tournament) => {
   for (const value of [tournament.registration_end, tournament.start_date]) {
-    if (value && Number.isFinite(new Date(value).getTime())) return new Date(value).toISOString();
+    const timestamp = tournamentTimestamp(value);
+    if (Number.isFinite(timestamp)) return new Date(timestamp).toISOString();
   }
   return null;
 };

@@ -26,12 +26,14 @@ import { toast } from "@/components/ui/use-toast";
 import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
 import CreateTeamModal from "@/components/teams/CreateTeamModal";
 import TournamentJoinModal from "@/components/tournaments/TournamentJoinModal";
+import { TournamentDateTime, TournamentTimeZonePicker } from "@/components/tournaments/TournamentTime";
 import NavigationHoverFill from "@/components/layout/NavigationHoverFill";
 import "@/styles/tournaments-page.css";
 import { activisionIdRequiredMessage, hasActivisionId } from "@/lib/activision";
 import { teamRosterFormat } from "@/lib/teamFormats";
 import { tournamentGameId, tournamentGameName } from "@/lib/tournamentGames";
 import { visibleTournamentMatches } from "@/lib/tournamentBracketView";
+import { tournamentTimestamp } from "@/lib/tournamentTime";
 
 const staffRoles = new Set(["ceo", "super_admin", "admin", "moderator"]);
 const adminRoles = new Set(["ceo", "super_admin", "admin"]);
@@ -58,18 +60,14 @@ const modeLabels = {
   hp: "BO3 Hardpoint",
 };
 
-const formatDate = (value) => {
-  if (!value) return "Not scheduled";
-  return new Date(value).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
-};
-
 const formatMoney = (value) => `$${Number(value || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 const formatCredits = (value) => `${Number(value || 0).toLocaleString()} Credits`;
 const padCountdownUnit = (value) => String(value).padStart(2, "0");
 const countdownUntil = (value, now = Date.now()) => {
   if (!value) return null;
-  const diff = new Date(value).getTime() - now;
-  if (!Number.isFinite(diff) || diff <= 0) return { expired: true, hours: 0, minutes: 0, seconds: 0 };
+  const diff = tournamentTimestamp(value) - now;
+  if (!Number.isFinite(diff)) return null;
+  if (diff <= 0) return { expired: true, hours: 0, minutes: 0, seconds: 0 };
   const totalSeconds = Math.floor(diff / 1000);
   return {
     expired: false,
@@ -80,7 +78,8 @@ const countdownUntil = (value, now = Date.now()) => {
 };
 const timeUntil = (value, now = Date.now()) => {
   if (!value) return "TBD";
-  const diff = new Date(value).getTime() - now;
+  const diff = tournamentTimestamp(value) - now;
+  if (!Number.isFinite(diff)) return "TBD";
   if (diff <= 0) return "Completed";
   const totalSeconds = Math.floor(diff / 1000);
   const days = Math.floor(totalSeconds / 86400);
@@ -92,7 +91,7 @@ const timeUntil = (value, now = Date.now()) => {
   return `${padCountdownUnit(minutes)}m ${padCountdownUnit(seconds)}s`;
 };
 const matchStartWindow = (match, now = Date.now()) => {
-  const deadline = new Date(match?.start_deadline || "").getTime();
+  const deadline = tournamentTimestamp(match?.start_deadline);
   if (!Number.isFinite(deadline)) return null;
   const seconds = Math.max(0, Math.ceil((deadline - now) / 1000));
   if (seconds === 0) return { expired: true, label: "Admin support unlocked" };
@@ -214,7 +213,7 @@ function useTournamentClock(deadline) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     let timer;
-    const until = new Date(deadline || "").getTime();
+    const until = tournamentTimestamp(deadline);
     const tick = () => {
       const current = Date.now();
       setNow(current);
@@ -257,7 +256,7 @@ function FeaturedTournamentHero({ tournament, onSelect }) {
         <div className="tournament-spotlight-labels"><span className="tournament-spotlight-eyebrow"><Trophy size={14} aria-hidden="true" />Featured event</span><span className={`tournament-spotlight-status ${statusTone(tournament.status)}`}>{statusLabels[tournament.status] || tournament.status}</span></div>
         <h2 id="featured-tournament-title">{tournament.name}</h2>
         <p className="tournament-spotlight-description">{tournament.description || "Compete with your team and follow the bracket from the first round to the final."}</p>
-        <div className="tournament-spotlight-meta"><span><Gamepad2 size={15} aria-hidden="true" />{tournamentGameName(tournament)}</span><span><Users size={15} aria-hidden="true" />{tournament.team_size || "1v1"}</span><span><Clock size={15} aria-hidden="true" />{formatDate(tournament.start_date)}</span></div>
+        <div className="tournament-spotlight-meta"><span><Gamepad2 size={15} aria-hidden="true" />{tournamentGameName(tournament)}</span><span><Users size={15} aria-hidden="true" />{tournament.team_size || "1v1"}</span><span><Clock size={15} aria-hidden="true" /><TournamentDateTime value={tournament.start_date} /></span></div>
       </div>
       <aside className="tournament-spotlight-summary" aria-label="Featured tournament details">
         <div className="tournament-spotlight-prize"><span className="tournament-spotlight-trophy"><Trophy size={23} aria-hidden="true" /></span><div><p>Prize pool</p><strong>{formatMoney(tournament.prize_pool)}</strong></div></div>
@@ -689,6 +688,7 @@ export default function Tournaments() {
           <div className="px-1">
             <p className="text-sm font-black text-white">Browse tournaments</p>
             <p className="mt-0.5 text-[11px] text-vapor">{filteredTournaments.length} official event{filteredTournaments.length === 1 ? "" : "s"} available</p>
+            <TournamentTimeZonePicker className="mt-2" />
           </div>
           <div className="arena-tabs tournaments-filter-group flex items-center">
             {["All", "Open", "Registration", "In Progress", "Completed"].map((item) => (
@@ -812,7 +812,7 @@ export default function Tournaments() {
                         </span>
                       </div>
                       <p className="mt-1.5 text-xs text-vapor">
-                        {compactModeLabel(selectedTournament)} · {formatDate(selectedTournament.start_date)}
+                        {compactModeLabel(selectedTournament)} · <TournamentDateTime value={selectedTournament.start_date} />
                       </p>
                     </div>
                   </div>
@@ -1065,7 +1065,7 @@ function TournamentMatchesPanel({ matches = [] }) {
                 </div>
                 <div className="min-w-0">
                   <p className="truncate text-sm font-bold">{match.team_a_name || (match.team_a_bye ? "Bye" : "TBD")} <span className="px-1 text-vapor">vs</span> {match.team_b_name || (match.team_b_bye ? "Bye" : "TBD")}</p>
-                  <p className="mt-1 text-[10px] text-vapor">{modeLabels[match.game_mode] || match.game_mode || "Mode TBD"} · {formatDate(match.scheduled_date || match.start_date)}</p>
+                  <p className="mt-1 text-[10px] text-vapor">{modeLabels[match.game_mode] || match.game_mode || "Mode TBD"} · <TournamentDateTime value={match.scheduled_date || match.start_date} /></p>
                 </div>
                 <div className="flex items-center gap-3 sm:justify-end">
                   <span className="font-mono text-sm font-black">{match.bye ? "—" : `${match.team_a_score || 0} — ${match.team_b_score || 0}`}</span>

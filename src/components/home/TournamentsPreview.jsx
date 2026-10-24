@@ -3,9 +3,9 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowRight, Clock, Trophy, Users } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { TournamentDateTime } from "@/components/tournaments/TournamentTime";
 
 const formatMoney = (value) => `$${Number(value || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
-const formatDate = (value) => value ? new Date(value).toLocaleString() : "Not scheduled";
 const tournamentModeLabels = {
   bo1_snd: "BO1 SND",
   snd_hp_snd: "BO3 SND / HP / SND",
@@ -80,7 +80,7 @@ export default function TournamentsPreview() {
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Clock className="w-3.5 h-3.5" />
-                    <span>{formatDate(tournament.start_date)}</span>
+                    <TournamentDateTime value={tournament.start_date} />
                   </div>
                 </div>
               </motion.div>
