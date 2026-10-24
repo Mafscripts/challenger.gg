@@ -10,6 +10,12 @@
 [data-player-card] .trophy-count-chip{background:#07121ef0;opacity:1;border-color:#8da6bb55;box-shadow:0 2px 8px #0006,inset 0 1px 0 #ffffff0d}
 [data-player-card] .trophy-count-chip>span{color:#f1f7ff;text-shadow:0 1px 2px #000}
 [data-player-card] .trophy-count-chip img{filter:drop-shadow(0 1px 2px #000)}
+[data-player-card] .player-voice-badge,[data-player-card] .player-social-badge{background:#07121ef5;border-color:#8da6bb70;box-shadow:0 2px 8px #0007;text-shadow:0 1px 2px #000}
+[data-player-card] .player-voice-badge:is([data-voice-status="not_in_waiting_room"],[data-voice-status="not_linked"],[data-voice-status="move_failed"]){color:#ffbd70;border-color:#ed9c4b80}
+[data-player-card] .player-voice-badge[data-voice-status="in_waiting_room"]{color:#7cebb0;border-color:#7cebb070}
+[data-player-card] .player-voice-badge[data-voice-status="in_team_voice"]{color:#77e5ff;border-color:#77e5ff70}
+[data-player-card] .player-voice-badge[data-voice-status="stale"],[data-player-card] .player-social-badge{color:#d4e3f1}
+[data-player-card] a.player-voice-badge:hover,[data-player-card] a.player-social-badge:hover{background:#132b3e;border-color:#8ce9ff;color:#d5f7ff}
 [data-player-card] a,[data-player-card] button{position:relative}
 /* Quiet, independently timed layers instead of repeating full-card patterns. */
 [data-player-card]::after{display:none}

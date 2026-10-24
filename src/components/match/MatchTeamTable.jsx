@@ -94,7 +94,7 @@ function PlayerSocials({ player }) {
       {available.map(({ key, label, icon: Icon, toneClass, description }) => {
         const href = socialUrl(key, socials[key]);
         const Social = href ? "a" : "span";
-        const classes = "group/badge relative inline-flex h-5 w-full min-w-0 items-center justify-center rounded-md border border-white/[0.08] bg-black/20 text-vapor transition-colors hover:border-cyan/30 hover:text-cyan focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan";
+        const classes = "player-social-badge group/badge relative inline-flex h-5 w-full min-w-0 items-center justify-center rounded-md border border-white/[0.08] bg-black/20 text-vapor transition-colors hover:border-cyan/30 hover:text-cyan focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan";
         return <BadgeTooltip key={key} label={label} description={href ? description : `${label}: ${socials[key]}`} icon={Icon} toneClass={toneClass}>
           <Social {...(href ? { href, target: "_blank", rel: "noopener noreferrer" } : { tabIndex: 0 })} aria-label={label} className={classes}><Icon className="h-3 w-3" aria-hidden="true" /></Social>
         </BadgeTooltip>;

@@ -40,7 +40,7 @@ export function FreeEightsVoiceBadge({ status = "unknown", waitingRoomUrl, fresh
   const Badge = canJoin ? "a" : "span";
   const toneClass = badgeStyle.split(" ").find((token) => token.startsWith("text-")) || "text-white";
   return <BadgeTooltip label={label} description={description} icon={StatusIcon} toneClass={toneClass}>
-    <Badge {...(canJoin ? { href: waitingRoomUrl, target: "_blank", rel: "noopener noreferrer" } : { tabIndex: 0 })} className={`relative inline-flex max-w-full items-center gap-1.5 rounded-lg border px-2.5 py-2 text-[10px] font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current ${badgeStyle} ${canJoin ? "transition-colors hover:border-orange/50 hover:bg-orange/15" : "cursor-default"}`}><StatusIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /><span>{label}</span>{canJoin && <ExternalLink className="h-3 w-3 shrink-0" aria-hidden="true" />}</Badge>
+    <Badge {...(canJoin ? { href: waitingRoomUrl, target: "_blank", rel: "noopener noreferrer" } : { tabIndex: 0 })} data-voice-status={fresh ? status : "stale"} className={`player-voice-badge relative inline-flex max-w-full items-center gap-1.5 rounded-lg border px-2.5 py-2 text-[10px] font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current ${badgeStyle} ${canJoin ? "transition-colors hover:border-orange/50 hover:bg-orange/15" : "cursor-default"}`}><StatusIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /><span>{label}</span>{canJoin && <ExternalLink className="h-3 w-3 shrink-0" aria-hidden="true" />}</Badge>
   </BadgeTooltip>;
 }
 
