@@ -34,7 +34,7 @@
 [data-atmosphere="snow"] .pc-mote{width:2px;height:2px;animation:pc-snowfall var(--mote-time) linear infinite}
 [data-atmosphere="snow"] .pc-scene-light{background:radial-gradient(ellipse at 80% 0%,#b1c9d750,transparent 55%);animation:pc-ice-light 12s ease-in-out infinite alternate}
 [data-atmosphere="mist"] .pc-scene-haze{background:radial-gradient(ellipse at 80% 70%,#b3a8be60,transparent 48%),radial-gradient(ellipse at 50% 20%,#9d9eaf40,transparent 42%);animation:pc-silk-mist 13s ease-in-out infinite alternate}
-[data-atmosphere="mist"] .pc-scene-light{background:radial-gradient(ellipse at 85% 45%,#c6b4d34a,transparent 38%);animation:pc-dragon-breath 10s ease-in-out infinite alternate}
+[data-atmosphere="mist"] .pc-scene-light{inset:12% 5% 8% 52%;background:radial-gradient(ellipse at 80% 45%,#d4c8df80,transparent 36%),radial-gradient(ellipse at 42% 65%,#a899bd55,transparent 48%);filter:blur(3px);animation:pc-dragon-breath 9s ease-in-out infinite}
 [data-atmosphere="fireflies"]{--atmosphere:#c4cba4}
 [data-atmosphere="fireflies"] .pc-mote{width:2px;height:2px;box-shadow:0 0 5px #c4cba435;animation:pc-firefly-flight var(--mote-time) ease-in-out infinite}
 [data-atmosphere="fireflies"] .pc-scene-haze{background:radial-gradient(ellipse at 75% 75%,#9fb9a348,transparent 50%);animation:pc-silk-mist 26s ease-in-out infinite alternate}
@@ -44,6 +44,7 @@
 [data-atmosphere="lava"]{--atmosphere:#c6a38b}
 [data-atmosphere="lava"] .pc-scene-haze{background:radial-gradient(ellipse at 85% 110%,#bf8f6c65,transparent 50%);animation:pc-heat-flow 11s ease-in-out infinite alternate}
 [data-atmosphere="lava"] .pc-mote{animation:pc-ember-rise calc(var(--mote-time) * 1.4) ease-in-out infinite}
+[data-atmosphere="lava"] .pc-scene-light{inset:25% 4% -20% 58%;background:radial-gradient(ellipse at 70% 80%,#d3aa7865,transparent 60%);animation:pc-furnace-breath 7s ease-in-out infinite}
 [data-atmosphere="petals"]{--atmosphere:#c5a9bb}
 [data-atmosphere="petals"] .pc-mote{width:5px;height:2.5px;border-radius:75% 15% 70% 20%;background:linear-gradient(120deg,#d2bac7,#a68c9d);animation:pc-petal-dance calc(var(--mote-time) * 1.45) ease-in-out infinite}
 [data-atmosphere="petals"] .pc-scene-haze{background:radial-gradient(ellipse at 80% 20%,#b99aaf46,transparent 50%);animation:pc-quiet-glow 25s ease-in-out infinite alternate}
@@ -60,7 +61,8 @@
 @keyframes pc-snowfall{0%{opacity:0;transform:translate3d(0,-30px,0)}20%,75%{opacity:.46}50%{transform:translate3d(var(--mote-drift),12px,0)}100%{opacity:0;transform:translate3d(3px,60px,0)}}
 @keyframes pc-ice-light{from{opacity:.12;transform:translate3d(-4%,0,0)}to{opacity:.45;transform:translate3d(3%,2%,0)}}
 @keyframes pc-silk-mist{from{opacity:.18;transform:translate3d(5%,2%,0) scale(.96)}to{opacity:.46;transform:translate3d(-5%,-3%,0) scale(1.08)}}
-@keyframes pc-dragon-breath{from{opacity:.08;transform:scale(.96)}to{opacity:.36;transform:scale(1.1)}}
+@keyframes pc-dragon-breath{0%,100%{opacity:.1;transform:translate3d(3%,0,0) scale(.9)}30%{opacity:.58}65%{opacity:.34;transform:translate3d(-10%,-4%,0) scale(1.16)}85%{opacity:.12;transform:translate3d(-17%,-7%,0) scale(1.24)}}
+@keyframes pc-furnace-breath{0%,100%{opacity:.15;transform:scale(.96)}42%{opacity:.65;transform:scale(1.08)}70%{opacity:.32;transform:scale(1.02)}}
 @keyframes pc-firefly-flight{0%,100%{opacity:.03;transform:translate3d(0,8px,0)}25%{opacity:.32;transform:translate3d(9px,-6px,0)}55%{opacity:.14;transform:translate3d(-5px,-14px,0)}80%{opacity:.38;transform:translate3d(var(--mote-drift),-2px,0)}}
 @keyframes pc-silver-pass{0%{opacity:0;transform:translate3d(-42%,0,0)}15%{opacity:.32}48%{opacity:.72}85%{opacity:.32}100%{opacity:0;transform:translate3d(42%,0,0)}}
 @keyframes pc-heat-flow{from{opacity:.16;transform:translate3d(2%,5%,0) scale(.95)}to{opacity:.46;transform:translate3d(-3%,-4%,0) scale(1.1)}}
@@ -94,6 +96,7 @@
 [data-player-card][data-card-animation="off"] .pc-atmosphere{display:none}
 
 /* Artwork is precomposed for each card shape. Fit its entire height: never zoom into a face. */
+[data-player-card]::before{-webkit-mask-image:linear-gradient(90deg,transparent 0%,#000 9%,#000 100%);mask-image:linear-gradient(90deg,transparent 0%,#000 9%,#000 100%)}
 @media(min-width:651px){
   [data-player-card]::before{background-size:100% 100%,auto 100%;background-position:center,right center;animation:none;transform:none;transform-origin:center}
   [data-player-card][data-card-layout="wide"]::before{background-image:linear-gradient(90deg,#06111cc4,#06111c90 35%,#06111c45 70%,#06111c22),var(--pc-wide-art)}
