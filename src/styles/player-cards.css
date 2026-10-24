@@ -7,7 +7,7 @@
 .match-player-card[data-player-card]::before{opacity:.88}
 [data-player-card] .text-vapor{color:#b9c9db}
 [data-player-card] .match-player-field-label,[data-player-card] .party-community-field-label{color:#b7c7d8}
-[data-player-card] .trophy-count-chip{background:#07121ef0;opacity:1;border-color:#8da6bb55;box-shadow:0 2px 8px #0006,inset 0 1px 0 #ffffff0d}
+[data-player-card] .trophy-count-chip{background:transparent;opacity:1;border-color:transparent;box-shadow:none;--tw-ring-shadow:0 0 #0000}
 [data-player-card] .trophy-count-chip>span{color:#f1f7ff;text-shadow:0 1px 2px #000}
 [data-player-card] .trophy-count-chip img{filter:drop-shadow(0 1px 2px #000)}
 [data-player-card] .player-voice-badge,[data-player-card] .player-social-badge{background:#07121ef5;border-color:#8da6bb70;box-shadow:0 2px 8px #0007;text-shadow:0 1px 2px #000}
