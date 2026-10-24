@@ -1,3 +1,5 @@
+import { playerCardAppearance } from "@/lib/playerCards";
+import "@/styles/player-cards.css";
 import React from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeftRight, AtSign, Globe2, MessageCircle, Trophy, Twitch, Youtube, Radio } from "lucide-react";
@@ -146,7 +148,7 @@ export default function MatchTeamTable({ label, name, color = "cyan", teamIcon =
             const selected = teamEditing?.selected?.userId === userId;
             const swapTarget = teamEditing?.selected && teamEditing.selected.team !== player.team;
             return (
-              <article key={userId || `${displayName}-${index}`} draggable={Boolean(teamEditing && !teamEditing.busy)}
+              <article {...playerCardAppearance(player)} key={userId || `${displayName}-${index}`} draggable={Boolean(teamEditing && !teamEditing.busy)}
                 onDragStart={teamEditing ? (event) => { event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("application/x-topfragg-player", JSON.stringify({ userId, team: player.team, revision: teamEditing.revision })); teamEditing.onDragStart(player); } : undefined}
                 onDragEnd={teamEditing?.onDragEnd}
                 onDragOver={teamEditing ? (event) => { if (!teamEditing.busy && event.dataTransfer.types.includes("application/x-topfragg-player")) { event.preventDefault(); event.dataTransfer.dropEffect = "move"; } } : undefined}

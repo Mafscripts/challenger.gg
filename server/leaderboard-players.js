@@ -4,7 +4,7 @@ import { playerAvatarFor } from "./lib/playerAvatars.js";
 import { staffAvatarFor } from "../src/lib/staffAvatars.js";
 
 const presentationFields = [
-  "display_name_color", "badges", "verified_player", "is_verified_player", "streamer_badge", "is_streamer",
+  "player_card_theme", "display_name_color", "badges", "verified_player", "is_verified_player", "streamer_badge", "is_streamer",
   "force_stream_required", "stream_override_required", "monitor_cam_required", "required_monitor_cam",
   "moni_cam_required", "monitor_cam_override_required", "gold_count", "silver_count", "bronze_count",
   "premium_count", "premium_trophies", "console_restricted",

@@ -459,6 +459,7 @@ function XPMatchRoomView() {
       id: userId,
       name: playerName(userRows, fallbackName),
       avatar_url: userRows?.avatar_url || "",
+      player_card_theme: userRows?.player_card_theme || "",
       display_name_color: userRows?.display_name_color || profile?.display_name_color || "",
       activision_id: userRows?.activision_id || "",
       elo: stats.elo || 0,

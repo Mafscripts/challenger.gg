@@ -209,12 +209,12 @@ test("real API requires authentication and blocks generic ladder/roster writes; 
 test("room tables use public player presentation and the correct team or solo standing without account secrets", async (t) => {
   const f = fixture(t, 2), match = await f.create();
   Object.assign(f.rows("user")[0], { email: "private@example.com", password_hash: "secret", is_premium: true });
-  Object.assign(f.rows("user")[0].metadata, { avatar_url: "/avatar.png", display_name_color: "#00ffff", twitch: "player", password_reset_token_hash: "hidden", last_login_ip: "private" });
+  Object.assign(f.rows("user")[0].metadata, { avatar_url: "/avatar.png", player_card_theme: "frostbite", display_name_color: "#00ffff", twitch: "player", password_reset_token_hash: "hidden", last_login_ip: "private" });
   await f.db.challengeStanding.create({ data: { kind: "team", subject_id: "alpha", name: "Alpha", xp: 1234, wins: 8, losses: 3 } });
   const result = await f.handlers.getChallengeRoom(f.request(12, { match_id: match.id }));
   const player = result.match.players[0];
   assert.equal(player.avatar_url, "/avatar.png"); assert.equal(player.is_premium, true);
-  assert.equal(player.display_name_color, "#00ffff"); assert.equal(player.twitch, "player");
+  assert.equal(player.display_name_color, "#00ffff"); assert.equal(player.twitch, "player"); assert.equal(player.player_card_theme, "frostbite");
   for (const key of ["email", "password_hash", "password_reset_token_hash", "last_login_ip", "metadata"]) assert.equal(player[key], undefined);
   assert.deepEqual(result.match.standings, [{ kind: "team", subject_id: "alpha", xp: 1234, wins: 8, losses: 3 }]);
   assert.equal(result.match.voice, null); assert.deepEqual(result.match.messages, []);

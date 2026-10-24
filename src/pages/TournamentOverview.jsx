@@ -1,3 +1,5 @@
+import { playerCardAppearance } from "@/lib/playerCards";
+import "@/styles/player-cards.css";
 import { competitionStreamRequiredMessage, hasCompetitionStream } from "@/lib/competitionStreaming";
 import { loadPlayTeams } from "@/lib/playTeams";
 import { tournamentPayoutPolicy } from "@/lib/tournamentPayoutPolicy";
@@ -204,7 +206,7 @@ function TournamentRosterPlayerCard({ player, captain }) {
   const losses = Number(player?.total_losses ?? player?.losses ?? 0);
   const avatar = player?.avatar_url || "";
   return (
-    <article className="overview-panel overflow-hidden p-4">
+    <article {...playerCardAppearance(player)} className="overview-panel overflow-hidden p-4">
       <div className="flex items-center gap-3">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-cyan/20 bg-cyan/10 font-mono text-sm font-black text-cyan">
           {avatar ? <img src={avatar} alt="" className="h-full w-full object-cover" /> : rosterMemberName(player).slice(0, 1).toUpperCase()}

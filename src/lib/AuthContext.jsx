@@ -24,6 +24,7 @@ export const AuthProvider = ({ children }) => {
       if (!user?.id || detail?.userId !== user.id) return;
       const patch = {
         ...(detail.avatarUrl !== undefined ? { avatar_url: detail.avatarUrl } : {}),
+        ...(detail.playerCardTheme !== undefined ? { player_card_theme: detail.playerCardTheme } : {}),
         ...(detail.displayNameColor !== undefined ? { display_name_color: detail.displayNameColor } : {}),
       };
       setUser((current) => current?.id === detail.userId ? { ...current, ...patch } : current);

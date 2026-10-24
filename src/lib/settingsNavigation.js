@@ -29,7 +29,7 @@ export const settingGroups = [
   },
   {
     id: "appearance", label: "Appearance", description: "Make the website feel like yours", icon: "PanelLeft", tone: "purple",
-    items: [{ label: "Navigation layout", description: "Choose the topbar or sidebar", icon: "PanelLeft", target: "settings-navigation", keywords: "menu layout appearance navigation" }],
+    items: [{ label: "Player card studio", description: "Animated artwork for your match room card", icon: "Palette", target: "settings-player-card", keywords: "animated player cards backgrounds skins themes preview custom" }, { label: "Navigation layout", description: "Choose the topbar or sidebar", icon: "PanelLeft", target: "settings-navigation", keywords: "menu layout appearance navigation" }],
   },
 ];
 

@@ -1,3 +1,4 @@
+import PlayerCardSection from "@/components/settings/PlayerCardSection";
 import StreamConnectionsSection from "@/components/settings/StreamConnectionsSection";
 import React, { useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
@@ -157,7 +158,7 @@ export default function Settings() {
                 <span><GroupIcon size={22} aria-hidden="true" /></span>
                 <div><span className="settings-section-kicker"><Sparkles size={11} /> MAKE IT YOURS</span><h2>{details.title}</h2><p>{details.description}</p></div>
               </header>
-              {activeGroup.id === "appearance" && <div className="settings-panel"><div id="settings-navigation" className="settings-block"><NavigationLayoutSection /></div></div>}
+              {activeGroup.id === "appearance" && <div className="settings-panel"><div id="settings-navigation" className="settings-block"><NavigationLayoutSection /></div><div id="settings-player-card" className="settings-block"><PlayerCardSection user={user} onUserUpdate={loadUser} /></div></div>}
               {activeGroup.id === "account" && <div className="settings-panel">
                 <div id="settings-account" className="settings-block"><AccountSection user={user} onUserUpdate={loadUser} /></div>
                 <div id="settings-name-color" className="settings-block"><NameColorSection user={user} onUserUpdate={loadUser} /></div>
