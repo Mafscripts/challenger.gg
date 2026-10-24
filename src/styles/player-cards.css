@@ -1,8 +1,8 @@
 /* The artwork and light move behind an isolated, stationary roster. */
 [data-player-card]{position:relative;isolation:isolate;overflow:hidden;background:#08131e!important;color:#f1f7ff;box-shadow:none}
 [data-player-card]::before,[data-player-card]::after{content:"";position:absolute;pointer-events:none;inset:0;z-index:-1;border-radius:inherit}
-[data-player-card]::before{left:0;width:100%;max-width:none;background-image:linear-gradient(90deg,#06111cd4 0%,#06111ca8 25%,#06111c70 46%,#06111c40 70%,#06111c22 100%),var(--pc-desktop-art,var(--pc-art));background-size:cover;background-repeat:no-repeat;background-position:center,var(--pc-focus);-webkit-mask-image:none;mask-image:none;opacity:.96;animation:pc-art-drift 14s ease-in-out infinite alternate}
-[data-player-card]::after{opacity:.25;background:radial-gradient(ellipse at 85% 30%,var(--pc-accent),transparent 55%);animation:pc-mist 11s ease-in-out infinite alternate}
+[data-player-card]::before{left:0;width:100%;max-width:none;background-image:linear-gradient(90deg,#06111cd4 0%,#06111ca8 25%,#06111c70 46%,#06111c40 70%,#06111c22 100%),var(--pc-desktop-art,var(--pc-art));background-size:cover;background-repeat:no-repeat;background-position:center,var(--pc-focus);-webkit-mask-image:none;mask-image:none;opacity:.96;animation:none}
+[data-player-card]::after{opacity:.25;background:radial-gradient(ellipse at 85% 30%,var(--pc-accent),transparent 55%);animation:none}
 /* Preserve contrast under match stats while the settings tiles show richer artwork. */
 .match-player-card[data-player-card]::before{opacity:.88}
 [data-player-card] .text-vapor{color:#b9c9db}
@@ -20,17 +20,17 @@
 [data-player-card] a,[data-player-card] button{position:relative}
 /* Quiet, independently timed layers instead of repeating full-card patterns. */
 [data-player-card]::after{display:none}
-[data-player-card]::before{filter:saturate(.82);animation:pc-art-drift 14s ease-in-out infinite alternate;transform-origin:85% 50%}
+[data-player-card]::before{filter:saturate(.82);animation:none;transform-origin:85% 50%}
 .pc-atmosphere{position:absolute!important;inset:0;z-index:-1;overflow:hidden;pointer-events:none;contain:paint;mask-image:linear-gradient(90deg,transparent 20%,#000 48%);-webkit-mask-image:linear-gradient(90deg,transparent 20%,#000 48%);--atmosphere:#b8ccdc}
 .pc-atmosphere>i{position:absolute;display:block;pointer-events:none;animation-fill-mode:both;animation-delay:var(--mote-delay,0s)}
 .pc-scene-light,.pc-scene-haze{inset:-15%;opacity:0;background:radial-gradient(ellipse at 80% 60%,#b7cfdf20,transparent 48%)}
 .pc-mote{left:var(--mote-x);top:var(--mote-y);width:2px;height:2px;border-radius:50%;background:var(--atmosphere);opacity:0;animation:pc-dust var(--mote-time) linear infinite}
 [data-atmosphere="rain"]{--atmosphere:#9cb4c2}
 [data-atmosphere="rain"] .pc-mote{width:1px;height:11px;background:linear-gradient(transparent,#c1d7e486,transparent);animation:pc-soft-rain calc(var(--mote-time) * .55) linear infinite}
-[data-atmosphere="rain"] .pc-scene-light{inset:40% -20% -50% 30%;background:radial-gradient(ellipse,#a3bdcc65,transparent 62%);animation:pc-reflection 9s ease-in-out infinite alternate}
+[data-atmosphere="rain"] .pc-scene-light{inset:40% -20% -50% 30%;background:radial-gradient(ellipse,#a3bdcc65,transparent 62%);animation:pc-reflection 9s linear infinite}
 [data-atmosphere="embers"]{--atmosphere:#cda985}
 [data-atmosphere="embers"] .pc-mote{width:2px;height:2px;box-shadow:0 0 5px #cfa16e40;animation:pc-ember-rise var(--mote-time) ease-in-out infinite}
-[data-atmosphere="embers"] .pc-scene-haze{background:radial-gradient(ellipse at 85% 80%,#a98d7155,transparent 48%);animation:pc-quiet-glow 19s ease-in-out infinite alternate}
+[data-atmosphere="embers"] .pc-scene-haze{background:radial-gradient(ellipse at 85% 80%,#a98d7155,transparent 48%);animation:pc-quiet-glow 19s linear infinite}
 [data-atmosphere="tide"]{--atmosphere:#b3c7de}
 [data-atmosphere="tide"] .pc-scene-light{display:none}
 [data-atmosphere="tide"] .pc-scene-haze{inset:65% 0 0 25%;opacity:.6;background:radial-gradient(ellipse at 25% 100%,transparent 43%,#b9ddff80 48%,transparent 55%),radial-gradient(ellipse at 75% 0%,transparent 43%,#a6cfee65 48%,transparent 56%);background-size:360px 100%;mask-image:linear-gradient(transparent,#000 35%,#000 75%,transparent);-webkit-mask-image:linear-gradient(transparent,#000 35%,#000 75%,transparent);animation:pc-water-current 9s linear infinite}
@@ -42,42 +42,42 @@
 [data-atmosphere="solar"] .pc-mote{width:1px;height:1px;animation:pc-orbit-dust var(--mote-time) ease-in-out infinite}
 [data-atmosphere="snow"]{--atmosphere:#c6d6df}
 [data-atmosphere="snow"] .pc-mote{width:2px;height:2px;animation:pc-snowfall var(--mote-time) linear infinite}
-[data-atmosphere="snow"] .pc-scene-light{background:radial-gradient(ellipse at 80% 0%,#b1c9d750,transparent 55%);animation:pc-ice-light 12s ease-in-out infinite alternate}
-[data-atmosphere="mist"] .pc-scene-haze{background:radial-gradient(ellipse at 80% 70%,#b3a8be60,transparent 48%),radial-gradient(ellipse at 50% 20%,#9d9eaf40,transparent 42%);animation:pc-silk-mist 13s ease-in-out infinite alternate}
+[data-atmosphere="snow"] .pc-scene-light{background:radial-gradient(ellipse at 80% 0%,#b1c9d750,transparent 55%);animation:pc-ice-light 12s linear infinite}
+[data-atmosphere="mist"] .pc-scene-haze{background:radial-gradient(ellipse at 80% 70%,#b3a8be60,transparent 48%),radial-gradient(ellipse at 50% 20%,#9d9eaf40,transparent 42%);animation:pc-silk-mist 13s linear infinite}
 [data-atmosphere="mist"] .pc-scene-light{inset:12% 5% 8% 52%;background:radial-gradient(ellipse at 80% 45%,#d4c8df80,transparent 36%),radial-gradient(ellipse at 42% 65%,#a899bd55,transparent 48%);filter:blur(3px);animation:pc-dragon-breath 9s ease-in-out infinite}
 [data-atmosphere="fireflies"]{--atmosphere:#c4cba4}
 [data-atmosphere="fireflies"] .pc-mote{width:2px;height:2px;box-shadow:0 0 5px #c4cba435;animation:pc-firefly-flight var(--mote-time) ease-in-out infinite}
-[data-atmosphere="fireflies"] .pc-scene-haze{background:radial-gradient(ellipse at 75% 75%,#9fb9a348,transparent 50%);animation:pc-silk-mist 26s ease-in-out infinite alternate}
+[data-atmosphere="fireflies"] .pc-scene-haze{background:radial-gradient(ellipse at 75% 75%,#9fb9a348,transparent 50%);animation:pc-silk-mist 26s linear infinite}
 [data-atmosphere="chrome"] .pc-scene-light{background:linear-gradient(110deg,transparent 40%,#dbe2e578 50%,transparent 60%);animation:pc-silver-pass 8s cubic-bezier(.4,0,.2,1) infinite}
 [data-atmosphere="chrome"] .pc-mote{width:2px;height:2px;background:#d2dce3;box-shadow:0 0 6px #d2dce350;animation:pc-starlight var(--mote-time) ease-in-out infinite}
-[data-atmosphere="chrome"] .pc-scene-haze{background:radial-gradient(ellipse at 80% 70%,#bbc6ce4a,transparent 48%);animation:pc-quiet-glow 10s ease-in-out infinite alternate}
+[data-atmosphere="chrome"] .pc-scene-haze{background:radial-gradient(ellipse at 80% 70%,#bbc6ce4a,transparent 48%);animation:pc-quiet-glow 10s linear infinite}
 [data-atmosphere="lava"]{--atmosphere:#c6a38b}
-[data-atmosphere="lava"] .pc-scene-haze{background:radial-gradient(ellipse at 85% 110%,#bf8f6c65,transparent 50%);animation:pc-heat-flow 11s ease-in-out infinite alternate}
+[data-atmosphere="lava"] .pc-scene-haze{background:radial-gradient(ellipse at 85% 110%,#bf8f6c65,transparent 50%);animation:pc-heat-flow 11s linear infinite}
 [data-atmosphere="lava"] .pc-mote{animation:pc-ember-rise calc(var(--mote-time) * 1.4) ease-in-out infinite}
 [data-atmosphere="lava"] .pc-scene-light{inset:25% 4% -20% 58%;background:radial-gradient(ellipse at 70% 80%,#d3aa7865,transparent 60%);animation:pc-furnace-breath 7s ease-in-out infinite}
 [data-atmosphere="petals"]{--atmosphere:#c5a9bb}
 [data-atmosphere="petals"] .pc-mote{width:5px;height:2.5px;border-radius:75% 15% 70% 20%;background:linear-gradient(120deg,#d2bac7,#a68c9d);animation:pc-petal-dance calc(var(--mote-time) * 1.45) ease-in-out infinite}
-[data-atmosphere="petals"] .pc-scene-haze{background:radial-gradient(ellipse at 80% 20%,#b99aaf46,transparent 50%);animation:pc-quiet-glow 25s ease-in-out infinite alternate}
+[data-atmosphere="petals"] .pc-scene-haze{background:radial-gradient(ellipse at 80% 20%,#b99aaf46,transparent 50%);animation:pc-quiet-glow 25s linear infinite}
 @keyframes pc-art-drift{from{transform:scale(1.008) translate3d(0,0,0)}to{transform:scale(1.035) translate3d(-.45%,.4%,0)}}
 @keyframes pc-dust{0%,100%{opacity:0;transform:translate3d(0,12px,0)}45%{opacity:.28}90%{opacity:0;transform:translate3d(var(--mote-drift),-18px,0)}}
 @keyframes pc-soft-rain{0%{opacity:0;transform:translate3d(10px,-34px,0) rotate(16deg)}20%,75%{opacity:.4}100%{opacity:0;transform:translate3d(-12px,48px,0) rotate(16deg)}}
-@keyframes pc-reflection{from{opacity:.15;transform:translate3d(-3%,1%,0) scaleX(.95)}to{opacity:.48;transform:translate3d(3%,-2%,0) scaleX(1.08)}}
+@keyframes pc-reflection{0%{opacity:0;transform:translate3d(-8%,2%,0)}25%,65%{opacity:.48}100%{opacity:0;transform:translate3d(8%,-2%,0)}}
 @keyframes pc-ember-rise{0%{opacity:0;transform:translate3d(0,24px,0) scale(.5)}25%{opacity:.58}65%{opacity:.22;transform:translate3d(var(--mote-drift),-5px,0) scale(1)}100%{opacity:0;transform:translate3d(5px,-45px,0) scale(.4)}}
-@keyframes pc-quiet-glow{from{opacity:.14;transform:scale(.96)}to{opacity:.46;transform:scale(1.06)}}
+@keyframes pc-quiet-glow{0%,100%{opacity:.3}50%{opacity:.46}}
 @keyframes pc-swell{from{opacity:.1;transform:translate3d(3%,5%,0) rotate(-2deg) scale(.94)}to{opacity:.42;transform:translate3d(-4%,-4%,0) rotate(2deg) scale(1.08)}}
 @keyframes pc-water-current{from{background-position:0 0}to{background-position:-360px 0}}
 @keyframes pc-shooting-star{0%,68%{opacity:0;transform:translate3d(0,-12px,0) rotate(24deg)}72%{opacity:.85}84%{opacity:0;transform:translate3d(105px,35px,0) rotate(24deg)}100%{opacity:0;transform:translate3d(105px,35px,0) rotate(24deg)}}
 @keyframes pc-starlight{0%,100%{opacity:.04;transform:scale(.65)}50%{opacity:.34;transform:scale(1.2)}}
 @keyframes pc-golden-pass{0%{opacity:0;transform:translate3d(-40%,0,0)}20%{opacity:.25}50%{opacity:.7}80%{opacity:.25}100%{opacity:0;transform:translate3d(40%,0,0)}}
-@keyframes pc-orbit-dust{0%,100%{opacity:0;transform:translate3d(-7px,4px,0)}50%{opacity:.28;transform:translate3d(5px,-6px,0)}}
+@keyframes pc-orbit-dust{0%{opacity:0;transform:translate3d(-7px,4px,0)}35%,65%{opacity:.4}100%{opacity:0;transform:translate3d(18px,-16px,0)}}
 @keyframes pc-snowfall{0%{opacity:0;transform:translate3d(0,-30px,0)}20%,75%{opacity:.46}50%{transform:translate3d(var(--mote-drift),12px,0)}100%{opacity:0;transform:translate3d(3px,60px,0)}}
-@keyframes pc-ice-light{from{opacity:.12;transform:translate3d(-4%,0,0)}to{opacity:.45;transform:translate3d(3%,2%,0)}}
-@keyframes pc-silk-mist{from{opacity:.18;transform:translate3d(5%,2%,0) scale(.96)}to{opacity:.46;transform:translate3d(-5%,-3%,0) scale(1.08)}}
-@keyframes pc-dragon-breath{0%,100%{opacity:.1;transform:translate3d(3%,0,0) scale(.9)}30%{opacity:.58}65%{opacity:.34;transform:translate3d(-10%,-4%,0) scale(1.16)}85%{opacity:.12;transform:translate3d(-17%,-7%,0) scale(1.24)}}
-@keyframes pc-furnace-breath{0%,100%{opacity:.15;transform:scale(.96)}42%{opacity:.65;transform:scale(1.08)}70%{opacity:.32;transform:scale(1.02)}}
-@keyframes pc-firefly-flight{0%,100%{opacity:.03;transform:translate3d(0,8px,0)}25%{opacity:.32;transform:translate3d(9px,-6px,0)}55%{opacity:.14;transform:translate3d(-5px,-14px,0)}80%{opacity:.38;transform:translate3d(var(--mote-drift),-2px,0)}}
+@keyframes pc-ice-light{0%{opacity:0;transform:translate3d(-8%,0,0)}30%,70%{opacity:.45}100%{opacity:0;transform:translate3d(8%,2%,0)}}
+@keyframes pc-silk-mist{0%{opacity:0;transform:translate3d(8%,3%,0) scale(.96)}25%,65%{opacity:.46}100%{opacity:0;transform:translate3d(-12%,-5%,0) scale(1.12)}}
+@keyframes pc-dragon-breath{0%{opacity:0;transform:translate3d(3%,0,0) scale(.9)}30%{opacity:.58}65%{opacity:.34;transform:translate3d(-10%,-4%,0) scale(1.16)}100%{opacity:0;transform:translate3d(-23%,-9%,0) scale(1.3)}}
+@keyframes pc-furnace-breath{0%{opacity:0;transform:translate3d(0,10%,0) scale(.96)}35%{opacity:.65}70%{opacity:.32}100%{opacity:0;transform:translate3d(-5%,-15%,0) scale(1.15)}}
+@keyframes pc-firefly-flight{0%{opacity:0;transform:translate3d(0,12px,0)}25%{opacity:.5}55%{opacity:.2}80%{opacity:.5}100%{opacity:0;transform:translate3d(var(--mote-drift),-35px,0)}}
 @keyframes pc-silver-pass{0%{opacity:0;transform:translate3d(-42%,0,0)}15%{opacity:.32}48%{opacity:.72}85%{opacity:.32}100%{opacity:0;transform:translate3d(42%,0,0)}}
-@keyframes pc-heat-flow{from{opacity:.16;transform:translate3d(2%,5%,0) scale(.95)}to{opacity:.46;transform:translate3d(-3%,-4%,0) scale(1.1)}}
+@keyframes pc-heat-flow{0%{opacity:0;transform:translate3d(2%,8%,0) scale(.95)}25%,65%{opacity:.46}100%{opacity:0;transform:translate3d(-6%,-12%,0) scale(1.15)}}
 @keyframes pc-petal-dance{0%{opacity:0;transform:translate3d(20px,-34px,0) rotate(0deg) rotateY(0deg)}20%{opacity:.52}45%{transform:translate3d(-6px,2px,0) rotate(75deg) rotateY(100deg)}75%{opacity:.25;transform:translate3d(8px,32px,0) rotate(140deg) rotateY(190deg)}100%{opacity:0;transform:translate3d(-24px,65px,0) rotate(210deg) rotateY(270deg)}}
 /* Brighter motion layers remain behind the stationary stats, without zooming the artwork. */
 .pc-atmosphere>.pc-scene-light,.pc-atmosphere>.pc-scene-haze{filter:brightness(1.65);animation-delay:-3s}
@@ -87,7 +87,7 @@
 [data-atmosphere="embers"] .pc-mote,[data-atmosphere="lava"] .pc-mote,[data-atmosphere="fireflies"] .pc-mote{width:3px;height:3px}
 [data-atmosphere="tide"] .pc-mote,[data-atmosphere="solar"] .pc-mote{width:2px;height:2px}
 [data-atmosphere="petals"] .pc-mote{width:7px;height:3.5px}
-[data-atmosphere="mist"] .pc-mote{width:36px;height:12px;background:radial-gradient(ellipse,#c7badb99,transparent 70%);box-shadow:none;animation:pc-silk-mist var(--mote-time) ease-in-out infinite alternate}
+[data-atmosphere="mist"] .pc-mote{width:36px;height:12px;background:radial-gradient(ellipse,#c7badb99,transparent 70%);box-shadow:none;animation:pc-silk-mist var(--mote-time) linear infinite}
 .pc-atmosphere[data-motion-paused="true"]>i{animation-play-state:paused!important}
 .player-card-option .pc-atmosphere>i{animation-play-state:paused}
 .player-card-option:is(:hover,:focus-visible,[aria-pressed="true"]) .pc-atmosphere>i{animation-play-state:running}
