@@ -165,8 +165,13 @@ test("simultaneous submissions share one dispute and conversation", async (t) =>
   assert.equal(table.dispute[0].metadata.submissions.length, 2);
 });
 
-for (const type of ["wager", "money8s", "tournament"]) test(`support center sends ${type} room messages without joining or changing the case owner`, async t => {
+for (const type of ["8s", "wager", "money8s", "tournament", "ranked"]) test(`support center sends ${type} room messages without joining or changing the case owner`, async t => {
   const { table, request } = await fixture(t, type);
+  if (type === "ranked") {
+    const previous = prisma.rankedMatch.findUnique;
+    prisma.rankedMatch.findUnique = async () => ({ id: "match", metadata: { status: "in_progress", host_id: "p0", challenger_id: "p4" } });
+    t.after(() => { prisma.rankedMatch.findUnique = previous; });
+  }
   if (type === "tournament") {
     const replacements = [["tournamentMatch", "findUnique", async () => ({ id: "match", metadata: { tournament_id: "tour", status: "in_progress", team_a_id: "alpha", team_b_id: "bravo" } })], ["tournament", "findUnique", async () => ({ id: "tour", metadata: { status: "open" } })], ["tournamentParticipant", "findMany", async () => []]];
     for (const [model, method, action] of replacements) { const previous = prisma[model][method]; prisma[model][method] = action; t.after(() => { prisma[model][method] = previous; }); }
@@ -188,4 +193,15 @@ for (const type of ["wager", "money8s", "tournament"]) test(`support center send
   assert.equal((await request("sendSupportCaseMatchMessage", payload, "admin")).data.success, true);
   assert.equal(table.chatMessage.length, count);
   assert.equal((await request("sendSupportCaseMatchMessage", { ...payload, client_message_id: crypto.randomUUID() }, "outsider")).status, 403);
+});
+
+for (const type of ["8s", "money8s", "wager"]) test(`${type}: an admin request appears once in the room chat`, async t => {
+  const { table, request } = await fixture(t, type);
+  const response = await request("requestAdminAlert", { match_type: type, match_id: "match" });
+  assert.equal(response.data.success, true);
+  const notices = () => table.chatMessage.filter(row => row.metadata.system && row.metadata.content.startsWith("Admin requested"));
+  assert.equal(notices().length, 1);
+  assert.equal(notices()[0].metadata.conversation_id, "match");
+  assert.equal((await request("requestAdminAlert", { match_type: type, match_id: "match" })).data.success, true);
+  assert.equal(notices().length, 1);
 });

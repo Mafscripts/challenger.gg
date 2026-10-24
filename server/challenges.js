@@ -310,6 +310,7 @@ export function createChallengeHandlers({ db = prisma, checkMembership = async (
           team_a_name: match.alpha_team.name, team_b_name: match.bravo_team?.name || "Solo challengers", match_details: match,
           match_roster: match.players.map(player => ({ user_id: player.user_id, user_name: player.user_name, activision_id: player.activision_id, team: player.side })), messages: [],
         } } });
+        match.messages = [...(match.messages || []), { id: crypto.randomUUID(), user_id: "system", user_name: "Topfragg", system: true, text: `Admin requested — ${nameFor(req.user)} requested staff assistance.`, at: new Date().toISOString() }].slice(-100);
         match.support_ticket_id = ticket.id; match.admin_request_ticket_id = ticket.id; match.requested_admin = true; await update(tx, match);
         const targets = await tx.user.findMany({ where: { OR: [{ role: { in: ["moderator", "admin", "super_admin", "ceo", "developer"] } }, { admin_role: { in: ["moderator", "admin", "super_admin", "ceo", "developer"] } }] } });
         await notify(tx, targets.filter(user => !user.is_banned).map(user => user.id), { type: "admin_request", title: "Challenge room needs support", message: `${nameFor(req.user)} requested an admin.`, action_url: `/?support_case=ticket:${ticket.id}`, related_entity_type: "Ticket", related_entity_id: ticket.id, ticket_id: ticket.id });

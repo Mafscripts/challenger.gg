@@ -4954,6 +4954,9 @@ async function requestAdminAlert(req) {
       admin_request_updated_date: nowIso(),
     }).catch(() => null);
   }
+  if (!existingTicket || requeueAdminRequest) {
+    await createMatchRoomSystemMessage(context.matchType, context.match, `Admin requested — ${nameFor(req.user)} requested staff assistance.`, req.user);
+  }
   await notifyStaff({
     title: "Admin requested",
     message: `${nameFor(req.user)} requested staff for ${context.matchType} ${context.match?.id || ""}`.trim(),

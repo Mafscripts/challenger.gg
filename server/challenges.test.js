@@ -265,6 +265,7 @@ test("challenge support requests reach the inbox once, and staff can reply witho
   assert.ok(f.rows("notification").some(row => row.metadata.type === "admin_request"));
   await f.action(0, "support", { match_id: match.id });
   assert.equal(f.rows("ticket").length, 1);
+  assert.equal(f.rows("challengeMatch")[0].metadata.messages.filter(message => message.system && message.text.startsWith("Admin requested")).length, 1);
   const clientId = crypto.randomUUID();
   const replied = await f.action(f.staff, "chat", { match_id: match.id, message: "Staff reply from support center", client_message_id: clientId });
   assert.deepEqual(replied.match.players, beforeRoster);

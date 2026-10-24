@@ -21,8 +21,11 @@ const linksFrom = (row) => [...new Set([
 
 export default function AdminTicketDetail({ row, user, onRefresh, onBack, deleteButton, draft, onDraftChange, onRoomOpen }) {
   const navigate = useNavigate();
-  const [tab, setTab] = useState("conversation");
+  const [tab, setTab] = useState(() => isMatchTicket(row) ? "chat" : "conversation");
   const chatViewport = useRef(null);
+  const roomViewport = useRef(null);
+  const followRoom = useRef(true);
+  useEffect(() => { setTab(isMatchTicket(row) ? "chat" : "conversation"); followRoom.current = true; }, [row.id, row.record_id, row.kind]);
   const replyInput = useRef(null);
   const followChat = useRef(true);
   const { reply = "", note = "", reason = "" } = draft;
@@ -137,12 +140,13 @@ export default function AdminTicketDetail({ row, user, onRefresh, onBack, delete
     }
     if (saved) { setDecision("close"); setReason(""); setConfirmBan(false); setTarget(""); }
   };
+  useEffect(() => { if (tab === "chat" && followRoom.current && roomViewport.current) roomViewport.current.scrollTop = roomViewport.current.scrollHeight; }, [tab, chat.length]);
   const tabs = [
-    ["conversation", "Conversation", MessageSquare], ["evidence", `Evidence${proof.length ? ` (${proof.length})` : ""}`, FileText],
+    ["conversation", isMatchTicket(row) ? "Ticket conversation" : "Conversation", MessageSquare], ["evidence", `Evidence${proof.length ? ` (${proof.length})` : ""}`, FileText],
     ...(isMatchTicket(row) ? [["chat", "Match chat", MessageSquare], ["match", "Match details", ExternalLink]] : []),
     ...(ticket ? [["notes", "Staff notes", LockKeyhole]] : []), ["decision", row.closed ? "Resolution" : "Decision", Gavel],
   ];
-  return <article className="at-detail">
+  return <article className="at-detail" data-chat-layout={tab === "chat" || tab === "conversation" ? "true" : undefined}>
     <header className="at-detail-heading">
       <div className="at-detail-topline"><button className="at-back" onClick={onBack}><ArrowLeft size={15} /> Tickets</button>
         <span className="at-reference">TICKET #{shortTicketId(row.record_id)}</span><TicketStatus row={row} /></div>
@@ -190,11 +194,11 @@ export default function AdminTicketDetail({ row, user, onRefresh, onBack, delete
         {row.disputes.map((record) => <div key={record.id} className="at-evidence-review">{record.proof_reviewed_date ? <p className="at-help"><FileCheck2 size={14} /> Reviewed by {record.proof_reviewed_by_name || "Staff"} on {ticketDate(record.proof_reviewed_date)}</p>
           : !closedTicket(record) && <button className="at-button" disabled={!!busy || !proof.length} onClick={() => invoke("moderateDispute", { dispute_id: record.id, action: "review_proof", notes: "Evidence reviewed by staff." }, "Evidence marked as reviewed.")}><FileCheck2 size={14} /> Mark evidence reviewed</button>}</div>)}
       </>}
-      {tab === "chat" && <><div className="at-section-heading"><h4>Match chat logs</h4><span>{chat.length} messages · Latest 100 room messages</span></div><p className="at-help">Player messages from the linked match room. New messages refresh automatically.</p>{chatQuery.isPending && <p role="status" className="at-help">Loading match chat…</p>}{chatQuery.isError && <div role="alert" className="at-list-error"><p>{chatQuery.error.message}</p><button className="at-button" onClick={() => chatQuery.refetch()} disabled={chatQuery.isFetching}>Retry</button></div>}<div className="at-thread">{chat.map((message, index) => <article key={message.id || index} className="at-message"><div className="at-message-heading"><strong className={message.sender_staff || ["admin", "ceo", "super_admin", "moderator", "developer"].includes(message.sender_role) ? "support-staff-name" : undefined}>{message.sender_name || "Player"}</strong><time>{ticketDate(message.created_date)}</time></div><p>{message.content || message.message}</p></article>)}</div>{!chat.length && !chatQuery.isPending && !chatQuery.isError && <div className="at-empty-section"><MessageSquare size={24} /><h4>No match messages yet</h4><p>No messages have been saved for this match room.</p></div>}<div className="at-composer"><label htmlFor="at-room-reply">Reply directly to the match room</label><textarea id="at-room-reply" onKeyDown={event => {
+      {tab === "chat" && <><div className="at-section-heading"><h4>Match chat</h4><span>{chat.length} messages · Latest 100 room messages</span></div><p className="at-help">Talk directly to all players in the match room. No room join needed.</p>{chatQuery.isPending && <p role="status" className="at-help">Loading match chat…</p>}{chatQuery.isError && <div role="alert" className="at-list-error"><p>{chatQuery.error.message}</p><button className="at-button" onClick={() => chatQuery.refetch()} disabled={chatQuery.isFetching}>Retry</button></div>}<div className="at-conversation-box"><div className="at-thread" ref={roomViewport} role="log" aria-label="Match room conversation" onScroll={event => { const box = event.currentTarget; followRoom.current = box.scrollHeight - box.scrollTop - box.clientHeight < 64; }}>{chat.map((message, index) => <article key={message.id || index} className="at-message" data-staff={message.sender_staff || ["admin", "ceo", "super_admin", "moderator", "developer"].includes(message.sender_role) || undefined}><div className="at-message-heading"><strong className={message.sender_staff || ["admin", "ceo", "super_admin", "moderator", "developer"].includes(message.sender_role) ? "support-staff-name" : undefined}>{message.sender_name || "Player"}</strong><time>{ticketDate(message.created_date)}</time></div><p>{message.content || message.message}</p></article>)}</div>{!chat.length && !chatQuery.isPending && !chatQuery.isError && <div className="at-empty-section"><MessageSquare size={24} /><h4>No match messages yet</h4><p>No messages have been saved for this match room.</p></div>}<div className="at-inline-reply"><label className="sr-only" htmlFor="at-room-reply">Reply directly to the match room</label><textarea id="at-room-reply" onKeyDown={event => {
             if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing && !event.repeat) {
               event.preventDefault(); if (!busy && roomDraft.trim()) void sendRoomReply();
             }
-          }} value={roomDraft} maxLength={500} rows={3} disabled={!!busy} onChange={event => setRoomDraft(event.target.value)} placeholder="Message all players in the match…" /><div><span>Enter to send · Shift+Enter for a new line. Visible to match players; no room join or takeover.</span><button className="at-button at-button-primary" disabled={!!busy || !roomDraft.trim()} onClick={sendRoomReply}><Send size={14} /> Send to match chat</button></div></div></>}
+          }} value={roomDraft} maxLength={500} rows={2} disabled={!!busy} onChange={event => setRoomDraft(event.target.value)} placeholder="Message all players in the match…" /><button className="at-inline-send" aria-label="Send to match chat" title="Send to match chat (Enter)" disabled={!!busy || !roomDraft.trim()} onClick={() => { followRoom.current = true; void sendRoomReply(); }}><Send size={18} /></button></div></div></>}
       {tab === "match" && <>
         <div className="at-section-heading"><h4>Match information</h4><span>{matchQuery.isFetching ? "Refreshing…" : matchQuery.data?.source === "current" ? "Current match data" : "Saved match snapshot"}</span></div>
         {matchQuery.isError && <div className="at-list-error" role="alert"><p>{matchQuery.error.message}</p><button className="at-button" onClick={() => matchQuery.refetch()}>Retry</button></div>}
