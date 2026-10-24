@@ -24,7 +24,28 @@ export const playerCardThemes = [
   { id: "jellyfish-dream", name: "Jellyfish Dream", accent: "#b8afd5", detail: "Rising currents · luminous plankton", motion: "jelly" },
   { id: "obsidian-temple", name: "Obsidian Temple", accent: "#a1c2b3", detail: "Floating runes · jade mist", motion: "runes" },
   { id: "vinyl-afterhours", name: "Vinyl Afterhours", accent: "#ccb89d", detail: "Record spin · analog light", motion: "vinyl" },
+  { id: "snack-bandit", name: "Snack Bandit", collection: "cartoon", accent: "#e3bd8f", detail: "Snack heist · flying crumbs", motion: "crumbs" },
+  { id: "captain-wobble", name: "Captain Wobble", collection: "cartoon", accent: "#efce8b", detail: "Moon mission · star trails", motion: "duck-stars" },
+  { id: "noodle-ninja", name: "Noodle Ninja", collection: "cartoon", accent: "#cdb0a0", detail: "Rooftop ramen · rising steam", motion: "noodle-steam" },
+  { id: "sir-snoozalot", name: "Sir Snoozalot", collection: "cartoon", accent: "#b8c8a3", detail: "Sleepy knight · drifting Zs", motion: "sleepy" },
+  { id: "cosmic-goober", name: "Cosmic Goober", collection: "cartoon", accent: "#9dd6c0", detail: "Space delivery · floating bubbles", motion: "goober" },
+  { id: "toast-terror", name: "Toast Terror", collection: "cartoon", accent: "#d5b795", detail: "Breakfast villain · buttery sparks", motion: "toast" },
+  { id: "crown-of-ashes", name: "Crown of Ashes", collection: "legendary", accent: "#d4b489", detail: "Phoenix embers · ash stream", motion: "ash-crown" },
+  { id: "celestial-sovereign", name: "Celestial Sovereign", collection: "legendary", accent: "#c1ccdf", detail: "Celestial crown · orbiting stars", motion: "celestial" },
+  { id: "leviathan-relic", name: "Leviathan Relic", collection: "legendary", accent: "#98c8bf", detail: "Ancient guardian · underwater currents", motion: "relic" },
+  { id: "prism-sentinel", name: "Prism Sentinel", collection: "legendary", accent: "#bfb4d8", detail: "Crystal armor · traveling reflections", motion: "prism" },
+  { id: "eternal-forge", name: "Eternal Forge", collection: "legendary", accent: "#d1ac79", detail: "Mechanical lion · forge sparks", motion: "forge" },
+  { id: "arcade-odyssey", name: "Arcade Odyssey", collection: "retro", accent: "#afa5d2", detail: "Pixel galaxy · shooting stars", motion: "pixel-stars" },
+  { id: "cassette-cruise", name: "Cassette Cruise", collection: "retro", accent: "#c9a6ba", detail: "Retro coupe · highway light", motion: "tape" },
+  { id: "byte-boulevard", name: "Byte Boulevard", collection: "retro", accent: "#94bdd0", detail: "Robot courier · pixel rainfall", motion: "pixel-rain" },
+  { id: "crt-surf-club", name: "CRT Surf Club", collection: "retro", accent: "#a2c7c8", detail: "Surfing screen · rolling scanlines", motion: "scan-surf" },
+  { id: "disco-dynamo", name: "Disco Dynamo", collection: "classic-cartoon", accent: "#d3b177", detail: "1970s · roller disco sparks", motion: "disco" },
+  { id: "captain-crunchbolt", name: "Captain Crunchbolt", collection: "classic-cartoon", accent: "#9abfd7", detail: "1980s · comic energy bolts", motion: "bolt" },
+  { id: "rubberhose-rumble", name: "Rubberhose Rumble", collection: "classic-cartoon", accent: "#b6c19d", detail: "1970s · hand drawn dust puffs", motion: "rubber" },
+  { id: "slime-time", name: "Slime Time", collection: "classic-cartoon", accent: "#a9cbb7", detail: "1990s · slime bubbles", motion: "slime" },
+  { id: "rocket-rascal", name: "Rocket Rascal", collection: "classic-cartoon", accent: "#d2ae8e", detail: "1980s · cartoon comet trails", motion: "rocket-cel" },
 ];
+export const playerCardCollections = [{ id: "all", name: "All cards" }, { id: "signature", name: "Signature" }, { id: "cartoon", name: "Cartoon" }, { id: "classic-cartoon", name: "Classic Cartoon 70s–90s" }, { id: "legendary", name: "Legendary" }, { id: "retro", name: "Retro" }];
 export const validPlayerCard = value => value === "" || playerCardThemes.some(theme => theme.id === value);
 export const playerCardTheme = player => playerCardThemes.find(theme => theme.id === (typeof player === "string" ? player : player?.player_card_theme || player?.metadata?.player_card_theme));
 export const validPlayerCardMotion = value => ["auto", "on", "off"].includes(value);

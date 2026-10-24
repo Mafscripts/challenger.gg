@@ -5,7 +5,17 @@ const shapes=[['desktop-fit',2160,160],['desktop-fit-wide',3200,160],['desktop-f
 for(const [dir]of shapes)await mkdir(`public/images/player-cards/${dir}`,{recursive:true});
 for(const item of manifest){
  const meta=await sharp(item.path).metadata();
- const rowH=Math.floor(meta.height/4),top=rowH+3,height=rowH-6;
+ const rowH=Math.floor(meta.height/4);
+ let top=rowH+6,height=rowH-12;
+ const pixels=await sharp(item.path).resize(256,meta.height,{fit:'fill'}).removeAlpha().raw().toBuffer({resolveWithObject:true});
+ const separators=[];
+ for(let y=0;y<meta.height;y++){
+  let bright=0;for(let x=0;x<256;x++){const n=(y*256+x)*pixels.info.channels;if(Math.min(pixels.data[n],pixels.data[n+1],pixels.data[n+2])>105&&Math.max(pixels.data[n],pixels.data[n+1],pixels.data[n+2])-Math.min(pixels.data[n],pixels.data[n+1],pixels.data[n+2])<85)bright++;}
+  if(bright>256*.85)separators.push(y);
+ }
+ const nearest=(target)=>separators.filter(y=>Math.abs(y-target)<meta.height*.09).sort((a,b)=>Math.abs(a-target)-Math.abs(b-target))[0];
+ const first=nearest(rowH),second=nearest(rowH*2);
+ if(first!=null&&second!=null&&second-first>rowH*.6){top=first+6;height=second-top-6;}
  const strip=await sharp(item.path).extract({left:0,top,width:meta.width,height}).png().toBuffer();
  if(process.argv.includes('--mobile'))await sharp(strip).resize(1080,300,{fit:'cover',position:'right'}).webp({quality:87,effort:6}).toFile(`public/images/player-cards/${item.id}.webp`);
  for(const[dir,width,outH]of shapes){

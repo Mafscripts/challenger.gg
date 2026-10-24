@@ -37,8 +37,8 @@ test("only known card identifiers can be saved on the authenticated account; exi
   }
   for (const motion of ["fast", null, {}, true]) assert.equal((await request({ player_card_motion: motion })).status, 400);
 });
-test("25 original optimized images and safe card presentation support the classic fallback", async () => {
-  assert.equal(playerCardThemes.length, 25); assert.equal(new Set(playerCardThemes.map(theme => theme.id)).size, 25);
+test("45 original optimized images and safe card presentation support the classic fallback", async () => {
+  assert.equal(playerCardThemes.length, 45); assert.equal(new Set(playerCardThemes.map(theme => theme.id)).size, 45);
   let total = 0;
   for (const theme of playerCardThemes) {
     const url = new URL(`../public/images/player-cards/${theme.id}.webp`, import.meta.url);
@@ -52,7 +52,7 @@ test("25 original optimized images and safe card presentation support the classi
     assert.ok(playerCardAppearance(theme.id).style["--pc-desktop-art"].includes(`/desktop-fit/${theme.id}.webp`));
     assert.ok(!playerCardAppearance(theme.id).style["--pc-art"].includes("/desktop/"));
   }
-  assert.ok(total < 4000000);
+  assert.ok(total < 6000000);
   assert.deepEqual(playerCardAppearance({ player_card_theme: "https://evil.example" }), {});
   assert.deepEqual(playerCardAppearance({}), {});
 });

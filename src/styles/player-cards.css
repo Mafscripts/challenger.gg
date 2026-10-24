@@ -126,11 +126,70 @@
 @keyframes pc-orbit-travel{0%{opacity:0;transform:translate3d(-30px,20px,0)}25%,70%{opacity:.6}100%{opacity:0;transform:translate3d(50px,-25px,0)}}
 @keyframes pc-round-sweep{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 @keyframes pc-rune-rise{0%{opacity:0;transform:translate3d(0,35px,0) rotate(0deg)}25%,65%{opacity:.6}100%{opacity:0;transform:translate3d(var(--mote-drift),-55px,0) rotate(90deg)}}
+/* Cartoon personalities, Legendary atmospheres and pixel-era motion. */
+[data-atmosphere="crumbs"] .pc-mote{width:4px;height:4px;border-radius:1px;background:#e0c08c;animation:pc-cartoon-crumb var(--mote-time) linear infinite}
+[data-atmosphere="crumbs"] .pc-scene-haze{background:radial-gradient(ellipse at 80% 80%,#c6a67a60,transparent 55%);animation:pc-silk-mist 11s linear infinite}
+[data-atmosphere="duck-stars"] .pc-mote{width:6px;height:6px;background:#f1dc9e;clip-path:polygon(50% 0,61% 35%,100% 50%,61% 65%,50% 100%,39% 65%,0 50%,39% 35%);animation:pc-orbit-travel var(--mote-time) linear infinite}
+[data-atmosphere="duck-stars"] .pc-scene-light{background:linear-gradient(110deg,transparent 40%,#c9d7ed65 50%,transparent 60%);animation:pc-silver-pass 12s linear infinite}
+[data-atmosphere="noodle-steam"] .pc-mote{width:14px;height:26px;background:radial-gradient(ellipse,#e5d5c685,transparent 65%);box-shadow:none;animation:pc-steam-ribbon var(--mote-time) linear infinite}
+[data-atmosphere="sleepy"] .pc-mote{background:none;box-shadow:none;width:12px;height:12px;animation:pc-sleep-rise var(--mote-time) linear infinite}
+[data-atmosphere="sleepy"] .pc-mote::after{content:"z";font:700 11px/1 monospace;color:#dfdfba;text-shadow:0 0 4px #c6d8aa70}
+[data-atmosphere="sleepy"] .pc-scene-haze{background:radial-gradient(ellipse at 80% 80%,#c9c69260,transparent 50%);animation:pc-quiet-glow 12s linear infinite}
+[data-atmosphere="goober"] .pc-mote{width:6px;height:6px;background:transparent;border:1px solid #b6e8ca;border-radius:45% 55% 60% 40%;animation:pc-bubble-rise var(--mote-time) linear infinite}
+[data-atmosphere="goober"] .pc-scene-haze{background:radial-gradient(ellipse at 85% 60%,#a5c9b375,transparent 48%);animation:pc-silk-mist 10s linear infinite}
+[data-atmosphere="toast"] .pc-mote{width:5px;height:3px;border-radius:1px;background:#e8ce8b;animation:pc-cartoon-crumb var(--mote-time) linear infinite}
+[data-atmosphere="toast"] .pc-scene-light{background:linear-gradient(105deg,transparent 40%,#e5c8a070 50%,transparent 60%);animation:pc-golden-pass 10s linear infinite}
+[data-atmosphere="ash-crown"] .pc-mote{width:3px;height:5px;background:#e2c198;border-radius:60% 10%;animation:pc-ember-rise var(--mote-time) linear infinite}
+[data-atmosphere="ash-crown"] .pc-scene-haze{background:radial-gradient(ellipse at 80% 70%,#bd956c90,transparent 55%);animation:pc-heat-flow 9s linear infinite}
+[data-atmosphere="celestial"] .pc-mote{width:4px;height:4px;background:#dbe5ff;clip-path:polygon(50% 0,60% 40%,100% 50%,60% 60%,50% 100%,40% 60%,0 50%,40% 40%);animation:pc-orbit-travel var(--mote-time) linear infinite}
+[data-atmosphere="celestial"] .pc-scene-light{inset:auto 8% -70px auto;width:220px;height:220px;opacity:.5;border-radius:50%;background:conic-gradient(transparent 0deg 280deg,#c4d4ed80 340deg,transparent);mask-image:radial-gradient(transparent 52%,#000 54%,#000 62%,transparent 65%);animation:pc-round-sweep 22s linear infinite}
+[data-atmosphere="relic"] .pc-mote{width:4px;height:4px;border:1px solid #b1dcd6;background:transparent;animation:pc-bubble-rise var(--mote-time) linear infinite}
+[data-atmosphere="relic"] .pc-scene-light{background:repeating-linear-gradient(110deg,transparent 0 80px,#a0d0c670 120px,transparent 180px 240px);background-size:240px 100%;opacity:.4;animation:pc-road-light 14s linear infinite}
+[data-atmosphere="prism"] .pc-mote{width:5px;height:8px;background:#d2c5e9;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);animation:pc-rune-rise var(--mote-time) linear infinite}
+[data-atmosphere="prism"] .pc-scene-light{background:linear-gradient(105deg,transparent 40%,#d6c9ea90 48%,#b8d5e560 53%,transparent 60%);animation:pc-silver-pass 8s linear infinite}
+[data-atmosphere="forge"] .pc-mote{width:3px;height:7px;background:linear-gradient(#e3c98c,transparent);animation:pc-ember-rise calc(var(--mote-time) * .8) linear infinite}
+[data-atmosphere="forge"] .pc-scene-haze{background:radial-gradient(ellipse at 85% 100%,#d6ae7795,transparent 55%);animation:pc-heat-flow 8s linear infinite}
+[data-atmosphere="pixel-stars"] .pc-mote{width:28px;height:2px;background:linear-gradient(90deg,transparent,#d5c6f2);border-radius:0;animation:pc-shooting-star var(--mote-time) linear infinite}
+[data-atmosphere="pixel-stars"] .pc-scene-light{opacity:.2;background:repeating-linear-gradient(transparent 0 3px,#a6a1c31a 3px 4px);animation:pc-crt-scan 5s linear infinite}
+[data-atmosphere="tape"] .pc-mote{width:22px;height:2px;background:#dbc2d0;border-radius:0;animation:pc-side-stream var(--mote-time) linear infinite}
+[data-atmosphere="tape"] .pc-scene-light{inset:65% 0 0 30%;opacity:.5;background:repeating-linear-gradient(100deg,transparent 0 100px,#c6a7c275 140px,transparent 180px 240px);background-size:240px 100%;animation:pc-road-light 6s linear infinite}
+[data-atmosphere="pixel-rain"] .pc-mote{width:2px;height:10px;border-radius:0;background:#bed6e4;animation:pc-pixel-drop calc(var(--mote-time) * .6) linear infinite}
+[data-atmosphere="pixel-rain"] .pc-scene-haze{background:radial-gradient(ellipse at 80% 100%,#a8c9d670,transparent 55%);animation:pc-silk-mist 10s linear infinite}
+[data-atmosphere="scan-surf"] .pc-mote{width:5px;height:3px;border-radius:0;background:#b5deda;animation:pc-pixel-surf var(--mote-time) linear infinite}
+[data-atmosphere="scan-surf"] .pc-scene-light{inset:0;opacity:.3;background:repeating-linear-gradient(transparent 0 3px,#badeda25 3px 4px);animation:pc-crt-scan 6s linear infinite}
+@keyframes pc-cartoon-crumb{0%{opacity:0;transform:translate3d(10px,-25px,0) rotate(0deg)}20%,65%{opacity:.75}100%{opacity:0;transform:translate3d(-35px,50px,0) rotate(150deg)}}
+@keyframes pc-steam-ribbon{0%{opacity:0;transform:translate3d(8px,35px,0) scale(.7)}30%,65%{opacity:.65}100%{opacity:0;transform:translate3d(-18px,-60px,0) scale(1.6)}}
+@keyframes pc-sleep-rise{0%{opacity:0;transform:translate3d(0,20px,0) scale(.6)}30%,60%{opacity:.7}100%{opacity:0;transform:translate3d(25px,-45px,0) scale(1.25)}}
+@keyframes pc-pixel-drop{0%{opacity:0;transform:translateY(-30px)}15%,75%{opacity:.65}100%{opacity:0;transform:translateY(70px)}}
+@keyframes pc-pixel-surf{0%{opacity:0;transform:translate3d(70px,15px,0)}20%,70%{opacity:.7}100%{opacity:0;transform:translate3d(-90px,-8px,0)}}
+@keyframes pc-crt-scan{from{background-position:0 0}to{background-position:0 4px}}
+[data-atmosphere="disco"] .pc-mote{width:6px;height:6px;background:#f1d297;clip-path:polygon(50% 0,62% 38%,100% 50%,62% 62%,50% 100%,38% 62%,0 50%,38% 38%);animation:pc-cel-spark var(--mote-time) linear infinite}
+[data-atmosphere="disco"] .pc-scene-light{inset:65% 0 0 30%;opacity:.4;background:repeating-linear-gradient(100deg,transparent 0 100px,#cdb7a285 140px,transparent 180px 240px);background-size:240px 100%;animation:pc-road-light 8s linear infinite}
+[data-atmosphere="bolt"] .pc-mote{width:8px;height:15px;border-radius:0;background:#e7d6a3;clip-path:polygon(45% 0,100% 0,63% 39%,95% 39%,12% 100%,37% 55%,0 55%);animation:pc-comic-bolt var(--mote-time) linear infinite}
+[data-atmosphere="rubber"] .pc-mote{width:18px;height:13px;border:1.5px solid #c6c2a57a;background:#b4c0ab35;border-radius:45% 60% 40% 55%;box-shadow:none;animation:pc-drawn-puff var(--mote-time) linear infinite}
+[data-atmosphere="slime"] .pc-mote{width:7px;height:9px;background:#a9d2ae;border:1px solid #d9e5c585;border-radius:55% 45% 60% 40%;animation:pc-bubble-rise var(--mote-time) linear infinite}
+[data-atmosphere="slime"] .pc-scene-haze{background:radial-gradient(ellipse at 85% 85%,#a6be9d70,transparent 50%);animation:pc-silk-mist 12s linear infinite}
+[data-atmosphere="rocket-cel"] .pc-mote{width:32px;height:3px;border-radius:50%;background:linear-gradient(90deg,transparent,#d9c199);animation:pc-side-stream var(--mote-time) linear infinite}
+@keyframes pc-cel-spark{0%{opacity:0;transform:translate3d(35px,4px,0) rotate(0deg)}25%,65%{opacity:.8}100%{opacity:0;transform:translate3d(-40px,-20px,0) rotate(180deg)}}
+@keyframes pc-comic-bolt{0%,35%{opacity:0;transform:translate3d(0,20px,0) scale(.6)}45%{opacity:.8}70%{opacity:0;transform:translate3d(-20px,-25px,0) scale(1.1)}100%{opacity:0;transform:translate3d(-20px,-25px,0) scale(1.1)}}
+@keyframes pc-drawn-puff{0%{opacity:0;transform:translate3d(20px,20px,0) scale(.5)}30%{opacity:.6}100%{opacity:0;transform:translate3d(-40px,-40px,0) scale(1.6)}}
 .pc-atmosphere[data-motion-paused="true"]>i{animation-play-state:paused!important}
 .player-card-option .pc-atmosphere>i{animation-play-state:paused}
 .player-card-option:is(:hover,:focus-visible,[aria-pressed="true"]) .pc-atmosphere>i{animation-play-state:running}
 @media(prefers-reduced-motion:reduce){[data-player-card]:not([data-card-animation="on"]) .pc-atmosphere>i{animation:none!important;opacity:0!important}}
 .player-card-settings{padding:24px}.player-card-gallery{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:20px}
+.player-card-collections{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.player-card-collections button{display:inline-flex;align-items:center;gap:8px;border:1px solid #ffffff20;border-radius:9px;padding:8px 12px;color:#b9cbd9;background:#0a1722;font-size:11px;font-weight:700}
+.player-card-collections button span{opacity:.65;font-size:10px}
+.player-card-collections button[aria-pressed="true"]{border-color:#59cfe880;color:#91e7f7;background:#10303d}
+.player-card-collections button[data-collection="legendary"][aria-pressed="true"]{border-color:#d3b67a90;color:#e4ca93;background:#30291b}
+.player-card-collections button:focus-visible{outline:2px solid #8de2f1;outline-offset:3px}
+.player-card-collection-label{display:flex;align-items:center;gap:5px;margin-bottom:4px;font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:#a6bacd}
+.player-card-option[data-collection="legendary"]{border-color:#d4b78d40}
+.player-card-option[data-collection="legendary"] .player-card-collection-label{color:#d9bd87}
+.player-card-option[data-collection="cartoon"] .player-card-collection-label{color:#acd6bc}
+.player-card-option[data-collection="classic-cartoon"] .player-card-collection-label{color:#e0c292}
+.player-card-option[data-collection="retro"] .player-card-collection-label{color:#c8b0d9}
 .player-card-option{padding:0;overflow:hidden;text-align:left;border:1px solid #ffffff16;border-radius:14px;background:#0a1722;transition:border-color .15s}
 .player-card-option[aria-pressed="true"]{border-color:var(--pc-option);box-shadow:0 0 0 1px var(--pc-option)}
 .player-card-option:focus-visible{outline:2px solid #4adeff;outline-offset:4px}.player-card-option:hover{border-color:#ffffff55}
