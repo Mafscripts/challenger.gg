@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Activity, ChevronDown, CreditCard, KeyRound, Loader2, ScrollText, Search, Server, ShieldAlert, Swords, Trash2, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { effectiveRoleForUser } from "@/lib/roles";
+import { adminTargetUrl, openAdminPlayer } from "@/lib/adminWorkspace";
 import "@/styles/admin-audit.css";
 
 const labels = { wallet_adjust: "Balance adjusted", account_deleted: "Account deleted", delete_ticket: "Ticket deleted", role_change: "Account role changed",
@@ -53,11 +54,13 @@ function AuditDetails({ row, user }) {
 }
 
 export default function AuditLog({ user }) {
+  const location = useLocation();
   const [source, setSource] = useState("all");
   const [period, setPeriod] = useState("all");
-  const [search, setSearch] = useState("");
-  const [debounced, setDebounced] = useState("");
+  const [search, setSearch] = useState(() => new URLSearchParams(location.search).get("search") || "");
+  const [debounced, setDebounced] = useState(() => new URLSearchParams(location.search).get("search") || "");
   const [expanded, setExpanded] = useState(null);
+  useEffect(() => { setSearch(new URLSearchParams(location.search).get("search") || ""); setExpanded(null); }, [location.search]);
   useEffect(() => { const timer = setTimeout(() => setDebounced(search.trim()), 300); return () => clearTimeout(timer); }, [search]);
   const role = effectiveRoleForUser(user);
   const query = useInfiniteQuery({
@@ -90,8 +93,8 @@ export default function AuditLog({ user }) {
         {(!index || dayLabel(rows[index - 1].created_date) !== dayLabel(row.created_date)) && <h3 className="al-day">{dayLabel(row.created_date)}</h3>}
         <article className="al-event" data-open={open}>
           <div className="al-event-grid"><div className="al-activity"><span className="al-event-icon" data-tone={tone}><Icon size={17} /></span><div><div className="al-action-heading"><strong>{eventName(row)}</strong><span className="al-source" data-source={row.source}>{row.source === "admin" ? "Admin" : "System"}</span></div><p>{row.description || "No description was recorded. Open details to inspect the event."}</p></div></div>
-            <div className="al-actor"><span className="al-person-icon">{row.source === "system" && row.actor_name === "System" ? <Server size={12} /> : row.actor_name.slice(0, 1).toUpperCase()}</span>{row.actor_username ? <Link to={`/profile/${encodeURIComponent(row.actor_username)}`}>{row.actor_name}</Link> : <span>{row.actor_name}</span>}</div>
-            <div className="al-target">{row.target_username ? <Link to={`/profile/${encodeURIComponent(row.target_username)}`}>{target}</Link> : <span>{target}</span>}</div>
+            <div className="al-actor"><span className="al-person-icon">{row.source === "system" && row.actor_name === "System" ? <Server size={12} /> : row.actor_name.slice(0, 1).toUpperCase()}</span>{row.actor_id && row.actor_id !== "system" ? <button type="button" className="admin-player-link" onClick={() => openAdminPlayer(row.actor_id)}>{row.actor_name}</button> : <span>{row.actor_name}</span>}</div>
+            <div className="al-target">{row.target_username ? <button type="button" className="admin-player-link" onClick={() => openAdminPlayer(row.target_id)}>{target}</button> : row.target_id && /match|wager|challenge/i.test(row.target_kind) ? <Link to={adminTargetUrl({ tab: "matches", search: row.target_id })}>{target}</Link> : row.target_id && /ticket|dispute/i.test(row.target_kind) ? <Link to={adminTargetUrl({ tab: "tickets", caseId: `${/dispute/i.test(row.target_kind) ? "dispute" : "ticket"}:${row.target_id}` })}>{target}</Link> : <span>{target}</span>}</div>
             <time dateTime={row.created_date} title={new Date(row.created_date).toLocaleString()}>{new Date(row.created_date).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}</time>
             <button className="al-expand" aria-expanded={open} aria-controls={`audit-details-${row.id}`} aria-label={`${open ? "Hide" : "View"} details for ${eventName(row)}`} onClick={() => setExpanded(open ? null : row.id)}><span>Details</span><ChevronDown size={14} /></button>
           </div>

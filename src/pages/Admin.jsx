@@ -1,7 +1,7 @@
 import useRouteSection from "@/hooks/useRouteSection";
 import { retainDataSnapshot } from "@/lib/dataSnapshot";
 import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import {
   Archive,
@@ -18,6 +18,7 @@ import {
   CreditCard,
   Edit3,
   Gavel,
+  Gamepad2,
   Gift,
   KeyRound,
   Landmark,
@@ -62,6 +63,9 @@ import { TOURNAMENT_GAMES, TOURNAMENT_MODES, parseTournamentMapList, switchTourn
 import { canAccessAdminPanel, canManageWallets, canViewUserIps, effectiveRoleForUser, hasRolePower } from "@/lib/roles";
 import { getRankForElo } from "@/lib/ranks";
 import { consoleRestrictedFor } from "@/lib/playerRestrictions";
+import { adminTargetUrl, notifyAdminChanged, openAdminPlayer } from "@/lib/adminWorkspace";
+import AdminWorkspaceSearch from "@/components/admin/AdminWorkspaceSearch";
+import useAdminConfirm from "@/hooks/useAdminConfirm";
 
 const lazyAdminSection = (load) => {
   let promise;
@@ -84,8 +88,9 @@ const AdminBanAppeals = lazyAdminSection(() => import("@/components/admin/AdminB
 const FreeEightsGamesAdmin = lazyAdminSection(() => import("@/components/admin/FreeEightsGamesAdmin"));
 const ChallengeTeamAdmin = lazyAdminSection(() => import("@/components/admin/ChallengeTeamAdmin"));
 const SiteAnnouncementAdmin = lazyAdminSection(() => import("@/components/admin/SiteAnnouncementAdmin"));
+const AdminMatches = lazyAdminSection(() => import("@/components/admin/AdminMatches"));
 const sectionComponents = {
-  dashboard: AdminDashboard, verifyRank: RankVerificationAdmin, tickets: AdminTickets,
+  dashboard: AdminDashboard, matches: AdminMatches, verifyRank: RankVerificationAdmin, tickets: AdminTickets,
   roles: RoleManagement, audit: AuditLog, wallets: AdminWallets, banAppeals: AdminBanAppeals,
   eightsGames: FreeEightsGamesAdmin, challenges: ChallengeTeamAdmin,
   websiteUpdates: SiteAnnouncementAdmin, progression: ProgressionResets, rewards: CompetitionRewardsAdmin,
@@ -263,6 +268,7 @@ const tabs = [
   { id: "alerts", label: "Alerts", icon: BellRing },
   { id: "tickets", label: "Tickets", icon: Ticket },
   { id: "banAppeals", label: "Ban appeals", icon: Shield, ceoOnly: true },
+  { id: "matches", label: "All matches", icon: Gamepad2 },
   { id: "wagers", label: "Wagers", icon: BadgeDollarSign },
   { id: "live8s", label: "Live 8s Rooms", icon: Radio },
   { id: "challenges", label: "Challenge a Team", icon: Swords },
@@ -549,12 +555,16 @@ function TournamentRewardPicker({ title, description, selectedIds = [], items = 
 
 export default function Admin() {
   const { user: authUser, isLoadingAuth } = useAuth();
+  const location = useLocation(), navigate = useNavigate();
+  const routeParams = new URLSearchParams(location.search);
   const [defaultTab] = useState(initialAdminTab);
   const [activeTab, setActiveTab] = useRouteSection("tab", defaultTab, tabs.map(tab => tab.id));
   const loading = isLoadingAuth;
   const currentUser = authUser;
+  const { confirm: confirmAdmin, dialog: adminConfirmation } = useAdminConfirm();
   const [data, setData] = useState(initialData);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(() => routeParams.get("search") || "");
+  const userFilter = ["banned", "suspended", "new", "premium"].includes(routeParams.get("users_filter")) ? routeParams.get("users_filter") : "all";
   const [roleSearch, setRoleSearch] = useState("");
   const [sharedIpOnly, setSharedIpOnly] = useState(false);
   const [overviewTab, setOverviewTab] = useState(null);
@@ -583,10 +593,19 @@ export default function Admin() {
       workspaceRef.current?.focus({ preventScroll: true });
     });
   };
-  const selectAdminSection = (id, { focus = true } = {}) => {
+  const selectAdminSection = (id, { focus = true, ...target } = {}) => {
     if (!allowedTabs.some(tab => tab.id === id)) return;
-    setActiveTab(id);
+    navigate(adminTargetUrl({ tab: id, ...target }));
     if (focus) focusAdminWorkspace();
+  };
+  useEffect(() => {
+    if (activeTab === "users") setSearchQuery(new URLSearchParams(location.search).get("search") || "");
+  }, [activeTab, location.search]);
+  const searchUsers = value => {
+    setSearchQuery(value);
+    const params = new URLSearchParams(location.search);
+    if (value) params.set("search", value); else params.delete("search");
+    navigate({ pathname: location.pathname, search: `?${params}` }, { replace: true, preventScrollReset: true });
   };
 
   useEffect(() => {
@@ -594,11 +613,14 @@ export default function Admin() {
   }, [activeTab, allowedTabs, currentRole, loading]);
 
   const adminQueries = useAdminConsoleData(currentUser, activeTab,
-    { search: activeTab === "roles" ? roleSearch : searchQuery, sharedOnly: sharedIpOnly },
+    { search: activeTab === "roles" ? roleSearch : searchQuery, sharedOnly: sharedIpOnly, filter: userFilter },
     { overviewOpen: overviewTab === activeTab, tournamentInviteOnly: tournamentForm.invite_only, tournamentRosterId: expandedTournamentRosterId });
   const receivedRows = useRef({});
   const receivedScope = useRef(null);
-  const loadAdminData = adminQueries.refresh;
+  const loadAdminData = (options = {}) => {
+    notifyAdminChanged({ skipAdminConsole: true, skipSupport: Boolean(options.skipSupport) });
+    return adminQueries.refresh(options);
+  };
 
   useEffect(() => {
     const scope = currentUser?.id ? currentUser.id + ":" + currentRole : null;
@@ -812,6 +834,7 @@ export default function Admin() {
         ...prev,
         adminAlerts: prev.adminAlerts.map((row) => (row.id === alert.id ? { ...row, ...updated } : row)),
       }));
+      notifyAdminChanged();
       toast({ title: "Alert acknowledged" });
     } catch (error) {
       toast({ title: "Alert update failed", description: error.message || "Could not acknowledge alert.", variant: "destructive" });
@@ -864,21 +887,8 @@ export default function Admin() {
       toast({ title: "Not allowed", description: "Admin or higher is required to manage passwords.", variant: "destructive" });
       return;
     }
-    const temporaryPassword = window.prompt(
-      `Enter a temporary password for ${userName(targetUser)} (minimum 8 characters):`,
-      "",
-    );
-    if (temporaryPassword === null) return;
-    if (temporaryPassword.length < 8) {
-      toast({ title: "Password too short", description: "Use at least 8 characters.", variant: "destructive" });
-      return;
-    }
-    const confirmation = window.prompt("Enter the same temporary password again:", "");
-    if (confirmation === null) return;
-    if (temporaryPassword !== confirmation) {
-      toast({ title: "Passwords do not match", variant: "destructive" });
-      return;
-    }
+    const temporaryPassword = await confirmAdmin({ title: "Set temporary password", description: `${userName(targetUser)} must choose a new password after their next login. Use at least 8 characters.`, confirmLabel: "Set temporary password", tone: "warning", input: { label: "Temporary password", type: "password" } });
+    if (temporaryPassword === false) return;
 
     setBusyId(`${targetUser.id}:password`);
     try {
@@ -913,9 +923,7 @@ export default function Admin() {
     }
 
     const verb = hasActivePremium(targetUser) ? "extend" : "give";
-    const confirmed = window.confirm(
-      `${verb === "extend" ? "Extend" : "Give"} Premium for ${userName(targetUser)} by 30 days?`,
-    );
+    const confirmed = await confirmAdmin({ title: `${verb === "extend" ? "Extend" : "Give"} Premium`, description: `Add 30 days of Premium for ${userName(targetUser)}. Existing membership time is preserved.`, confirmLabel: "Add 30 days" });
     if (!confirmed) return;
 
     setBusyId(`${targetUser.id}:premium`);
@@ -989,6 +997,7 @@ export default function Admin() {
       request_id: crypto.randomUUID(),
     });
     setWalletAdjustmentOpen(true);
+    setOpenManageUserId(null);
     window.setTimeout(() => document.getElementById("wallet-adjustment-form")?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
   };
 
@@ -1118,9 +1127,8 @@ export default function Admin() {
     const registeredTeams = Number(tournament.registered_teams || 0);
     const currentLimit = Math.max(registeredTeams, Number(tournament.max_teams || 0));
     if (typeof window === "undefined") return;
-    if (!window.confirm(`Reset the bracket for ${tournament.name}? Existing teams stay registered, all bracket matches and results are removed, and registration reopens. Use View & manage teams afterwards to remove a team before its players rejoin with a new roster.`)) return;
-    const requestedLimit = window.prompt("Maximum number of teams after reopening:", String(currentLimit));
-    if (requestedLimit === null) return;
+    const requestedLimit = await confirmAdmin({ title: "Reset bracket & reopen", description: `${tournament.name}: all bracket matches and results are removed. Existing teams stay registered and registration reopens.`, confirmLabel: "Reset & reopen", tone: "danger", input: { label: "Maximum number of teams after reopening", value: currentLimit, min: Math.max(2, registeredTeams), max: 256 } });
+    if (requestedLimit === false) return;
     const maxTeams = Number(requestedLimit);
     if (!Number.isInteger(maxTeams) || maxTeams < registeredTeams || maxTeams < 2) {
       toast({
@@ -1155,7 +1163,7 @@ export default function Admin() {
 
   const handleAdminDisbandTournamentTeams = async (tournament) => {
     if (typeof window === "undefined") return;
-    if (!window.confirm(`Admin disband tournament teams for ${tournament.name}? This removes every team registration from this tournament, deletes any unplayed bracket, and refunds paid entry Credits. The teams themselves are not deleted.`)) return;
+    if (!await confirmAdmin({ title: "Remove all tournament registrations", description: `${tournament.name}: every team registration and any unplayed bracket are removed. Paid entry Credits are refunded. The teams themselves remain.`, confirmLabel: "Remove registrations", tone: "danger" })) return;
 
     setBusyId(`disband-tournament-teams:${tournament.id}`);
     try {
@@ -1181,7 +1189,7 @@ export default function Admin() {
   const handleAdminRemoveTournamentParticipant = async (tournament, participant) => {
     if (typeof window === "undefined") return;
     const teamName = participant.team_name || "this team";
-    if (!window.confirm(`Remove ${teamName} from ${tournament.name}? Their tournament registration is removed, their entry Credits are refunded, and they can join again with a different roster. The team itself is not deleted.`)) return;
+    if (!await confirmAdmin({ title: "Remove tournament registration", description: `${teamName} will be removed from ${tournament.name}. Entry Credits are refunded and they can register again. The team itself remains.`, confirmLabel: "Remove team", tone: "danger" })) return;
 
     setBusyId(`remove-tournament-team:${tournament.id}:${participant.id}`);
     try {
@@ -1207,7 +1215,7 @@ export default function Admin() {
 
   const handleRepairBracket = async (tournament) => {
     if (typeof window === "undefined") return;
-    if (!window.confirm(`Repair the bracket for ${tournament.name}? All match scores are removed, but every team keeps its current seed. A corrected bracket is generated immediately.`)) return;
+    if (!await confirmAdmin({ title: "Repair tournament bracket", description: `${tournament.name}: all match scores are removed. Each team keeps its seed and a corrected bracket is generated immediately.`, confirmLabel: "Repair bracket", tone: "warning" })) return;
 
     setBusyId(`repair-bracket:${tournament.id}`);
     try {
@@ -1415,7 +1423,7 @@ export default function Admin() {
       extendTournamentRegistration: "registration extended",
       deleteTournament: "deleted",
     };
-    if (action === "deleteTournament" && typeof window !== "undefined" && !window.confirm(`Delete ${tournament.name}?`)) return;
+    if (action === "deleteTournament" && !await confirmAdmin({ title: "Delete tournament", description: `Permanently delete ${tournament.name}. This action cannot be undone.`, confirmLabel: "Delete tournament", tone: "danger" })) return;
 
     setBusyId(`${action}:${tournament.id}`);
     try {
@@ -1496,7 +1504,7 @@ export default function Admin() {
       cancelled: "cancelled",
     };
     const needsConfirm = ["completed", "cancelled"].includes(status);
-    if (needsConfirm && typeof window !== "undefined" && !window.confirm(`Set ${tournament.name} to ${statusText(status)}?`)) return;
+    if (needsConfirm && !await confirmAdmin({ title: `${status === "cancelled" ? "Cancel" : "Complete"} tournament`, description: `${tournament.name} will be marked ${statusText(status)} and registration will be locked.`, confirmLabel: status === "cancelled" ? "Cancel tournament" : "Mark completed", tone: status === "cancelled" ? "danger" : "success" })) return;
 
     setBusyId(`status:${status}:${tournament.id}`);
     try {
@@ -1577,6 +1585,7 @@ export default function Admin() {
         ...current,
         marketplace: [item, ...current.marketplace.filter((entry) => entry.id !== item.id)],
       }));
+      notifyAdminChanged();
 
       toast({ title: editingMarketplaceId ? "Marketplace item updated" : "Marketplace item created", description: `${payload.name} is saved and available.` });
       resetMarketplaceForm();
@@ -1628,6 +1637,7 @@ export default function Admin() {
 
       const merged = [...created, ...data.marketplace.filter((item) => !created.some((entry) => entry.id === item.id))];
       setData((current) => ({ ...current, marketplace: merged }));
+      notifyAdminChanged();
       toast({ title: "Winner trophy ready", description: "The Premium winner trophy is now available for tournament winners." });
     } catch (error) {
       toast({ title: "Trophy setup failed", description: error.message || "Could not create the trophy set.", variant: "destructive" });
@@ -1678,7 +1688,7 @@ export default function Admin() {
   };
 
   const handleDeleteMarketplaceItem = async (item) => {
-    if (typeof window !== "undefined" && !window.confirm(`Delete ${item.name}? This cannot be undone.`)) return;
+    if (!await confirmAdmin({ title: "Delete marketplace item", description: `Permanently delete ${item.name}. This action cannot be undone.`, confirmLabel: "Delete item", tone: "danger" })) return;
     setBusyId(`marketplace:delete:${item.id}`);
     try {
       await base44.entities.MarketplaceItem.delete(item.id);
@@ -1738,7 +1748,7 @@ export default function Admin() {
       toast({ title: "Invalid season matches", description: "Season matches cannot be lower than wins plus losses.", variant: "destructive" });
       return;
     }
-    if (reset && !window.confirm("Reset this player's Ranked record, win rate, streak, peak ELO and season matches?")) return;
+    if (reset && !await confirmAdmin({ title: "Reset ranked record", description: "This player's ranked record, win rate, streak, peak ELO and season matches will be reset.", confirmLabel: "Reset ranked record", tone: "danger" })) return;
     setBusyId("ranked:stats");
     try {
       const response = await base44.functions.invoke("adminUpdateRankedStats", {
@@ -1816,7 +1826,7 @@ export default function Admin() {
       toast({ title: "Not allowed", description: "Admin or higher is required to manage Free Trials.", variant: "destructive" });
       return;
     }
-    if (!window.confirm("Activate one month of animated name effects for all users? This resets the trial to 30 days from now.")) return;
+    if (!await confirmAdmin({ title: "Activate name effects trial", description: "All users receive animated name effects for 30 days. The trial ends 30 days from now.", confirmLabel: "Activate for all users" })) return;
     setBusyId("animated-name-free-trial:activate");
     try {
       const response = await base44.functions.invoke("adminActivateAnimatedNameFreeTrial", {});
@@ -1835,7 +1845,7 @@ export default function Admin() {
       toast({ title: "Not allowed", description: "Admin or higher is required to manage Free Trials.", variant: "destructive" });
       return;
     }
-    if (!window.confirm("Stop the animated name effects Free Trial for all users now?")) return;
+    if (!await confirmAdmin({ title: "Stop name effects trial", description: "The animated name effects trial will end immediately for all users.", confirmLabel: "Stop trial", tone: "warning" })) return;
     setBusyId("animated-name-free-trial:stop");
     try {
       const response = await base44.functions.invoke("adminStopAnimatedNameFreeTrial", {});
@@ -1877,7 +1887,7 @@ export default function Admin() {
           <header className="admin-console-header">
             <div className="admin-console-header-copy"><p className="admin-console-eyebrow"><TopfraggLogo showWordmark={false} markClassName="!h-7 !w-7" />TOPFRAGG STAFF WORKSPACE</p><h1>Admin Console<span>.</span></h1><p>Support your players. Run the competition. Keep the arena moving.</p></div>
             <Shield className="admin-console-header-art" size={156} strokeWidth={1} aria-hidden="true" />
-            <div className="admin-console-header-tools"><RoleBadge role={currentRole} /><Link to="/" className="admin-console-button">View website<ArrowUpRight size={15} aria-hidden="true" /></Link><button type="button" onClick={loadAdminData} disabled={adminQueries.refreshing} className="admin-console-button admin-console-primary"><RefreshCw size={15} className={adminQueries.refreshing ? "animate-spin" : undefined} aria-hidden="true" />{adminQueries.refreshing ? "Refreshing…" : "Refresh data"}</button></div>
+            <div className="admin-console-header-tools"><RoleBadge role={currentRole} /><AdminWorkspaceSearch user={currentUser} /><Link to="/" className="admin-console-button">View website<ArrowUpRight size={15} aria-hidden="true" /></Link><button type="button" onClick={loadAdminData} disabled={adminQueries.refreshing} className="admin-console-button admin-console-primary"><RefreshCw size={15} className={adminQueries.refreshing ? "animate-spin" : undefined} aria-hidden="true" />{adminQueries.refreshing ? "Refreshing…" : "Refresh data"}</button></div>
           </header>
 
         {activeTab !== "dashboard" && <details className="admin-overview" key={activeTab} onToggle={event => setOverviewTab(event.currentTarget.open ? activeTab : null)}>
@@ -1908,6 +1918,7 @@ export default function Admin() {
           {activeTab === "verifyRank" && <RankVerificationAdmin users={data.users} />}
           {activeTab === "progression" && <ProgressionResets user={currentUser} onChanged={loadAdminData} />}
           {activeTab === "dashboard" && <AdminDashboard overview={adminQueries.data.dashboardOverview} onSelect={selectAdminSection} canReset={hasRolePower(currentRole, "super_admin")} allowedSections={allowedTabs.map((tab) => tab.id)} />}
+          {activeTab === "matches" && <AdminMatches user={currentUser} />}
           {activeTab === "websiteUpdates" && <SiteAnnouncementAdmin user={currentUser} />}
           {activeTab === "eightsGames" && <FreeEightsGamesAdmin />}
           {activeTab === "challenges" && <ChallengeTeamAdmin />}
@@ -2006,13 +2017,14 @@ export default function Admin() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                 <div><span className="au-eyebrow">PLAYER DIRECTORY</span><h2 className="text-lg font-bold">Users <span className="au-count">{filteredUsers.length} / {adminQueries.userDirectory.total}</span></h2><p className="au-directory-hint">Manage accounts, permissions and account security.</p></div>
                 <div className="flex flex-wrap items-center gap-2">
+                  <label className="admin-player-filter">Show<select aria-label="Player status filter" value={userFilter} onChange={event => navigate(adminTargetUrl({ tab: "users", filter: event.target.value, search: searchQuery }))}><option value="all">All players</option><option value="banned">Banned players</option><option value="suspended">Suspended players</option><option value="new">Joined in the last 7 days</option><option value="premium">Premium members</option></select></label>
                   {canViewUserIps(currentRole) && <button className="au-filter" aria-pressed={sharedIpOnly} onClick={() => setSharedIpOnly((value) => !value)}><CircleAlert size={14} /> Shared IPs</button>}
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-vapor" />
                   <input
                     type="text"
                     value={searchQuery}
-                    onChange={(event) => { setSearchQuery(event.target.value); setOpenManageUserId(null); }}
+                    onChange={(event) => { searchUsers(event.target.value); setOpenManageUserId(null); }}
                     placeholder="Search users..."
                     className="pl-10 pr-4 py-2 bg-secondary rounded-lg text-sm border border-white/5 focus:border-cyan/30 focus:outline-none"
                   />
@@ -2106,7 +2118,7 @@ export default function Admin() {
                       <tr key={user.id} className="border-b border-white/5 hover:bg-white/[0.02]">
                         <td data-label="Player" className="py-3 px-4">
                           <div className="flex items-center gap-2">
-                            <p className="font-semibold text-sm">{userName(user)}</p>
+                            <button type="button" onClick={() => openAdminPlayer(user.id)} className="admin-player-link font-semibold text-sm">{userName(user)}</button>
                             {canViewUserIps(currentRole) && sharedIpCount(user) > 0 && (
                               <span
                                 className="inline-flex items-center gap-1 rounded-md border border-red-500/30 bg-red-500/10 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-red-400"
@@ -2122,7 +2134,7 @@ export default function Admin() {
 
                         <td data-label="Status" className="py-3 px-4 min-w-[155px]">
                           <div className="flex flex-col items-start gap-1.5">
-                            <StatusPill status={user.is_banned ? "banned" : "active"} />
+                            <StatusPill status={(user.active_ban ?? user.is_banned) ? "banned" : user.active_suspension ? "suspended" : "active"} />
                             {hasActivePremium(user) && (
                               <span className="inline-flex items-center gap-1 rounded-md border border-orange/25 bg-orange/10 px-2 py-1 text-[10px] font-bold text-orange">
                                 <Crown className="h-3 w-3" /> Premium until {user.premium_expires ? new Date(user.premium_expires).toLocaleDateString() : "active"}
@@ -2145,6 +2157,7 @@ export default function Admin() {
                         <td data-label="Joined" className="py-3 px-4 text-sm text-vapor">{user.account_created_date ? new Date(user.account_created_date).toLocaleDateString() : "N/A"}</td>
                         <td data-label="Actions" className="relative z-20 overflow-visible py-3 px-4">
                           <div className="flex items-center justify-end gap-2 overflow-visible">
+                            <button type="button" onClick={() => openAdminPlayer(user.id)} className="rounded-lg border border-cyan/20 bg-cyan/10 px-3 py-1.5 text-xs font-bold text-cyan hover:bg-cyan/20">Dossier</button>
                             <Link to={`/profile/${user.username || user.id}`} className="rounded-lg border border-cyan/20 bg-cyan/10 px-3 py-1.5 text-xs font-bold text-cyan hover:bg-cyan/20">Profile</Link>
                             <div className="relative z-[80]">
                               <button
@@ -2319,10 +2332,11 @@ export default function Admin() {
                           {alert.match_type && <StatusPill status={alert.match_type} />}
                         </div>
                         <p className="font-semibold text-sm">{alert.subject || "Admin request"}</p>
-                        <p className="text-xs text-vapor">From: {alert.username || alert.requested_by_name || "Unknown"} - {formatDate(alert.created_date)}</p>
+                        <p className="text-xs text-vapor">From: {alert.requested_by || alert.user_id ? <button type="button" className="admin-player-link" onClick={() => openAdminPlayer(alert.requested_by || alert.user_id)}>{alert.username || alert.requested_by_name || "Player"}</button> : alert.username || alert.requested_by_name || "Unknown"} - {formatDate(alert.created_date)}</p>
                         {alert.message && <p className="text-sm text-foreground/80 mt-2 whitespace-pre-line">{alert.message}</p>}
                       </div>
                       <div className="flex flex-wrap gap-2 lg:justify-end">
+                        {(alert.ticket_id || ticket?.id) && <Link to={adminTargetUrl({ tab: "tickets", caseId: `ticket:${alert.ticket_id || ticket.id}` })} className="admin-console-button"><Ticket size={14} />Open support case</Link>}
                         <Link
                           to={actionUrl}
                           className="inline-flex items-center gap-2 px-3 py-1.5 bg-cyan/10 text-cyan text-xs font-bold rounded border border-cyan/20 hover:bg-cyan/20"
@@ -2366,7 +2380,7 @@ export default function Admin() {
           {activeTab === "banAppeals" && <Suspense fallback={<PageLoader />}><AdminBanAppeals /></Suspense>}
 
           {activeTab === "tickets" && (
-            <AdminTickets key={`${currentUser.id}:${currentRole}`} user={currentUser} onRefresh={loadAdminData} />
+            <AdminTickets key={`${currentUser.id}:${currentRole}`} user={currentUser} onRefresh={() => loadAdminData({ skipSupport: true })} />
           )}
 
           {activeTab === "wagers" && (
@@ -3157,7 +3171,7 @@ export default function Admin() {
             <ListSection title="Withdrawals" rows={data.withdrawals} empty="No withdrawals." render={(withdrawal) => (
               <div className="px-5 py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
                 <RowGrid compact columns={[
-                  ["User", userById[withdrawal.user_id] ? userName(userById[withdrawal.user_id]) : withdrawal.user_id],
+                  ["User", <button type="button" className="admin-player-link" onClick={() => openAdminPlayer(withdrawal.user_id)}>{userById[withdrawal.user_id] ? userName(userById[withdrawal.user_id]) : withdrawal.user_id}</button>],
                   ["Amount", formatMoney(withdrawal.amount)],
                   ["Method", withdrawal.payment_method],
                   ["Status", <StatusPill status={withdrawal.status} />],
@@ -3398,6 +3412,7 @@ export default function Admin() {
         request={moderationRequest} busy={busyId === `${moderationRequest.user.id}:${moderationRequest.action}`}
         onClose={() => setModerationRequest(null)} onSubmit={submitModeration}
       /></Suspense>}
+      {adminConfirmation}
     </div>
   );
 }

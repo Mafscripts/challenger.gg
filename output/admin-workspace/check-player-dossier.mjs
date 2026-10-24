@@ -1,0 +1,60 @@
+import { build } from "esbuild";
+import { createRequire } from "node:module";
+import { readFile, readdir } from "node:fs/promises";
+import express from "express";
+import assert from "node:assert/strict";
+
+const root = process.cwd().replaceAll("\\", "/");
+const bundle = await build({ stdin: { resolveDir: root, loader: "jsx", contents: `
+import React from 'react';import{createRoot}from'react-dom/client';import{BrowserRouter,useLocation}from'react-router-dom';import{QueryClient,QueryClientProvider}from'@tanstack/react-query';import Dossier from './src/components/admin/AdminPlayerDossier.jsx';
+const query=new QueryClient({defaultOptions:{queries:{retry:false}}});function App(){const location=useLocation();return <><p id="route">{location.search}</p><button onClick={()=>window.dispatchEvent(new CustomEvent('topfragg:admin-player-open',{detail:{userId:'second'}}))}>Open second player</button><Dossier user={{id:'staff',role:new URLSearchParams(location.search).get('role')||'admin'}}/></>;}createRoot(document.getElementById('root')).render(<QueryClientProvider client={query}><BrowserRouter><App/></BrowserRouter></QueryClientProvider>);
+` }, bundle: true, write: false, platform: "browser", format: "iife", define: { "import.meta.env": "{}" }, alias: { "@": `${root}/src` }, loader: { ".css": "empty" }, plugins: [{ name: "fixture", setup(plugin) {
+  plugin.onResolve({ filter: /^@\/api\/base44Client$/ }, args => ({ path: args.path, namespace: "fixture" }));
+  plugin.onLoad({ filter: /.*/, namespace: "fixture" }, () => ({ loader: "js", contents: `export const base44={functions:{invoke:async(name,payload)=>{window.calls=(window.calls||[]).concat([{name,...payload}]);await new Promise(r=>setTimeout(r,80));const second=payload.user_id==='second';const state=new URLSearchParams(location.search).get('status');const player={active_ban:state==='banned',active_suspension:state==='suspended',active_premium:state!=='expired'&&state!=='suspended',suspended_until:'2030-01-01',is_banned:state==='expired',id:payload.user_id,display_name:second?'Other player':'dev',username:second?'other-account':'topfragg-dev',role:'user',region:'EU',created_date:'2026-01-01',is_premium:true,wager_wins:4,wager_losses:2};const section=payload.section;return{data:{success:true,player,section,permissions:{wallet:new URLSearchParams(location.search).get('role')!=='moderator'},limit:20,stats:{ranked:{wins:4,losses:2,elo:1400}},rows:section==='support'?[{id:'case1',kind:'ticket',title:'Live support',status:'open',staff_name:'Helper',created_date:'2026-01-01'}]:section==='matches'?[{id:'match1',kind:'xp',title:'XP match',status:'disputed',host_name:'dev',challenger_name:'Player',created_date:'2026-01-01'}]:[],wallet:{available_balance:12.5}}};}}};` }));
+} }] });
+const files = (await readdir("dist/assets")).filter(file => file.endsWith(".css"));
+const styles = await readFile("src/styles/admin-player-dossier.css", "utf8");
+const app = express(); app.use(express.static("dist"));
+app.get("/fixture.js", (_req, response) => response.type("js").send(bundle.outputFiles[0].text));
+app.get("/admin", (_req, response) => response.type("html").send(`<!doctype html><html><head>${files.map(file => `<link rel="stylesheet" href="/assets/${file}">`).join("")}<style>${styles}</style></head><body style="background:#07141d;color:white"><div id="root"></div><script src="/fixture.js"></script></body></html>`));
+const server = app.listen(0, "127.0.0.1"); await new Promise(resolve => server.once("listening", resolve));
+const { chromium } = createRequire(import.meta.url)("C:/Users/livao/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright");
+let browser;
+try {
+  browser = await chromium.launch({ headless: true, channel: "chrome" });
+  const page = await browser.newPage({ viewport: { width: 1440, height: 950 } });
+  const errors = []; page.on("pageerror", error => errors.push(error.message));
+  await page.goto(`http://127.0.0.1:${server.address().port}/admin?player=first`);
+  await page.getByRole("heading", { name: "dev", exact: true }).waitFor();
+  await page.locator(".apd-statuses").getByText("Premium", { exact: true }).waitFor();
+  assert.deepEqual(await page.evaluate(() => window.calls.map(call => call.section)), ["overview"]);
+  assert.equal(await page.getByRole("heading", { name: "topfragg-dev", exact: true }).count(), 0);
+  await page.getByRole("button", { name: "Support", exact: true }).click(); await page.getByText("Live support", { exact: true }).waitFor();
+  assert.deepEqual(await page.evaluate(() => window.calls.map(call => call.section)), ["overview", "support"]);
+  await page.getByRole("button", { name: "Overview", exact: true }).click(); await page.getByRole("heading", { name: "Player overview" }).waitFor();
+  assert.equal(await page.evaluate(() => window.calls.length), 2, "returning to a recent tab uses its cached details");
+  await page.getByRole("button", { name: "Matches", exact: true }).click(); await page.getByText("dev vs Player", { exact: true }).waitFor();
+  await page.getByText("dev vs Player", { exact: true }).click();
+  await page.waitForFunction(() => document.querySelector('#route').textContent.includes('match=xp%3Amatch1'));
+  await page.getByRole("dialog").waitFor({ state: "hidden" });
+  assert.equal(await page.getByRole("dialog").count(), 0);
+  await page.getByRole("button", { name: "Open second player" }).click(); await page.getByRole("heading", { name: "Other player", exact: true }).waitFor();
+  assert.equal(await page.getByRole("heading", { name: "dev", exact: true }).count(), 0);
+  const mobile = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  await mobile.goto(`http://127.0.0.1:${server.address().port}/admin?player=first&role=moderator`);
+  await mobile.getByRole("heading", { name: "dev", exact: true }).waitFor();
+  assert.equal(await mobile.getByRole("button", { name: "Wallet", exact: true }).count(), 0);
+  const box = await mobile.getByRole("dialog").boundingBox(); assert.ok(box.x >= 0 && box.x + box.width <= 391); assert.ok(box.y >= 0 && box.y + box.height <= 845);
+  await mobile.goto(`http://127.0.0.1:${server.address().port}/admin?player=first&role=moderator&status=expired`);
+  await mobile.locator(".apd-statuses").getByText("Active account", { exact: true }).waitFor();
+  assert.equal(await mobile.locator(".apd-statuses").getByText("Banned", { exact: true }).count(), 0, "expired raw bans do not display as an active ban");
+  assert.equal(await mobile.locator(".apd-statuses").getByText("Premium", { exact: true }).count(), 0, "expired memberships do not display as active premium");
+  await mobile.goto(`http://127.0.0.1:${server.address().port}/admin?player=first&role=moderator&status=suspended`);
+  await mobile.locator(".apd-statuses").getByText("Suspended", { exact: true }).waitFor();
+  await mobile.getByText("Suspended until", { exact: true }).waitFor();
+  assert.equal(await mobile.locator(".apd-statuses").getByText("Active account", { exact: true }).count(), 0);
+  await mobile.goto(`http://127.0.0.1:${server.address().port}/admin?player=first&role=moderator&status=banned`);
+  await mobile.locator(".apd-statuses").getByText("Banned", { exact: true }).waitFor();
+  assert.deepEqual(errors, []);
+  console.log("Player dossier: active restriction badges, direct links, display names, lazy tabs, cached revisit, match navigation, player switching, mobile dimensions and role-based wallet visibility passed.");
+} finally { await browser?.close(); server.close(); }

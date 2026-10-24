@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Check, ExternalLink, FileCheck2, FileText, Gavel, Loader2, LockKeyhole, MessageSquare, Send, ShieldAlert, UserCheck } from "lucide-react";
+import { ArrowLeft, Check, Clock3, ExternalLink, FileCheck2, FileText, Gavel, Loader2, LockKeyhole, MessageSquare, Send, ShieldAlert, UserCheck } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
 import { effectiveRoleForUser, hasRolePower } from "@/lib/roles";
@@ -9,6 +9,8 @@ import { isStaffSupportMessage } from "@/lib/liveSupport";
 import { supportMatchMaps, supportModeLabel } from "@/lib/supportMatchDetails";
 import { disputeReasonLabel } from "@/lib/matchDisputes";
 import { closedTicket, isMatchTicket, shortTicketId, ticketDate, ticketDescription, ticketIssue, ticketReporter, ticketRoomPath, ticketState, ticketTitle } from "@/lib/adminTickets";
+import { openAdminPlayer } from "@/lib/adminWorkspace";
+import { supportCaseTimeline, supportReporterId } from "@/lib/supportCaseTimeline";
 
 export function TicketStatus({ row }) {
   const status = ticketState(row);
@@ -19,13 +21,14 @@ const linksFrom = (row) => [...new Set([
   ...row.disputes.flatMap((record) => [record.submitted_evidence, record.evidence_urls, record.screenshots, record.videos, record.additional_evidence_urls].flatMap((urls) => Array.isArray(urls) ? urls : [])),
 ])].filter((url) => { try { return ["http:", "https:"].includes(new URL(url).protocol); } catch { return false; } });
 
-export default function AdminTicketDetail({ row, user, onRefresh, onBack, deleteButton, draft, onDraftChange, onRoomOpen }) {
+export default function AdminTicketDetail({ row, user, onRefresh, onBack, deleteButton, draft = {}, onDraftChange, onRoomOpen }) {
   const navigate = useNavigate();
-  const [tab, setTab] = useState(() => isMatchTicket(row) ? "chat" : "conversation");
+  const [tab, setActiveTab] = useState(() => ["conversation", "evidence", "chat", "match", "notes", "decision", "timeline"].includes(draft.tab) ? draft.tab : isMatchTicket(row) ? "chat" : "conversation");
+  const setTab = value => { setActiveTab(value); onDraftChange({ tab: value }); };
   const chatViewport = useRef(null);
   const roomViewport = useRef(null);
   const followRoom = useRef(true);
-  useEffect(() => { setTab(isMatchTicket(row) ? "chat" : "conversation"); followRoom.current = true; }, [row.id, row.record_id, row.kind]);
+  useEffect(() => { followRoom.current = true; }, [row.id, row.record_id, row.kind]);
   const replyInput = useRef(null);
   const followChat = useRef(true);
   const { reply = "", note = "", reason = "" } = draft;
@@ -39,15 +42,17 @@ export default function AdminTicketDetail({ row, user, onRefresh, onBack, delete
   const roomDraft = draft.roomReply || "";
   const setRoomDraft = value => onDraftChange({ roomReply: value });
   const roomPending = React.useRef(null);
-  const [decision, setDecision] = useState("close");
-  const [caseId, setCaseId] = useState("");
-  const [target, setTarget] = useState("");
-  const [duration, setDuration] = useState("24h");
+  const decision = draft.decision || "close", setDecision = value => onDraftChange({ decision: value });
+  const caseId = draft.caseId || "", setCaseId = value => onDraftChange({ caseId: value });
+  const target = draft.target || "", setTarget = value => onDraftChange({ target: value });
+  const duration = draft.duration || "24h", setDuration = value => onDraftChange({ duration: value });
   const [confirmBan, setConfirmBan] = useState(false);
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const ticket = row.ticket;
+  const reporterId = supportReporterId(row);
+  const timeline = supportCaseTimeline(row);
   const openCases = row.disputes.filter((record) => !closedTicket(record));
   const activeCase = openCases.find((record) => record.id === caseId) || openCases[0];
   const owner = ticket || row.disputes[0];
@@ -127,7 +132,8 @@ export default function AdminTicketDetail({ row, user, onRefresh, onBack, delete
     if (busy || !roomDraft.trim()) return;
     if (!roomPending.current || roomPending.current.content !== roomDraft.trim()) roomPending.current = { content: roomDraft.trim(), client_message_id: crypto.randomUUID() };
     if (await invoke("sendSupportCaseMatchMessage", { kind: row.kind, id: row.record_id, ...roomPending.current }, "Message sent to the match room.")) {
-      setRoomDraft(""); roomPending.current = null; await chatQuery.refetch();
+      // The workspace refresh also updates this room chat through the bridge.
+      setRoomDraft(""); roomPending.current = null;
     }
   };
   const decide = async () => {
@@ -144,14 +150,14 @@ export default function AdminTicketDetail({ row, user, onRefresh, onBack, delete
   const tabs = [
     ["conversation", isMatchTicket(row) ? "Ticket conversation" : "Conversation", MessageSquare], ["evidence", `Evidence${proof.length ? ` (${proof.length})` : ""}`, FileText],
     ...(isMatchTicket(row) ? [["chat", "Match chat", MessageSquare], ["match", "Match details", ExternalLink]] : []),
-    ...(ticket ? [["notes", "Staff notes", LockKeyhole]] : []), ["decision", row.closed ? "Resolution" : "Decision", Gavel],
+    ...(ticket ? [["notes", "Staff notes", LockKeyhole]] : []), ["timeline", "Activity", Clock3], ["decision", row.closed ? "Resolution" : "Decision", Gavel],
   ];
   return <article className="at-detail" data-chat-layout={tab === "chat" || tab === "conversation" ? "true" : undefined}>
     <header className="at-detail-heading">
       <div className="at-detail-topline"><button className="at-back" onClick={onBack}><ArrowLeft size={15} /> Tickets</button>
         <span className="at-reference">TICKET #{shortTicketId(row.record_id)}</span><TicketStatus row={row} /></div>
       <h3>{ticketTitle(row)}</h3>
-      <p className="at-detail-meta">Opened by <strong>{ticketReporter(row)}</strong><span>&middot;</span>{ticketDate(ticket?.created_date || row.disputes[0]?.created_date)}</p>
+      <p className="at-detail-meta">Opened by {reporterId ? <button className="at-player-link" onClick={() => openAdminPlayer(reporterId)} title="Open player dossier">{ticketReporter(row)} <ExternalLink size={11} /></button> : <strong>{ticketReporter(row)}</strong>}<span>&middot;</span>{ticketDate(ticket?.created_date || row.disputes[0]?.created_date)}</p>
       <div className="at-detail-tools">
         {!row.closed && owner?.assigned_admin_id !== user.id && !handledByOther && <button className="at-button at-button-primary" disabled={!!busy} onClick={() => claim()}><UserCheck size={14} />Take case</button>}
         {owner?.assigned_admin_name && <span className="at-assigned"><UserCheck size={14} />{owner.assigned_admin_id === user.id ? "You are helping" : `Being helped by ${owner.assigned_admin_name}`}</span>}
@@ -211,7 +217,7 @@ export default function AdminTicketDetail({ row, user, onRefresh, onBack, delete
           ["Map veto", match.map_veto ? Object.keys(match.map_veto.bans || {}).length < 2 ? "Waiting for captain bans" : "Both teams have vetoed" : null],
         ].filter(([, value]) => value !== null && value !== undefined && value !== "").map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
         <section className="at-subsection"><h4>Maps &amp; series order</h4>{mapRows.length ? <div className="at-map-cards">{mapRows.map((map, index) => <div key={`${index}:${map.name}`} className="at-map-card" data-vetoed={map.vetoed || undefined}><span className="at-map-number">{map.vetoed ? "Vetoed" : `Map ${mapRows.slice(0, index + 1).filter(row => !row.vetoed).length}`}{map.selected && !map.vetoed ? " · Selected" : ""}</span><strong>{map.name}</strong><span>{map.mode}</span>{map.vetoBy && <small>Removed by {map.vetoBy}</small>}{map.scoreA !== undefined && map.scoreB !== undefined && <b>{map.scoreA} : {map.scoreB}</b>}</div>)}</div> : <p className="at-help">Maps have not been selected yet. They will appear here once the series is set.</p>}</section>
-        {!!roster.length && <section className="at-subsection"><h4>Players &amp; Activision IDs</h4><div className="at-roster">{roster.map((player) => <div key={player.user_id}><span><strong>{player.user_name || "Player"}</strong><small>{player.activision_id || "Activision ID not set"}</small></span><small>{["host", "alpha", "team_a"].includes(player.team) ? teamA : teamB}</small></div>)}</div></section>}
+        {!!roster.length && <section className="at-subsection"><h4>Players &amp; Activision IDs</h4><div className="at-roster">{roster.map((player) => <div key={player.user_id}><span>{player.user_id ? <button className="at-player-link" onClick={() => openAdminPlayer(player.user_id)} title="Open player dossier">{player.user_name || "Player"} <ExternalLink size={11} /></button> : <strong>{player.user_name || "Player"}</strong>}<small>{player.activision_id || "Activision ID not set"}</small></span><small>{["host", "alpha", "team_a"].includes(player.team) ? teamA : teamB}</small></div>)}</div></section>}
         <button className="at-button" onClick={() => setTab("chat")}><MessageSquare size={14} /> View match chat logs</button>
         {!!history.length && <details className="at-disclosure"><summary>Match history</summary><div className="at-log">{history.map((entry, index) => <p key={entry.id || index}>{entry.summary || entry.result || entry.status || "Match record"}</p>)}</div></details>}
       </>}
@@ -220,6 +226,11 @@ export default function AdminTicketDetail({ row, user, onRefresh, onBack, delete
         {notes.length ? <div className="at-thread">{notes.map((entry, index) => <div className="at-message" key={entry.id || index}><div className="at-message-heading"><strong>{entry.sender_name || "Staff"}</strong><time>{ticketDate(entry.created_date)}</time></div><p>{entry.content}</p></div>)}</div> : <p className="at-help">Use this space to leave context for other staff members.</p>}
         {canReply && <div className="at-composer"><label htmlFor="at-note">Add a private note</label><textarea id="at-note" value={note} onChange={(event) => setNote(event.target.value)} rows={3} placeholder="What should other staff know?" />
           <div><span>Players cannot see staff notes.</span><button className="at-button at-button-save" disabled={!!busy || !note.trim()} onClick={() => send(true)}><LockKeyhole size={14} /> Save note</button></div></div>}
+      </>}
+      {tab === "timeline" && <>
+        <div className="at-section-heading"><h4>Case activity</h4><span>{timeline.length} recorded events</span></div>
+        <p className="at-help">Requests, assignments, messages and saved decisions in one history. Current match results and balances remain available in their own sections.</p>
+        {timeline.length ? <ol className="at-case-timeline">{timeline.map(event => { const Icon = event.type === "decision" ? Gavel : event.type === "assignment" ? UserCheck : event.type === "note" ? LockKeyhole : event.type === "request" ? ShieldAlert : MessageSquare; return <li key={event.key} data-type={event.type}><span className="at-timeline-icon"><Icon size={14} /></span><div className="at-timeline-content"><div className="at-timeline-heading"><strong>{event.title}</strong><time>{ticketDate(event.at)}</time></div><small>{event.actor}</small>{event.text && <p>{event.text}</p>}</div></li>; })}</ol> : <p className="at-help">This older case has no dated activity records.</p>}
       </>}
       {tab === "decision" && handledByOther && <p className="at-help">{owner.assigned_admin_name || "Another staff member"} is already handling this case. Takeover is required before recording a decision.</p>}
       {tab === "decision" && !handledByOther && <>

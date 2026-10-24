@@ -1,7 +1,7 @@
 export const adminGroups = [
   { id: "overview", label: "Overview & support", tone: "cyan", sections: ["dashboard", "alerts", "websiteUpdates", "tickets", "banAppeals"] },
   { id: "players", label: "Players & access", tone: "purple", sections: ["users", "roles", "verifyRank"] },
-  { id: "competition", label: "Competition", tone: "gold", sections: ["live8s", "eightsGames", "ranked", "challenges", "tournaments", "tournamentMatches", "progression", "wagers"] },
+  { id: "competition", label: "Competition", tone: "gold", sections: ["matches", "live8s", "eightsGames", "ranked", "challenges", "tournaments", "tournamentMatches", "progression", "wagers"] },
   { id: "economy", label: "Economy & rewards", tone: "green", sections: ["wallets", "withdrawals", "marketplace", "rewards", "inventory", "referrals", "freeTrials"] },
   { id: "records", label: "Activity & records", tone: "cyan", sections: ["audit"] },
 ];
@@ -10,6 +10,7 @@ const descriptions = {
   websiteUpdates: "Publish or disable website notices for signed-in players.",
   dashboard: "Your support queues, competitions and platform totals at a glance.",
   users: "Find players and manage their accounts and security.",
+  matches: "Every competition, linked support case and match room in one place.",
   roles: "Manage staff access and player roles.", alerts: "Review platform alerts and follow up on open issues.",
   tickets: "Read requests, reply to players and record the outcome.", banAppeals: "Review player appeals and moderation decisions.",
   wagers: "Review cash matches and their results.", live8s: "Follow active lobbies and open their match rooms.",

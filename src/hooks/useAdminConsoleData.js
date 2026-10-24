@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useInfiniteQuery, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { canAccessAdminPanel, canManageRoles, canManageWallets, effectiveRoleForUser } from "@/lib/roles";
+import { notifyAdminChanged } from "@/lib/adminWorkspace";
 
 const entities = {
   users: "User", adminAlerts: "AdminAlert", tickets: "Ticket", disputes: "Dispute",
@@ -16,7 +17,7 @@ const overviewKeys = ["dashboardOverview"];
 const sectionKeys = {
   dashboard: overviewKeys,
   users: [], roles: [], alerts: ["adminAlerts", "tickets"],
-  websiteUpdates: [], tickets: [], banAppeals: [], wagers: ["wagers"],
+  websiteUpdates: [], tickets: [], banAppeals: [], matches: [], wagers: ["wagers"],
   challenges: [], live8s: [], eightsGames: [], ranked: ["users", "rankedMatches", "rankedStats"],
   verifyRank: ["users"], progression: [],
   tournaments: ["tournaments", "tournamentMatches", "marketplace"],
@@ -92,6 +93,7 @@ export function useAdminConsoleData(user, activeTab, userFilters = {}, options =
   const scope = `${user?.id}:${role}`;
   const directoryTab = ["users", "roles"].includes(activeTab);
   const sharedOnly = activeTab === "users" && Boolean(userFilters.sharedOnly);
+  const userFilter = activeTab === "users" && ["banned", "suspended", "premium", "new"].includes(userFilters.filter) ? userFilters.filter : "all";
   const tournamentRosterId = options.tournamentRosterId || null;
   const required = sectionKeys[activeTab] || sectionKeys.dashboard;
   const enabledKeys = new Set(required);
@@ -109,10 +111,10 @@ export function useAdminConsoleData(user, activeTab, userFilters = {}, options =
     return () => clearTimeout(timer);
   }, [userFilters.search, searchScope]);
   const userDirectory = useInfiniteQuery({
-    queryKey: ["admin-console", user?.id, role, "userDirectory", activeTab, userSearch, sharedOnly],
+    queryKey: ["admin-console", user?.id, role, "userDirectory", activeTab, userSearch, sharedOnly, userFilter],
     initialPageParam: null,
     queryFn: async ({ pageParam }) => {
-      const response = await base44.functions.invoke("getAdminUsers", { cursor: pageParam, search: userSearch, shared_only: sharedOnly, include_security: activeTab !== "roles", include_wallets: activeTab === "users" });
+      const response = await base44.functions.invoke("getAdminUsers", { cursor: pageParam, search: userSearch, filter: userFilter, shared_only: sharedOnly, include_security: activeTab !== "roles", include_wallets: activeTab === "users" });
       if (!response.data?.success) throw new Error(response.data?.error || "Could not load users");
       return response.data;
     },
@@ -171,10 +173,16 @@ export function useAdminConsoleData(user, activeTab, userFilters = {}, options =
           rows: page.rows.map((row) => row.id === updated.id ? { ...row, ...updated } : row),
         })),
       }));
+      void queryClient.invalidateQueries({ queryKey: ["admin-console", user?.id, role],
+        predicate: query => ["dashboardOverview", "auditLog", "auditCounts", "workspaceSearch", "users"].includes(query.queryKey[3]),
+      }, { cancelRefetch: false });
+      notifyAdminChanged({ playerIds: [updated.id], skipAdminConsole: true });
     },
     sectionLoading,
     sectionError: required.find((key) => !queries.status[key].ready && queries.status[key].error),
     refreshing: [...enabledKeys].some((key) => queries.status[key]?.fetching) || (directoryTab && userDirectory.isFetching),
-    refresh: () => queryClient.invalidateQueries({ queryKey: ["admin-console", user?.id, role] }),
+    refresh: (options = {}) => queryClient.invalidateQueries({ queryKey: ["admin-console", user?.id, role],
+      predicate: query => query.queryKey[3] !== "tournamentLifecycle" && !(options.skipSupport && query.queryKey[3] === "ticketQueue"),
+    }, { cancelRefetch: false }),
   };
 }

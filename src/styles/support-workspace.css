@@ -1,0 +1,21 @@
+.admin-tickets .at-category-unread { flex-shrink: 0; border-radius: 4px; padding: 2px 5px; color: hsl(var(--cyan)); background: hsl(var(--cyan) / .13); font-size: 9px; font-weight: 900; white-space: nowrap; }
+.admin-tickets .at-categories button { min-height: 64px; }
+.admin-tickets .at-category-label { flex-direction: column; align-items: flex-start; gap: 4px; text-align: left; }
+.admin-tickets .at-category-title { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.admin-tickets .at-organize { flex-wrap: wrap; }
+.admin-tickets .at-filters { flex-wrap: wrap; }
+.admin-tickets .at-filters button[data-view="new"] > span { color: hsl(var(--cyan)); }
+.admin-tickets .at-player-link { display: inline-flex; align-items: center; gap: 5px; color: hsl(var(--cyan)); text-align: left; text-decoration: underline; text-decoration-color: hsl(var(--cyan) / .3); text-underline-offset: 3px; }
+.admin-tickets .at-player-link:hover { text-decoration-color: currentColor; }
+.admin-tickets .at-draft-hint { margin-top: 10px; color: var(--at-muted); font-size: 10px; }
+.admin-tickets .at-case-timeline { display: grid; gap: 0; max-height: 620px; overflow-y: auto; padding: 0 8px 0 0; margin-top: 20px; list-style: none; }
+.admin-tickets .at-case-timeline > li { position: relative; display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 12px; padding-bottom: 24px; }
+.admin-tickets .at-case-timeline > li:not(:last-child)::after { content: ""; position: absolute; top: 30px; bottom: 0; left: 14px; width: 1px; background: var(--at-line); }
+.admin-tickets .at-timeline-icon { display: grid; align-items: center; justify-items: center; width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--at-line); color: var(--at-muted); background: var(--arena-inset); }
+.admin-tickets .at-case-timeline [data-type="player"] .at-timeline-icon, .admin-tickets .at-case-timeline [data-type="request"] .at-timeline-icon { color: hsl(var(--cyan)); border-color: hsl(var(--cyan) / .3); }
+.admin-tickets .at-case-timeline [data-type="decision"] .at-timeline-icon { color: #47d7a1; border-color: #47d7a144; }
+.admin-tickets .at-case-timeline [data-type="note"] .at-timeline-icon { color: #f2c76c; }
+.admin-tickets .at-timeline-heading { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; font-size: 12px; }
+.admin-tickets .at-timeline-heading time { color: var(--at-muted); font-size: 10px; }
+.admin-tickets .at-timeline-content > small { display: block; margin-top: 4px; color: var(--at-muted); font-size: 10px; }
+.admin-tickets .at-timeline-content > p { margin-top: 7px; color: hsl(var(--foreground)); font-size: 12px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }

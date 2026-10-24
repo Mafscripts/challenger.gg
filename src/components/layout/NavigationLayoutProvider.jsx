@@ -3,6 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { isNavigationLayout, navigationLayoutKey, preferredNavigationLayout } from "@/lib/navigationLayout";
 import { toast } from "@/components/ui/use-toast";
+import AdminWorkspaceBridge from "@/components/admin/AdminWorkspaceBridge";
 
 const NavigationLayoutContext = createContext(null);
 const storage = () => { try { return window.localStorage; } catch { return null; } };
@@ -39,7 +40,7 @@ export function NavigationLayoutProvider({ children }) {
     }
   };
 
-  return <NavigationLayoutContext.Provider value={{ layout, saving, error, chooseLayout }}>{children}</NavigationLayoutContext.Provider>;
+  return <NavigationLayoutContext.Provider value={{ layout, saving, error, chooseLayout }}>{children}<AdminWorkspaceBridge user={user} /></NavigationLayoutContext.Provider>;
 }
 
 export const useNavigationLayout = () => useContext(NavigationLayoutContext);

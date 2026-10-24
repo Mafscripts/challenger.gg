@@ -16,9 +16,9 @@ const idsSql = (ids) => ids.length ? Prisma.join(ids) : Prisma.sql`NULL`;
 
 // A match complaint belongs to its conversation. Older complaints without a
 // conversation remain visible as standalone tickets rather than disappearing.
-const queueSql = Prisma.sql`
-  WITH queue AS (
-    SELECT t.id, 'ticket' AS kind, t.created_date,
+const queueSql = userId => Prisma.sql`
+  WITH queue_base AS (
+    SELECT t.id, 'ticket' AS kind, t.created_date, t.metadata,
       CASE WHEN t.metadata->>'request_type' = 'live_support' THEN 'live'
         WHEN t.metadata->>'requested_admin' = 'true' THEN 'calls'
         WHEN NULLIF(t.metadata->>'dispute_id', '') IS NOT NULL OR EXISTS (SELECT 1 FROM "Dispute" d WHERE d.metadata->>'ticket_id' = t.id) THEN 'disputes' ELSE 'tickets' END AS channel,
@@ -37,7 +37,7 @@ const queueSql = Prisma.sql`
         OR EXISTS (SELECT 1 FROM "Dispute" d WHERE d.metadata->>'ticket_id' = t.id)) AS match_ticket
     FROM "Ticket" t
     UNION ALL
-    SELECT d.id, 'dispute' AS kind, d.created_date, 'disputes' AS channel,
+    SELECT d.id, 'dispute' AS kind, d.created_date, d.metadata, 'disputes' AS channel,
       COALESCE(d.metadata->>'match_type', 'wagers') AS mode,
       1 AS priority,
       TRUE AS has_dispute,
@@ -49,17 +49,78 @@ const queueSql = Prisma.sql`
     FROM "Dispute" d
     WHERE NOT EXISTS (SELECT 1 FROM "Ticket" t
       WHERE d.metadata->>'ticket_id' = t.id OR t.metadata->>'dispute_id' = d.id)
+  ), source_messages AS (
+    SELECT q.id AS case_id, q.kind, entry.message, 0 AS source_order, entry.ordinality AS sequence
+    FROM queue_base q CROSS JOIN LATERAL jsonb_array_elements(
+      CASE WHEN jsonb_typeof(q.metadata->'messages') = 'array' THEN q.metadata->'messages' ELSE '[]'::jsonb END
+    ) WITH ORDINALITY AS entry(message, ordinality)
+    UNION ALL
+    SELECT q.id, q.kind, m.metadata || jsonb_build_object('id', m.id,
+      'created_date', to_char(m.created_date, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')), 1,
+      row_number() OVER (PARTITION BY q.id, q.kind ORDER BY m.created_date, m.id)
+    FROM "Message" m JOIN queue_base q ON q.kind = 'ticket'
+      AND (m.metadata->>'ticket_id' = q.id OR m.metadata->>'conversation_id' = q.id)
+  ), unique_messages AS (
+    SELECT DISTINCT ON (kind, case_id, COALESCE(message->>'id', concat_ws(':',
+      COALESCE(message->>'created_date', 'undefined'), COALESCE(message->>'sender_id', 'undefined'), COALESCE(message->>'content', 'undefined'))))
+      * FROM source_messages ORDER BY kind, case_id,
+      COALESCE(message->>'id', concat_ws(':', COALESCE(message->>'created_date', 'undefined'), COALESCE(message->>'sender_id', 'undefined'), COALESCE(message->>'content', 'undefined'))),
+      source_order DESC, sequence DESC
+  ), timed_messages AS (
+    SELECT *, CASE WHEN message->>'created_date' ~ '^[1-9]\\d{3}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(\\.\\d{1,6})?(Z|[+-](0\\d|1[0-5]):[0-5]\\d)$'
+      THEN CASE WHEN substring(message->>'created_date', 9, 2)::int <= extract(day FROM
+        (make_date(substring(message->>'created_date', 1, 4)::int, substring(message->>'created_date', 6, 2)::int, 1) + interval '1 month - 1 day'))
+        THEN (message->>'created_date')::timestamptz AT TIME ZONE 'UTC' ELSE NULL END
+      ELSE NULL END AS message_at
+    FROM unique_messages
+  ), incoming_messages AS (
+    SELECT *, count(*) OVER (PARTITION BY kind, case_id) AS incoming_count,
+      row_number() OVER (PARTITION BY kind, case_id ORDER BY
+        message_at DESC NULLS LAST,
+        source_order DESC, sequence DESC) AS incoming_order
+    FROM timed_messages WHERE COALESCE(message->>'internal', 'false') = 'false'
+      AND COALESCE(message->>'is_system', 'false') = 'false' AND COALESCE(message->>'sender_staff', 'false') = 'false'
+      AND COALESCE(message->>'sender_role', '') NOT IN ('staff', 'admin', 'moderator', 'developer', 'ceo', 'super_admin', 'system')
+      AND COALESCE(message->>'sender_id', '') <> 'system' AND COALESCE(message->>'type', '') <> 'system'
+  ), queue_activity AS (
+    SELECT q.*, CASE WHEN incoming.incoming_count IS NOT NULL THEN
+      encode(sha256(convert_to(concat('[', incoming.incoming_count, ',',
+        COALESCE(incoming.message->'id', 'null'::jsonb)::text, ',', COALESCE(incoming.message->'support_sequence', 'null'::jsonb)::text, ',',
+        COALESCE(incoming.message->'created_date', 'null'::jsonb)::text, ',', COALESCE(incoming.message->'sender_id', 'null'::jsonb)::text, ',',
+        COALESCE(incoming.message->'content', 'null'::jsonb)::text, ']'), 'UTF8')), 'hex')
+      WHEN NULLIF(q.metadata->>'description', '') IS NOT NULL THEN
+        encode(sha256(convert_to(concat('[', to_json(to_char(q.created_date, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'))::text, ',', to_json(q.metadata->>'description')::text, ']'), 'UTF8')), 'hex')
+      ELSE NULL END AS incoming_token,
+      COALESCE(incoming.message_at, q.created_date) AS activity_at,
+      COALESCE(q.metadata->>'status', 'open') = 'waiting_for_user' AS awaiting_player
+    FROM queue_base q LEFT JOIN incoming_messages incoming ON incoming.kind = q.kind AND incoming.case_id = q.id AND incoming.incoming_order = 1
+  ), queue AS (
+    SELECT *, incoming_token IS NOT NULL AND COALESCE(metadata->'support_inbox_reads'->>${userId}, '') <> incoming_token AS unread
+    FROM queue_activity
   )`;
 
-export async function getAdminTicketCounts(db, user) {
+const queueCategory = value => ["live", "calls", "disputes", "tickets", "money8s", "wagers", "tournament"].includes(value) ? value : "all";
+const queueCategorySql = category => ["live", "calls", "tickets"].includes(category) ? Prisma.sql`channel = ${category}`
+  : category === "disputes" ? Prisma.sql`has_dispute`
+  : category === "money8s" ? Prisma.sql`mode IN ('money8s', '8s', 'eights')`
+  : category === "wagers" ? Prisma.sql`mode IN ('wager', 'wagers')`
+  : category === "tournament" ? Prisma.sql`mode = 'tournament'` : Prisma.sql`TRUE`;
+
+export async function getAdminTicketCounts(db, user, payload = {}) {
   requireStaff(user);
-  const [counts] = await db.$queryRaw`${queueSql}
-    SELECT COUNT(*)::int AS total, COUNT(*) FILTER (WHERE NOT closed)::int AS open,
-      COUNT(*) FILTER (WHERE closed)::int AS closed,
-      COUNT(*) FILTER (WHERE NOT closed AND match_ticket)::int AS match_open,
-      COUNT(*) FILTER (WHERE NOT closed AND owner = '')::int AS waiting,
-      COUNT(*) FILTER (WHERE NOT closed AND owner = ${user.id})::int AS mine,
-      COUNT(*) FILTER (WHERE saved)::int AS saved,
+  const [counts] = await db.$queryRaw`${queueSql(user.id)}, scoped_queue AS (
+      SELECT *, ${queueCategorySql(queueCategory(payload.category))} AS in_category FROM queue
+    )
+    SELECT COUNT(*) FILTER (WHERE in_category)::int AS total, COUNT(*) FILTER (WHERE in_category AND NOT closed)::int AS open,
+      COUNT(*) FILTER (WHERE in_category AND closed)::int AS closed,
+      COUNT(*) FILTER (WHERE in_category AND NOT closed AND match_ticket)::int AS match_open,
+      COUNT(*) FILTER (WHERE in_category AND NOT closed AND owner = '')::int AS waiting,
+      COUNT(*) FILTER (WHERE in_category AND NOT closed AND owner = ${user.id})::int AS mine,
+      COUNT(*) FILTER (WHERE in_category AND saved)::int AS saved,
+      COUNT(*) FILTER (WHERE in_category AND NOT closed AND unread)::int AS unread,
+      COUNT(*) FILTER (WHERE in_category AND NOT closed AND unread)::int AS activity,
+      COUNT(*) FILTER (WHERE in_category AND NOT closed AND unread)::int AS new,
+      COUNT(*) FILTER (WHERE in_category AND NOT closed AND awaiting_player)::int AS awaiting,
       json_build_object(
         'all', COUNT(*) FILTER (WHERE NOT closed),
         'live', COUNT(*) FILTER (WHERE NOT closed AND channel = 'live'),
@@ -69,7 +130,17 @@ export async function getAdminTicketCounts(db, user) {
         'money8s', COUNT(*) FILTER (WHERE NOT closed AND mode IN ('money8s','8s','eights')),
         'wagers', COUNT(*) FILTER (WHERE NOT closed AND mode IN ('wager','wagers')),
         'tournament', COUNT(*) FILTER (WHERE NOT closed AND mode = 'tournament')
-      ) AS categories FROM queue`;
+      ) AS categories,
+      json_build_object(
+        'all', COUNT(*) FILTER (WHERE NOT closed AND unread),
+        'live', COUNT(*) FILTER (WHERE NOT closed AND unread AND channel = 'live'),
+        'calls', COUNT(*) FILTER (WHERE NOT closed AND unread AND channel = 'calls'),
+        'disputes', COUNT(*) FILTER (WHERE NOT closed AND unread AND has_dispute),
+        'tickets', COUNT(*) FILTER (WHERE NOT closed AND unread AND channel = 'tickets'),
+        'money8s', COUNT(*) FILTER (WHERE NOT closed AND unread AND mode IN ('money8s','8s','eights')),
+        'wagers', COUNT(*) FILTER (WHERE NOT closed AND unread AND mode IN ('wager','wagers')),
+        'tournament', COUNT(*) FILTER (WHERE NOT closed AND unread AND mode = 'tournament')
+      ) AS unread_categories FROM scoped_queue`;
   return { success: true, ...counts };
 }
 
@@ -82,7 +153,9 @@ function readCursor(value) {
       || typeof cursor.id !== "string" || !cursor.id || cursor.id.length > 200) throw new Error();
     const priority = cursor.priority ?? 0;
     if (!Number.isInteger(priority) || priority < 0 || priority > 3) throw new Error();
-    return { ...cursor, date, priority };
+    const activity = cursor.activity ? new Date(cursor.activity) : date;
+    if (!Number.isFinite(activity.getTime()) || (cursor.version === 2 && typeof cursor.unread !== 'boolean')) throw new Error();
+    return { ...cursor, date, activity, priority };
   } catch {
     throw Object.assign(new Error("Invalid ticket page. Refresh the list."), { status: 400 });
   }
@@ -93,12 +166,8 @@ export async function getAdminTickets(db, user, payload = {}) {
   const cursor = readCursor(payload.cursor);
   const filter = ["all", "open", "closed"].includes(payload.filter) ? payload.filter : "all";
   const statusSql = filter === "all" ? Prisma.sql`TRUE` : Prisma.sql`closed = ${filter === "closed"}`;
-  const category = ["live", "calls", "disputes", "tickets", "money8s", "wagers", "tournament"].includes(payload.category) ? payload.category : "all";
-  const categorySql = ["live", "calls", "tickets"].includes(category) ? Prisma.sql`channel = ${category}`
-    : category === "disputes" ? Prisma.sql`has_dispute`
-    : category === "money8s" ? Prisma.sql`mode IN ('money8s', '8s', 'eights')`
-    : category === "wagers" ? Prisma.sql`mode IN ('wager', 'wagers')`
-    : category === "tournament" ? Prisma.sql`mode = 'tournament'` : Prisma.sql`TRUE`;
+  const category = queueCategory(payload.category);
+  const categorySql = queueCategorySql(category);
   let selectedSql = Prisma.sql`TRUE`;
   if (payload.record_id) {
     if (typeof payload.record_id !== "string" || payload.record_id.length > 200 || !["ticket", "dispute"].includes(payload.kind)) throw Object.assign(new Error("Choose a valid support case."), { status: 400 });
@@ -106,24 +175,28 @@ export async function getAdminTickets(db, user, payload = {}) {
   }
   const viewSql = payload.view === "waiting" ? Prisma.sql`owner = ''`
     : payload.view === "mine" ? Prisma.sql`owner = ${user.id}`
+    : ["new", "activity"].includes(payload.view) ? Prisma.sql`unread`
+    : payload.view === "awaiting" ? Prisma.sql`awaiting_player`
     : payload.view === "saved" ? Prisma.sql`saved` : Prisma.sql`TRUE`;
   const search = typeof payload.search === "string" ? payload.search.trim().slice(0, 150) : "";
   const searchSql = search ? Prisma.sql`strpos(lower(search_text), lower(${search})) > 0` : Prisma.sql`TRUE`;
   // Prisma reads timestamp-without-time-zone as UTC. Passing a Date back as a
   // timestamptz shifts the boundary in non-UTC sessions and repeats whole pages.
-  const cursorSql = cursor
+  const cursorSql = cursor?.version === 2
+    ? Prisma.sql`(priority, unread, activity_at, kind, id) < (${cursor.priority}, ${cursor.unread}, ${cursor.activity.toISOString().slice(0, -1)}::timestamp, ${cursor.kind}, ${cursor.id})`
+    : cursor
     ? Prisma.sql`(priority, created_date, kind, id) < (${cursor.priority}, ${cursor.date.toISOString().slice(0, -1)}::timestamp, ${cursor.kind}, ${cursor.id})`
     : Prisma.sql`TRUE`;
-  const candidates = await db.$queryRaw`${queueSql}
+  const candidates = await db.$queryRaw`${queueSql(user.id)}
     SELECT * FROM queue WHERE ${statusSql} AND ${categorySql} AND ${selectedSql} AND ${viewSql} AND ${searchSql} AND ${cursorSql}
-    ORDER BY priority DESC, created_date DESC, kind DESC, id DESC LIMIT ${payload.selection_only === true ? 101 : 11}`;
+    ORDER BY priority DESC, unread DESC, activity_at DESC, kind DESC, id DESC LIMIT ${payload.selection_only === true ? 101 : 11}`;
   const limit = payload.selection_only === true ? 100 : 10;
   const page = candidates.slice(0, limit);
   if (payload.selection_only === true) {
     requireBulkClose(user);
     const last = page.at(-1);
     return { success: true, rows: page.map(row => ({ id: `${row.kind}:${row.id}`, record_id: row.id, kind: row.kind, closed: row.closed })),
-      next_cursor: candidates.length > limit && last ? Buffer.from(JSON.stringify({ date: last.created_date.toISOString(), kind: last.kind, id: last.id, priority: last.priority || 0 })).toString("base64url") : null };
+      next_cursor: candidates.length > limit && last ? queueCursor(last) : null };
   }
   const ticketIds = page.filter((row) => row.kind === "ticket").map((row) => row.id);
   const orphanIds = page.filter((row) => row.kind === "dispute").map((row) => row.id);
@@ -154,15 +227,20 @@ export async function getAdminTickets(db, user, payload = {}) {
         .sort((a, b) => new Date(a.created_date || 0) - new Date(b.created_date || 0));
     }
     const record = serialized || serializeRow(linked[0]);
-    const incomingToken = supportIncomingToken(record);
-    const unread = Boolean(incomingToken && record?.support_inbox_reads?.[user.id] !== incomingToken);
+    const incomingToken = row.incoming_token ?? supportIncomingToken(record);
+    const unread = row.unread ?? Boolean(incomingToken && record?.support_inbox_reads?.[user.id] !== incomingToken);
     if (serialized) delete serialized.support_inbox_reads;
-    return [{ incoming_token: incomingToken, unread, id: `${row.kind}:${row.id}`, kind: row.kind, record_id: row.id,
+    return [{ incoming_token: incomingToken, unread, activity_at: (row.activity_at || row.created_date)?.toISOString(), awaiting_player: row.awaiting_player, id: `${row.kind}:${row.id}`, kind: row.kind, record_id: row.id,
       closed: row.closed, channel: row.channel, mode: row.mode, ticket: serialized, disputes: linked.map(serializeRow) }];
   });
   const last = page.at(-1);
   return { success: true, rows, next_cursor: candidates.length > 10 && last
-    ? Buffer.from(JSON.stringify({ date: last.created_date.toISOString(), kind: last.kind, id: last.id, priority: last.priority || 0 })).toString("base64url") : null };
+    ? queueCursor(last) : null };
+}
+
+function queueCursor(row) {
+  return Buffer.from(JSON.stringify({ version: 2, date: row.created_date.toISOString(), activity: (row.activity_at || row.created_date).toISOString(),
+    unread: Boolean(row.unread), kind: row.kind, id: row.id, priority: row.priority || 0 })).toString("base64url");
 }
 
 export async function getSupportInboxSummary(db, user) {

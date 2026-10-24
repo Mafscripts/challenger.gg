@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { ArrowRight, ChevronDown, Coins, Equal, Loader2, LockKeyhole, Minus, Plus, Search, ShieldCheck, SlidersHorizontal, Wallet, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { effectiveRoleForUser, hasRolePower } from "@/lib/roles";
+import { openAdminPlayer } from "@/lib/adminWorkspace";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/use-toast";
 import "@/styles/admin-wallets.css";
@@ -67,8 +68,10 @@ function WalletEditor({ row, onClose, onSaved }) {
 }
 
 export default function AdminWallets({ user, onRefresh }) {
+  const location = useLocation();
   const role = effectiveRoleForUser(user), canView = hasRolePower(role, "admin"), canAdjust = role === "ceo";
-  const [search, setSearch] = useState(""), [debounced, setDebounced] = useState(""), [filter, setFilter] = useState("all"), [editing, setEditing] = useState(null);
+  const [search, setSearch] = useState(() => new URLSearchParams(location.search).get("search") || ""), [debounced, setDebounced] = useState(() => new URLSearchParams(location.search).get("search") || ""), [filter, setFilter] = useState("all"), [editing, setEditing] = useState(null);
+  useEffect(() => { setSearch(new URLSearchParams(location.search).get("search") || ""); }, [location.search]);
   useEffect(() => { const timer = setTimeout(() => setDebounced(search.trim()), 300); return () => clearTimeout(timer); }, [search]);
   const query = useInfiniteQuery({
     queryKey: ["admin-console", user.id, role, "walletDirectory", debounced, filter], initialPageParam: null,
@@ -94,7 +97,7 @@ export default function AdminWallets({ user, onRefresh }) {
     <div className="aw-toolbar"><div className="aw-search"><Search size={16} /><input aria-label="Search wallets" placeholder="Search player, email or account ID..." value={search} onChange={(event) => setSearch(event.target.value)} />{search && <button aria-label="Clear wallet search" onClick={() => setSearch("")}><X size={14} /></button>}</div><div className="aw-filters" aria-label="Wallet filter">{[["all", "All accounts"], ["funded", "With balance"], ["held", "Funds held"]].map(([value, label]) => <button key={value} aria-pressed={filter === value} onClick={() => setFilter(value)}>{label}</button>)}</div></div>
     <div className="aw-list-summary"><strong>{total.toLocaleString()} accounts</strong><span>Newest accounts first</span></div>
     <div className="aw-table-wrap"><table className="admin-responsive-table" role="table" aria-label="Player wallets"><thead><tr><th>Player</th><th>Available</th><th>Credits</th><th>Pending / Escrow</th><th>Withdrawable</th><th>Earned</th>{canAdjust && <th><span className="sr-only">Controls</span></th>}</tr></thead><tbody>{rows.map((row) => <tr key={row.id}>
-      <td data-label="Player"><div className="aw-player"><span>{nameFor(row).slice(0, 1).toUpperCase()}</span><div>{row.username ? <Link to={`/profile/${encodeURIComponent(row.username)}`}>{nameFor(row)}</Link> : <strong>{nameFor(row)}</strong>}<small>{row.email}</small></div></div></td>
+      <td data-label="Player"><div className="aw-player"><span>{nameFor(row).slice(0, 1).toUpperCase()}</span><div><button type="button" className="admin-player-link" onClick={() => openAdminPlayer(row.id)}>{nameFor(row)}</button><small>{row.email}</small></div></div></td>
       <td data-label="Available"><strong className="aw-money">{money(row.available_balance)}</strong></td><td data-label="Credits"><span className="aw-credits"><Coins size={12} />{credits(row.credits)}</span></td>
       <td data-label="Pending / escrow"><div className="aw-held"><span>{money(row.pending_balance)} <small>pending</small></span><span>{money(row.escrow_balance)} <small>escrow</small></span></div></td>
       <td data-label="Withdrawable">{money(row.withdrawable_balance)}</td><td data-label="Earned">{money(row.total_earnings)}</td>{canAdjust && <td data-label="Actions"><button className="aw-manage" aria-label={`Adjust balance for ${nameFor(row)}`} onClick={() => setEditing(row)}><SlidersHorizontal size={13} /> Adjust</button></td>}

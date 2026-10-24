@@ -1,0 +1,73 @@
+import { build } from "esbuild";
+import { createRequire } from "node:module";
+import { readFile, readdir } from "node:fs/promises";
+import express from "express";
+import assert from "node:assert/strict";
+
+const root = process.cwd().replaceAll("\\", "/");
+const bundle = await build({ stdin: { resolveDir: root, loader: "jsx", contents: `
+import React from 'react';import{createRoot}from'react-dom/client';import{MemoryRouter,useLocation}from'react-router-dom';import{QueryClient,QueryClientProvider}from'@tanstack/react-query';import AdminMatches from'./src/components/admin/AdminMatches.jsx';
+const client=new QueryClient({defaultOptions:{queries:{retry:false}}});window.addEventListener('topfragg:admin-player-open',e=>window.openedPlayer=e.detail.userId);
+function Fixture(){const location=useLocation();return <><div id="route">{location.pathname+location.search}</div><AdminMatches user={{id:'staff',role:'admin'}}/></>;}createRoot(document.getElementById('root')).render(<MemoryRouter initialEntries={['/admin?tab=matches']}><QueryClientProvider client={client}><Fixture/></QueryClientProvider></MemoryRouter>);` }, bundle: true, write: false, platform: "browser", format: "iife", define: { "import.meta.env": "{}" }, alias: { "@": `${root}/src` }, loader: { ".css": "empty" }, plugins: [{ name: "mock-api", setup(plugin) {
+  plugin.onResolve({ filter: /^@\/api\/base44Client$/ }, args => ({ path: args.path, namespace: "mock-api" }));
+  plugin.onLoad({ filter: /.*/, namespace: "mock-api" }, () => ({ loader: "js", contents: `
+const row=(mode,id)=>({id:mode+':'+id,record_id:id,mode,mode_label:{xp:'XP match',tournament:'Tournament match',money8s:'Money 8s'}[mode],title:'dev vs ouji',team_a_name:'dev',team_b_name:'ouji',status:'disputed',created_date:'2026-10-24T12:00:00Z',players:[{user_id:'dev-id',user_name:'dev',team:'alpha'},{user_id:'ouji-id',user_name:'ouji',team:'bravo'}],room_url:'/xp-match/'+id,game_name:'Modern Warfare 4',game_mode:'snd',score_a:1,score_b:0,support_cases:[{id:'ticket:help',kind:'ticket',record_id:'help',title:'Admin requested',status:'in_progress',assigned_admin_name:'Livvy'}]});
+window.matchReads=[];export const base44={functions:{invoke:async(name,payload)=>{window.matchReads.push(payload);if(payload.match){const[mode,id]=payload.match.split(':');return{data:{success:true,match:{...row(mode,id),details:{series_maps:[{name:'Raid',mode:'snd'}],maps:['Raid','Express'],best_of:1,team_size:'1v1'}}}};}if(payload.mode==='challenge')return{data:{success:true,rows:[],next_cursor:null,unavailable_modes:['challenge']}};return{data:{success:true,rows:payload.cursor?[row('xp','older')]:[row(payload.mode==='all'?'xp':payload.mode,'one')],next_cursor:payload.cursor?null:'page-two',unavailable_modes:[]}};}}};` }));
+} }] });
+const css = (await readdir("dist/assets")).filter(path => path.endsWith(".css"));
+const ownCss = await readFile("src/styles/admin-matches.css", "utf8");
+const app = express();
+app.use(express.static("dist"));
+app.get("/review", (_request, response) => response.type("html").send(`<!doctype html><html><head>${css.map(path => `<link rel="stylesheet" href="/assets/${path}">`).join("")}<style>${ownCss}</style></head><body style="background:#07131e;color:#eaf5fc"><div class="app-style-arena" id="root"></div><script src="/fixture.js"></script></body></html>`));
+app.get("/fixture.js", (_request, response) => response.type("js").send(bundle.outputFiles[0].text));
+const server = app.listen(0, "127.0.0.1");
+await new Promise(resolve => server.once("listening", resolve));
+const { chromium } = createRequire(import.meta.url)("C:/Users/livao/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright");
+let browser;
+try {
+  browser = await chromium.launch({ headless: true, channel: "chrome" });
+  const page = await browser.newPage({ viewport: { width: 1400, height: 1000 } });
+  page.setDefaultTimeout(10000);
+  const errors = [];
+  page.on("pageerror", error => { errors.push(error.message); console.error(error.message); });
+  await page.goto(`http://127.0.0.1:${server.address().port}/review`);
+  await page.locator(".am-match-row").waitFor();
+  assert.equal(await page.evaluate(() => window.matchReads.length), 1, "initial list has one bounded request");
+  assert.equal(await page.locator(".am-detail-empty").count(), 1, "no match detail fetched before selecting a row");
+  await page.locator(".am-match-row").click();
+  await page.locator(".am-detail-heading h3").waitFor();
+  assert.equal(await page.evaluate(() => window.matchReads.filter(request => request.match).length), 1);
+  assert.equal(await page.locator(".am-maps li").count(), 1, "generated map is shown rather than every map in the pool");
+  assert.equal(await page.locator(".am-maps strong").innerText(), "Raid");
+  assert.match(await page.locator(".am-button.am-open").getAttribute("href"), /^\/xp-match\/one\?support_view=1$/);
+  assert.match(await page.locator(".am-button.am-support").getAttribute("href"), /^\/admin\?tab=tickets&case=ticket%3Ahelp$/);
+  await page.locator(".am-team button").first().click();
+  assert.equal(await page.evaluate(() => window.openedPlayer), "dev-id");
+  assert.equal(await page.locator(".am-status[data-tone=disputed]").count(), 2);
+  await page.getByRole("button", { name: "Money 8s", exact: true }).click();
+  await page.waitForFunction(() => window.matchReads.at(-1).mode === "money8s");
+  assert.equal(await page.locator(".am-detail-empty").count(), 1, "filter changes clear unrelated selections");
+  await page.getByRole("button", { name: "Load next 25 matches" }).click();
+  await page.waitForFunction(() => window.matchReads.at(-1).cursor === "page-two");
+  await page.waitForFunction(() => document.querySelectorAll(".am-match-row").length === 2);
+  await page.getByRole("button", { name: "Challenges", exact: true }).click();
+  await page.getByText("Challenges is not available in this installation yet.", { exact: false }).waitFor();
+  assert.equal(await page.getByText("No matches found", { exact: true }).count(), 0);
+  await page.getByRole("button", { name: "XP", exact: true }).click();
+  await page.locator(".am-match-row").first().waitFor();
+  const beforeSearch = await page.evaluate(() => window.matchReads.length);
+  await page.getByRole("textbox", { name: "Search matches" }).fill("dev");
+  await page.waitForFunction(() => window.matchReads.at(-1).search === "dev");
+  assert.equal(await page.evaluate(() => window.matchReads.length), beforeSearch + 1, "search is debounced into one request");
+  await page.setViewportSize({ width: 390, height: 844 });
+  assert.equal(await page.locator(".am-directory").isVisible(), true);
+  await page.locator(".am-match-row").first().click();
+  await page.locator(".am-detail-heading").waitFor();
+  assert.equal(await page.locator(".am-directory").isVisible(), false);
+  assert.equal(await page.locator(".am-detail").isVisible(), true);
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), "mobile does not overflow horizontally");
+  await page.getByRole("button", { name: "Back to matches" }).click();
+  assert.equal(await page.locator(".am-directory").isVisible(), true);
+  assert.deepEqual(errors, []);
+  console.log("Match center browser checks passed: one initial request, selected details only, generated maps, player dossier, support / room links, mode filters, unavailable source notice, pagination, debounced search and mobile layout.");
+} finally { await browser?.close(); server.close(); }

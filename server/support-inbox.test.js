@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { Prisma } from "@prisma/client";
 import { build } from "esbuild";
-import { getAdminTickets, getSupportInboxSummary, saveSupportCase, supportIncomingToken, markSupportCaseRead, deleteAdminTicket } from "./admin-tickets.js";
+import { getAdminTicketCounts, getAdminTickets, getSupportInboxSummary, saveSupportCase, supportIncomingToken, markSupportCaseRead, deleteAdminTicket } from "./admin-tickets.js";
 import { claimSupportTicket } from "./support-claims.js";
 import { hasRole } from "./roles.js";
 
@@ -119,6 +119,25 @@ test("queue filters search safely and promote admin calls before premium and liv
   assert.match(query.sql, /request_type' = 'live_support' THEN 1/);
   await getAdminTickets(s.db, { id: "staff", role: "moderator" }, { view: "mine" });
   assert.ok(s.queries.some(query => query.sql.includes('AND owner =') && query.values.includes('staff')));
+});
+
+test("view counters follow the selected category while category navigation keeps global totals", async () => {
+  const s = queueStore(), staff = { id: "staff", role: "moderator" };
+  await getAdminTicketCounts(s.db, staff, { category: "live" });
+  const query = s.queries.at(-1);
+  assert.match(query.sql, /SELECT \*, channel = \? AS in_category FROM queue/);
+  assert.ok(query.values.includes("live"));
+  for (const field of ["total", "open", "closed", "match_open", "waiting", "mine", "saved", "unread", "activity", "new", "awaiting"]) {
+    assert.match(query.sql, new RegExp(`COUNT\\(\\*\\) FILTER \\(WHERE in_category[^)]*\\)::int AS ${field}(?:,|\\s)`));
+  }
+  assert.ok(!query.sql.slice(query.sql.indexOf("json_build_object")).includes("in_category"));
+  await getAdminTicketCounts(s.db, staff, { category: "disputes" });
+  assert.match(s.queries.at(-1).sql, /has_dispute AS in_category/);
+  await getAdminTicketCounts(s.db, staff, { category: "tournament" });
+  assert.match(s.queries.at(-1).sql, /mode = 'tournament' AS in_category/);
+  await getAdminTicketCounts(s.db, staff, { category: "' OR 1=1 --" });
+  assert.match(s.queries.at(-1).sql, /TRUE AS in_category/);
+  await assert.rejects(() => getAdminTicketCounts(s.db, { id: "player", role: "user" }, { category: "live" }), error => error.status === 403);
 });
 
 test("unread tokens track new player replies, ignoring staff replies and private notes", () => {

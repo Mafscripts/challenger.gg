@@ -24,6 +24,8 @@ import { getAdminTickets, getAdminTicketCounts, deleteAdminTicket, getSupportInb
 import { getAdminUserSecurity, deleteAdminUser, getAdminUsers, getAdminUserCount, setAdminUserVpnAccess } from "../admin-users.js";
 import { getAdminAuditLogs, getAdminAuditEntry, getAdminAuditCounts } from "../admin-audit.js";
 import { getAdminDashboard } from "../admin-dashboard.js";
+import { getAdminMatches } from "../admin-matches.js";
+import { getAdminPlayerDossier } from "../admin-player-dossier.js";
 import { consoleRestrictedFor } from "../../src/lib/playerRestrictions.js";
 import { getAdminWallets, getAdminWalletSummary, adjustAdminWallet } from "../admin-wallets.js";
 import { requireAuth } from "../middleware/auth.js";
@@ -10605,6 +10607,8 @@ const handlers = {
   },
 
   getAdminDashboard: (req) => getAdminDashboard(prisma, req.user),
+  getAdminMatches: (req) => getAdminMatches(prisma, req.user, req.body),
+  getAdminPlayerDossier: (req) => getAdminPlayerDossier(prisma, req.user, req.body),
   ...challengeHandlers,
   ...tradingHandlers,
   ...tradeListingHandlers,
@@ -10630,7 +10634,7 @@ const handlers = {
   getAdminTickets: (req) => getAdminTickets(prisma, req.user, req.body),
   claimSupportDispute: async req => ({ success: true, dispute: (await claimSupportTicket(prisma, req.user, { dispute_id: req.body.dispute_id, take_over: req.body.take_over })).ticket }),
   getSupportInboxSummary: req => getSupportInboxSummary(prisma, req.user),
-  getAdminTicketCounts: (req) => getAdminTicketCounts(prisma, req.user),
+  getAdminTicketCounts: (req) => getAdminTicketCounts(prisma, req.user, req.body),
   sendSupportCaseMatchMessage,
   getSupportCaseMatch: (req) => getSupportCaseMatch(prisma, req.user, req.body),
   getSupportCaseChat: (req) => getSupportCaseChat(prisma, req.user, req.body),
