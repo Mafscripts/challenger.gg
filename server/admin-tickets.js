@@ -268,6 +268,19 @@ export async function deleteAdminTicket(db, user, payload = {}) {
     const ticketIds = [...tickets.keys()];
     const disputeIds = [...disputes.keys()];
     const recordIds = [...ticketIds, ...disputeIds];
+    // Keep a small, safe description before the source conversation is removed.
+    // The audit log must still explain the event after its target no longer exists.
+    const seed = (kind === "ticket" ? tickets : disputes).get(id)?.metadata || {};
+    const related = [...tickets.values(), ...disputes.values()].map(row => row.metadata || {});
+    const first = key => [seed, ...related].map(record => record[key]).find(value => typeof value === "string" && value.trim())?.trim().slice(0, 240) || null;
+    const playerId = first("user_id") || first("reporter_id") || first("reported_by");
+    const player = playerId && tx.user?.findUnique ? await tx.user.findUnique({ where: { id: playerId },
+      select: { display_name: true, full_name: true, username: true } }) : null;
+    const auditContext = { subject: first("subject") || first("reason"), player_id: playerId,
+      player_name: player?.display_name || player?.full_name || player?.username || first("username") || first("reporter_name") || first("reported_by_name"),
+      match_id: first("match_id") || first("wager_id"), match_type: first("match_type"),
+      match_name: first("match_name") || (first("team_a_name") && first("team_b_name") ? `${first("team_a_name")} vs ${first("team_b_name")}` : first("tournament_name")),
+      ticket_count: ticketIds.length, dispute_count: disputeIds.length, deleted_ticket_count: ticketIds.length, deleted_dispute_count: disputeIds.length };
     await tx.$executeRaw`DELETE FROM "Message" WHERE metadata->>'ticket_id' IN (${idsSql(ticketIds)})
       OR metadata->>'conversation_id' IN (${idsSql(ticketIds)})`;
     const alertRows = await tx.$queryRaw`DELETE FROM "AdminAlert"
@@ -301,7 +314,8 @@ export async function deleteAdminTicket(db, user, payload = {}) {
     await tx.adminAction.create({ data: { metadata: {
       admin_id: user.id, admin_name: user.display_name || user.username || user.email,
       action: "delete_ticket", entity_type: "Ticket", entity_id: id,
-      summary: `Deleted support case ${id}`, details: { ticket_ids: ticketIds, dispute_ids: disputeIds },
+      summary: auditContext.subject ? `Deleted support case: ${auditContext.subject}` : "Deleted support case",
+      audit_context: auditContext, details: { ticket_ids: ticketIds, dispute_ids: disputeIds },
     } } });
     return { success: true, deleted_ticket_ids: ticketIds, deleted_dispute_ids: disputeIds };
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 20000 });
