@@ -7,14 +7,14 @@
   .match-player-identity { grid-column: span 3; }
 }
 @container (min-width: 840px) {
-  [data-roster-layout="compact"] .match-roster-columns { grid-template-columns: minmax(160px, 1.1fr) minmax(150px, 1fr) 75px 80px 210px 60px; }
+  [data-roster-layout="compact"] .match-roster-columns { grid-template-columns: minmax(160px, 1.1fr) minmax(150px, 1fr) 210px 75px 80px 60px; }
   [data-roster-layout="compact"] .match-roster-head { display: grid; }
   [data-roster-layout="compact"] :is(.match-player-identity, .match-player-wide-field) { grid-column: auto; }
   [data-roster-layout="compact"] .match-player-field-label { display: none; }
   [data-roster-layout="compact"] .match-player-card { align-items: center; column-gap: 12px; }
 }
 @container (min-width: 960px) {
-  [data-roster-layout="standard"] .match-roster-columns { grid-template-columns: minmax(180px, 1.25fr) minmax(150px, .9fr) 75px 100px minmax(180px, 1fr) 80px; }
+  [data-roster-layout="standard"] .match-roster-columns { grid-template-columns: minmax(180px, 1.25fr) minmax(150px, .9fr) minmax(210px, 1fr) 75px 100px 80px; }
   [data-roster-layout="standard"] .match-roster-head { display: grid; }
   [data-roster-layout="standard"] .match-player-identity { grid-column: auto; }
   [data-roster-layout="standard"] .match-player-field-label { display: none; }
