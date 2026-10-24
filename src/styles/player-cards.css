@@ -32,7 +32,8 @@
 [data-atmosphere="embers"] .pc-mote{width:2px;height:2px;box-shadow:0 0 5px #cfa16e40;animation:pc-ember-rise var(--mote-time) ease-in-out infinite}
 [data-atmosphere="embers"] .pc-scene-haze{background:radial-gradient(ellipse at 85% 80%,#a98d7155,transparent 48%);animation:pc-quiet-glow 19s ease-in-out infinite alternate}
 [data-atmosphere="tide"]{--atmosphere:#b3c7de}
-[data-atmosphere="tide"] .pc-scene-light{inset:5% -10% -60% 28%;background:radial-gradient(ellipse at 65% 70%,transparent 36%,#a4bddb65 43%,transparent 53%);animation:pc-swell 11s ease-in-out infinite alternate}
+[data-atmosphere="tide"] .pc-scene-light{inset:0 0 0 28%;background:radial-gradient(ellipse at 68% 75%,transparent 24%,#bddeffa6 31%,transparent 39%,#9bc4ed70 44%,transparent 53%);animation:pc-tidal-light 5s ease-in-out infinite alternate}
+[data-atmosphere="tide"] .pc-scene-haze{inset:48% -15% -25% 25%;background:repeating-radial-gradient(ellipse at 70% 100%,transparent 0 15px,#c3e6ff80 18px,transparent 24px 42px);mask-image:linear-gradient(transparent,#000 45%,transparent);-webkit-mask-image:linear-gradient(transparent,#000 45%,transparent);animation:pc-water-current 4s linear infinite}
 [data-atmosphere="tide"] .pc-mote{width:1px;height:1px;animation:pc-starlight var(--mote-time) ease-in-out infinite}
 [data-atmosphere="solar"]{--atmosphere:#c7b28c}
 [data-atmosphere="solar"] .pc-scene-light{background:linear-gradient(112deg,transparent 40%,#d5c29d55 50%,transparent 60%);animation:pc-golden-pass 12s cubic-bezier(.4,0,.2,1) infinite}
@@ -62,6 +63,8 @@
 @keyframes pc-ember-rise{0%{opacity:0;transform:translate3d(0,24px,0) scale(.5)}25%{opacity:.58}65%{opacity:.22;transform:translate3d(var(--mote-drift),-5px,0) scale(1)}100%{opacity:0;transform:translate3d(5px,-45px,0) scale(.4)}}
 @keyframes pc-quiet-glow{from{opacity:.14;transform:scale(.96)}to{opacity:.46;transform:scale(1.06)}}
 @keyframes pc-swell{from{opacity:.1;transform:translate3d(3%,5%,0) rotate(-2deg) scale(.94)}to{opacity:.42;transform:translate3d(-4%,-4%,0) rotate(2deg) scale(1.08)}}
+@keyframes pc-tidal-light{from{opacity:.25;transform:translate3d(5%,5%,0) scale(.92)}to{opacity:.8;transform:translate3d(-6%,-4%,0) scale(1.12)}}
+@keyframes pc-water-current{from{opacity:.45;transform:translate3d(3%,10px,0)}to{opacity:.45;transform:translate3d(-3%,-32px,0)}}
 @keyframes pc-starlight{0%,100%{opacity:.04;transform:scale(.65)}50%{opacity:.34;transform:scale(1.2)}}
 @keyframes pc-golden-pass{0%{opacity:0;transform:translate3d(-40%,0,0)}20%{opacity:.25}50%{opacity:.7}80%{opacity:.25}100%{opacity:0;transform:translate3d(40%,0,0)}}
 @keyframes pc-orbit-dust{0%,100%{opacity:0;transform:translate3d(-7px,4px,0)}50%{opacity:.28;transform:translate3d(5px,-6px,0)}}
