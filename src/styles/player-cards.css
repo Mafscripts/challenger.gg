@@ -1,8 +1,10 @@
 /* The artwork and light move behind an isolated, stationary roster. */
 [data-player-card]{position:relative;isolation:isolate;overflow:hidden;background:#08131e!important;color:#f1f7ff;box-shadow:inset 3px 0 0 var(--pc-accent)}
 [data-player-card]::before,[data-player-card]::after{content:"";position:absolute;pointer-events:none;inset:0;z-index:-1;border-radius:inherit}
-[data-player-card]::before{left:auto;width:44%;max-width:260px;background-image:var(--pc-art);background-size:auto 100%;background-repeat:no-repeat;background-position:var(--pc-focus);mask-image:linear-gradient(90deg,transparent 30%,#000 100%);opacity:.85;animation:pc-breathe 16s ease-in-out infinite alternate}
+[data-player-card]::before{left:auto;width:58%;max-width:640px;background-image:var(--pc-art);background-size:cover;background-repeat:no-repeat;background-position:var(--pc-focus);-webkit-mask-image:linear-gradient(90deg,transparent 0%,#00000008 12%,#00000038 30%,#00000080 50%,#000000c9 72%,#000 94%);mask-image:linear-gradient(90deg,transparent 0%,#00000008 12%,#00000038 30%,#00000080 50%,#000000c9 72%,#000 94%);opacity:.74;animation:pc-breathe 16s ease-in-out infinite alternate}
 [data-player-card]::after{opacity:.25;background:radial-gradient(ellipse at 85% 30%,var(--pc-accent),transparent 55%);animation:pc-mist 11s ease-in-out infinite alternate}
+/* Preserve contrast under match stats while the settings tiles show richer artwork. */
+.match-player-card[data-player-card]::before{opacity:.56}
 [data-player-card] .text-vapor{color:#b9c9db}
 [data-player-card] .match-player-field-label,[data-player-card] .party-community-field-label{color:#b7c7d8}
 [data-player-card] a,[data-player-card] button{position:relative}
@@ -31,7 +33,7 @@
 .player-card-option{padding:0;overflow:hidden;text-align:left;border:1px solid #ffffff16;border-radius:14px;background:#0a1722;transition:border-color .15s}
 .player-card-option[aria-pressed="true"]{border-color:var(--pc-option);box-shadow:0 0 0 1px var(--pc-option)}
 .player-card-option:focus-visible{outline:2px solid #4adeff;outline-offset:4px}.player-card-option:hover{border-color:#ffffff55}
-.player-card-tile{height:92px;display:flex;align-items:center;gap:12px;padding:16px;pointer-events:none}.player-card-tile::before{mask-image:linear-gradient(90deg,transparent,#000 75%)}
+.player-card-tile{height:92px;display:flex;align-items:center;gap:12px;padding:16px;pointer-events:none}.player-card-tile::before{width:65%;max-width:none;-webkit-mask-image:linear-gradient(90deg,transparent,#00000020 18%,#00000070 40%,#000000c4 66%,#000 90%);mask-image:linear-gradient(90deg,transparent,#00000020 18%,#00000070 40%,#000000c4 66%,#000 90%);opacity:.86}
 .player-card-option-meta{display:flex;justify-content:space-between;gap:10px;padding:12px 14px;border-top:1px solid #ffffff0c}.player-card-option-meta strong{display:block;font-size:12px}.player-card-option-meta small{display:block;color:#9fb4c8;font-size:10px;margin-top:3px}
 .player-card-preview-title{display:flex;align-items:center;justify-content:space-between;margin:24px 0 10px;font-size:12px;font-weight:800;color:#b8cfe2}
 .player-card-full-preview{display:grid;grid-template-columns:minmax(160px,1fr) repeat(3,minmax(55px,100px));align-items:center;gap:20px;min-height:96px;padding:16px;border-radius:12px;border:1px solid #ffffff16}
@@ -41,6 +43,6 @@
 @media(prefers-reduced-motion:reduce){[data-player-card]::before,[data-player-card]::after{animation:none!important;transform:none!important}}
 @media print{[data-player-card]::before,[data-player-card]::after{display:none}}
 
-/* Keep the focal artwork at card height rather than stretching a landscape across the full row. */
-@media(min-width:651px){.player-card-option .player-card-tile::before{background-size:auto 100%;background-position:right center}}
-@media(max-width:650px){.match-player-card[data-player-card]::before{top:0;bottom:auto;height:160px;width:70%;background-size:auto 100%;background-position:right top}.player-card-full-preview>div:first-child{grid-column:1/-1}}
+/* The artwork fills its masked area, so no inner image edge can appear before the fade. */
+@media(min-width:651px){.player-card-option .player-card-tile::before{background-size:cover;background-position:var(--pc-focus)}}
+@media(max-width:650px){.match-player-card[data-player-card]::before{top:0;bottom:auto;height:190px;width:86%;background-size:cover;background-position:var(--pc-focus)}.player-card-full-preview>div:first-child{grid-column:1/-1}}
