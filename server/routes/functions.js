@@ -25,6 +25,7 @@ import { getAdminUserSecurity, deleteAdminUser, getAdminUsers, getAdminUserCount
 import { getAdminAuditLogs, getAdminAuditEntry, getAdminAuditCounts } from "../admin-audit.js";
 import { getAdminDashboard } from "../admin-dashboard.js";
 import { getAdminMatches } from "../admin-matches.js";
+import { getAdminAlerts, reviewAdminAlerts } from "../admin-alerts.js";
 import { getAdminPlayerDossier } from "../admin-player-dossier.js";
 import { consoleRestrictedFor } from "../../src/lib/playerRestrictions.js";
 import { getAdminWallets, getAdminWalletSummary, adjustAdminWallet } from "../admin-wallets.js";
@@ -10609,6 +10610,8 @@ const handlers = {
 
   getAdminDashboard: (req) => getAdminDashboard(prisma, req.user),
   getAdminMatches: (req) => getAdminMatches(prisma, req.user, req.body),
+  getAdminAlerts: (req) => getAdminAlerts(prisma, req.user, req.body),
+  reviewAdminAlerts: (req) => reviewAdminAlerts(prisma, req.user, req.body),
   getAdminPlayerDossier: (req) => getAdminPlayerDossier(prisma, req.user, req.body),
   ...challengeHandlers,
   ...tradingHandlers,

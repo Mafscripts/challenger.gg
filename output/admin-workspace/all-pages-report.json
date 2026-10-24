@@ -26,8 +26,7 @@
       "id": "alerts",
       "status": "passed",
       "reads": [
-        "entity:AdminAlert",
-        "entity:Ticket"
+        "getAdminAlerts"
       ]
     },
     {

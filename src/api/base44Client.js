@@ -29,6 +29,7 @@ const readOnlyFunctions = new Set([
   "getChallengeStandings",
   "getAdminDashboard",
   "getAdminMatches",
+  "getAdminAlerts",
   "getAdminPlayerDossier",
   "getAdminWallets",
   "getAdminInventory",

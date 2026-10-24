@@ -2,6 +2,34 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { auditCategory, auditEventPresentation, auditHumanValue, auditReadableLabel } from "../src/lib/adminAuditPresentation.js";
 
+test("alert reviews show the reviewed alert count without exposing group keys or closing cases", () => {
+  const view = auditEventPresentation({ action_code: "review_admin_alerts", category: "platform" }, {
+    action: "review_admin_alerts", summary: "Reviewed 3 alerts", details: { reviewed_count: 3, alert_ids: ["alert-a", "alert-b", "alert-c"], group_keys: ["opaque-group-key"] },
+  });
+  assert.equal(view.title, "Alerts reviewed");
+  assert.equal(view.summary, "3 alerts were marked as reviewed.");
+  assert.equal(view.outcome, "Marked as reviewed");
+  assert.equal(view.tone, "success");
+  assert.equal(view.category, "platform");
+  assert.deepEqual(view.facts, [{ label: "Alerts reviewed", value: "3" }]);
+  assert.doesNotMatch(JSON.stringify(view), /alert-a|alert-b|alert-c|opaque-group-key|closed|resolved/);
+});
+
+test("single alert review and legacy ID lists use the actual alert quantity", () => {
+  const view = auditEventPresentation({ action_code: "review_admin_alerts" }, { details: { alert_ids: ["old-alert", "old-alert"], group_keys: ["group-one", "group-two"] } });
+  assert.equal(view.title, "Alert reviewed");
+  assert.equal(view.summary, "1 alert was marked as reviewed.");
+  assert.deepEqual(view.facts, [{ label: "Alerts reviewed", value: "1" }]);
+});
+
+test("alert review logs without counts remain honest about missing history", () => {
+  const view = auditEventPresentation({ action_code: "review_admin_alerts" }, { details: { group_keys: ["some-group"] } });
+  assert.equal(view.title, "Alerts reviewed");
+  assert.equal(view.summary, "Alerts were marked as reviewed.");
+  assert.deepEqual(view.facts, []);
+  assert.doesNotMatch(JSON.stringify(view), /some-group|1 alert/);
+});
+
 test("deleted support cases show human counts, not internal IDs or nested JSON", () => {
   const view = auditEventPresentation({ action_code: "delete_ticket", source: "admin" }, {
     summary: "Deleted support case cmvln3hqu000lei6vid7qme10", details: { ticket_ids: ["ticket1", "ticket1"], dispute_ids: ["dispute1"] },

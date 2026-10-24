@@ -16,7 +16,7 @@ const entities = {
 const overviewKeys = ["dashboardOverview"];
 const sectionKeys = {
   dashboard: overviewKeys,
-  users: [], roles: [], alerts: ["adminAlerts", "tickets"],
+  users: [], roles: [], alerts: [],
   websiteUpdates: [], tickets: [], banAppeals: [], matches: [], wagers: [],
   challenges: [], live8s: [], eightsGames: [], ranked: [],
   verifyRank: [], progression: [],

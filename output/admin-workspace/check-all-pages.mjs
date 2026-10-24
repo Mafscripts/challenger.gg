@@ -19,6 +19,7 @@ if(name==='getAdminDashboard')data=dashboard;
 else if(name==='syncTournamentLifecycle')data={success:true,synced:[]};
 else if(name==='getAdminUsers')data={success:true,rows:[player],total:1,next_cursor:null};
 else if(name==='getAdminMatches'){const mode=payload.match?.split(':')[0]||(payload.mode==='eights'?'free8s':payload.mode==='all'?'xp':payload.mode||'xp');const match=matchFor(mode);data={success:true,rows:[match],match:payload.match?match:undefined,next_cursor:null,unavailable_modes:[]};}
+else if(name==='getAdminAlerts')data={success:true,rows:[{id:'a'.repeat(32),group_key:'a'.repeat(32),alert_count:1,status:'needs_review',category:'platform',priority:'normal',title:'Fixture platform alert',message:'Please check the platform',reporter:{id:'player',name:'dev'},created_date:'2026-10-24T12:00:00Z',latest_date:'2026-10-24T12:00:00Z'}],total:1,next_cursor:null,counts:{all:1,needs_review:1,reviewed:0,categories:{calls:0,evidence:0,disputes:0,platform:1}},unavailable_sources:[]};
 else if(name==='getAdminPlayerDossier')data={success:true,player,section:payload.section,permissions:{wallet:true},limit:20,stats:{ranked:player.ranked_stats},rows:[]};
 else if(name==='getAdminTickets')data={success:true,rows:[support],next_cursor:null};
 else if(name==='getAdminTicketCounts')data={success:true,total:1,open:1,closed:0,mine:1,waiting:0,saved:0,unread:0,categories:{all:1,live:0,calls:0,disputes:0,tickets:1,money8s:0,wagers:0,tournament:0},unread_categories:{}};
@@ -49,14 +50,14 @@ const query=new QueryClient({defaultOptions:{queries:{retry:false}}});window.fix
     plugin.onLoad({ filter: /.*/, namespace: "auth-fixture" }, () => ({ loader: "jsx", contents: "export const useAuth=()=>({user:window.fixture.actor,isLoadingAuth:false});export const AuthProvider=({children})=>children;" }));
   } }] });
 const files = (await readdir("dist/assets")).filter(file => file.endsWith(".css"));
-const custom = await Promise.all(["admin-console", "admin-workspace", "admin-player-dossier", "admin-matches", "admin-dashboard", "admin-wallets", "admin-audit", "admin-users", "admin-economy", "admin-roles", "admin-tickets", "support-workspace", "competition-rewards"].map(async name => { try { return await readFile(`src/styles/${name}.css`, "utf8"); } catch { return ""; } }));
+const custom = await Promise.all(["admin-console", "admin-workspace", "admin-player-dossier", "admin-matches", "admin-dashboard", "admin-wallets", "admin-audit", "admin-alerts", "admin-users", "admin-economy", "admin-roles", "admin-tickets", "support-workspace", "competition-rewards"].map(async name => { try { return await readFile(`src/styles/${name}.css`, "utf8"); } catch { return ""; } }));
 const app = express(); app.use(express.static("dist")); app.get("/fixture.js", (_req, response) => response.type("js").send(bundle.outputFiles[0].text));
 app.get("/admin", (_req, response) => response.type("html").send(`<!doctype html><html><head>${files.map(file => `<link rel="stylesheet" href="/assets/${file}">`).join("")}<style>${custom.join("\n")}</style></head><body style="background:#07141d;color:white"><div id="root"></div><script src="/fixture.js"></script></body></html>`));
 const server = app.listen(0, "127.0.0.1"); await new Promise(resolve => server.once("listening", resolve));
 const { chromium } = createRequire(import.meta.url)("C:/Users/livao/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright");
 const tabs = [
   ["dashboard","Dashboard","getAdminDashboard","Competition"], ["users","Users","getAdminUsers","dev"], ["roles","Roles","getAdminUsers","Role Management"],
-  ["alerts","Alerts","entity:AdminAlert","Fixture platform alert"], ["tickets","Tickets","getAdminTickets","Need fixture help"], ["banAppeals","Ban appeals","banAppeals.list","Fixture appeal reason"],
+  ["alerts","Alerts","getAdminAlerts","Fixture platform alert"], ["tickets","Tickets","getAdminTickets","Need fixture help"], ["banAppeals","Ban appeals","banAppeals.list","Fixture appeal reason"],
   ["matches","All matches","getAdminMatches","dev vs Fixture opponent"], ["wagers","Wagers","getAdminMatches","dev vs Fixture opponent"], ["live8s","Live 8s Rooms","getAdminMatches","dev vs Fixture opponent"],
   ["challenges","Challenge a Team","getAdminMatches","dev vs Fixture opponent"], ["eightsGames","8s Games & Maps","getFreeEightsGames","Free 8s games & map pools"],
   ["ranked","Ranked Management","getAdminUsers","Ranked Player Management"], ["progression","Resets & Seasons","getProgressionResetOverview","Progression management"],
@@ -93,6 +94,7 @@ try {
         assert.equal(reads.some(read => read.name === "entity:User" || read.name === "getAdminUsers"), false, `${id}: no hidden broad users fetch`);
       }
       if (["matches","wagers","live8s","challenges","tournamentMatches"].includes(id)) assert.equal(reads.filter(read => read.name === "getAdminMatches").length, 1, `${id}: one first match page request`);
+      if (id === "alerts") assert.equal(reads.some(read => ["entity:AdminAlert", "entity:Ticket"].includes(read.name)), false, "alerts: no broad legacy alert or ticket read");
       const initial = reads.filter(read => read.name === primary).length;
       await page.getByRole("button", { name: "Refresh data", exact: true }).click();
       await page.waitForFunction(({name,count}) => window.reads.filter(read=>read.name===name).length>count, {name:primary,count:initial}, {timeout:2500});

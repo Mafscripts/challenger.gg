@@ -51,6 +51,7 @@ export function auditCategory(row = {}) {
 }
 
 const titles = {
+  review_admin_alerts: "Alerts reviewed",
   delete_ticket: "Support case deleted", support_season_cleanup: "Support case closed for cleanup",
   wallet_adjust: "Balance adjusted", withdrawal_process: "Withdrawal updated", role_change: "Player role changed",
   account_deleted: "Player account deleted", warning: "Player warned", ban: "Player banned", temporary_ban: "Temporary ban applied",
@@ -108,6 +109,17 @@ function presentationFor(row = {}, details = {}, context = {}) {
     || /player_kicked|challenge_kick|ranked_.*adjustment/.test(code);
   if (player && playerTarget) fact("Player", player);
   if (match) fact("Match", match);
+
+  if (code === "review_admin_alerts") {
+    const reviewed = count(value("reviewed_count"), value("alert_ids"));
+    result.title = reviewed === 1 ? "Alert reviewed" : "Alerts reviewed";
+    result.tone = "success";
+    result.outcome = "Marked as reviewed";
+    result.summary = reviewed === null ? "Alerts were marked as reviewed."
+      : `${quantity(reviewed, "alert")} ${reviewed === 1 ? "was" : "were"} marked as reviewed.`;
+    if (reviewed !== null) fact("Alerts reviewed", reviewed);
+    return result;
+  }
 
   if (code === "delete_ticket" || code === "support_season_cleanup") {
     const tickets = count(ctx.deleted_ticket_count, ctx.ticket_count, value("ticket_ids"));

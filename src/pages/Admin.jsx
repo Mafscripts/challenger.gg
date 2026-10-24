@@ -10,7 +10,6 @@ import {
   BadgeDollarSign,
   BellRing,
   Boxes,
-  CheckCheck,
   CircleAlert,
   ClipboardList,
   ChevronDown,
@@ -63,7 +62,7 @@ import { TOURNAMENT_GAMES, TOURNAMENT_MODES, parseTournamentMapList, switchTourn
 import { canAccessAdminPanel, canManageWallets, canViewUserIps, effectiveRoleForUser, hasRolePower } from "@/lib/roles";
 import { getRankForElo } from "@/lib/ranks";
 import { consoleRestrictedFor } from "@/lib/playerRestrictions";
-import { adminAlertDestination, adminTargetUrl, isAdminWorkspaceQuery, notifyAdminChanged, openAdminPlayer } from "@/lib/adminWorkspace";
+import { adminTargetUrl, isAdminWorkspaceQuery, notifyAdminChanged, openAdminPlayer } from "@/lib/adminWorkspace";
 import AdminWorkspaceSearch from "@/components/admin/AdminWorkspaceSearch";
 import useAdminConfirm from "@/hooks/useAdminConfirm";
 
@@ -80,6 +79,7 @@ const ModerateUserDialog = lazy(() => import("@/components/admin/ModerateUserDia
 const UserVpnAccess = lazy(() => import("@/components/admin/UserVpnAccess"));
 const AdminDashboard = lazyAdminSection(() => import("@/components/admin/AdminDashboard"));
 const RankVerificationAdmin = lazyAdminSection(() => import("@/components/admin/RankVerificationAdmin"));
+const AdminAlerts = lazyAdminSection(() => import("@/components/admin/AdminAlerts"));
 const AdminTickets = lazyAdminSection(() => import("@/components/admin/AdminTickets"));
 const RoleManagement = lazyAdminSection(() => import("@/components/admin/RoleManagement"));
 const AuditLog = lazyAdminSection(() => import("@/components/admin/AuditLog"));
@@ -91,7 +91,7 @@ const SiteAnnouncementAdmin = lazyAdminSection(() => import("@/components/admin/
 const AdminMatches = lazyAdminSection(() => import("@/components/admin/AdminMatches"));
 const AdminEconomyRecords = lazyAdminSection(() => import("@/components/admin/AdminEconomyRecords"));
 const sectionComponents = {
-  dashboard: AdminDashboard, matches: AdminMatches, verifyRank: RankVerificationAdmin, tickets: AdminTickets,
+  dashboard: AdminDashboard, alerts: AdminAlerts, matches: AdminMatches, verifyRank: RankVerificationAdmin, tickets: AdminTickets,
   roles: RoleManagement, audit: AuditLog, wallets: AdminWallets, banAppeals: AdminBanAppeals,
   eightsGames: FreeEightsGamesAdmin, challenges: ChallengeTeamAdmin,
   websiteUpdates: SiteAnnouncementAdmin, progression: ProgressionResets, rewards: CompetitionRewardsAdmin,
@@ -329,8 +329,6 @@ const formatMoney = (value) => `$${Number(value || 0).toLocaleString(undefined, 
 const formatDate = (value) => value ? new Date(value).toLocaleString() : "N/A";
 const statusText = (value) => String(value || "unknown").replace(/_/g, " ");
 const userName = (user) => user?.display_name || user?.full_name || user?.username || user?.email || "Unknown";
-const closedAdminAlertStatuses = new Set(["acknowledged", "resolved", "closed"]);
-const isOpenAdminAlert = (alert) => !closedAdminAlertStatuses.has(alert?.status || "open");
 const hiddenCompetitionTypes = new Set(["8s", "eights", "money8s", "xp"]);
 const isVisibleCompetitionRecord = (record) => !hiddenCompetitionTypes.has(String(record?.match_type || "").toLowerCase());
 const eightsCompetitionTypes = new Set(["8s", "money8s"]);
@@ -689,18 +687,6 @@ export default function Admin() {
       .sort((a, b) => Number(b.stats?.elo || 0) - Number(a.stats?.elo || 0));
   }, [data.users, rankedStatsByUserId]);
 
-  const ticketById = useMemo(() => (
-    Object.fromEntries(data.tickets.map((ticket) => [ticket.id, ticket]))
-  ), [data.tickets]);
-
-  const adminAlertRows = useMemo(() => (
-    [...data.adminAlerts].sort((a, b) => {
-      const openDiff = Number(isOpenAdminAlert(b)) - Number(isOpenAdminAlert(a));
-      if (openDiff) return openDiff;
-      return new Date(b.created_date || 0) - new Date(a.created_date || 0);
-    })
-  ), [data.adminAlerts]);
-
   const walletAdjustmentUsers = useMemo(() => (
     data.users.filter((user) => canAdjustUserWallet(currentRole, user.role || "user"))
   ), [data.users, currentRole]);
@@ -779,52 +765,6 @@ export default function Admin() {
       walletTotal: overview?.economy?.available ?? null,
     };
   }, [data.dashboardOverview]);
-  const invokeTicketAction = async (ticket, action, payload = {}, label = "Ticket updated") => {
-    setBusyId(`ticket:${ticket.id}:${action}`);
-    try {
-      const response = await base44.functions.invoke(action, {
-        ticket_id: ticket.id,
-        ...payload,
-      });
-      if (!response.data?.success) {
-        toast({ title: "Ticket action failed", description: response.data?.error || "Could not update ticket", variant: "destructive" });
-        return false;
-      }
-      toast({ title: label });
-      loadAdminData();
-      return true;
-    } catch (error) {
-      toast({ title: "Ticket action failed", description: error.message || "Could not update ticket", variant: "destructive" });
-      return false;
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  const handleJoinTicket = (ticket) => invokeTicketAction(ticket, "joinTicket", {}, "Ticket joined");
-
-  const handleAcknowledgeAlert = async (alert) => {
-    setBusyId(`alert:${alert.id}:acknowledge`);
-    try {
-      const updated = await base44.entities.AdminAlert.update(alert.id, {
-        status: "acknowledged",
-        acknowledged_by: currentUser?.id,
-        acknowledged_by_name: userName(currentUser),
-        acknowledged_date: new Date().toISOString(),
-      });
-      setData((prev) => ({
-        ...prev,
-        adminAlerts: prev.adminAlerts.map((row) => (row.id === alert.id ? { ...row, ...updated } : row)),
-      }));
-      notifyAdminChanged();
-      toast({ title: "Alert acknowledged" });
-    } catch (error) {
-      toast({ title: "Alert update failed", description: error.message || "Could not acknowledge alert.", variant: "destructive" });
-    } finally {
-      setBusyId(null);
-    }
-  };
-
   const handleSetUserBadges = async (
     targetUser,
     preset,
@@ -1858,7 +1798,7 @@ export default function Admin() {
   const activeInfo = adminSectionInfo(activeSection.id);
   const ActiveIcon = activeSection.icon;
   return (
-    <div className="admin-page min-h-screen" data-admin-tone={activeInfo.tone}>
+    <div className="admin-page min-h-screen" data-admin-tone={activeInfo.tone} data-admin-section={activeTab}>
       <div className="admin-layout">
         <AdminNavigation sections={allowedTabs} activeTab={activeTab} onSelect={selectAdminSection} role={currentRole} />
         <main className="admin-console-main">
@@ -2260,69 +2200,7 @@ export default function Admin() {
               search={roleSearch} onSearch={setRoleSearch} onUserUpdated={adminQueries.updateUser} onRefresh={loadAdminData} />
           )}
 
-          {activeTab === "alerts" && (
-            <ListSection
-              title="Admin Alerts"
-              rows={adminAlertRows}
-              empty="No admin alerts."
-              render={(alert) => {
-                const ticket = ticketById[alert.ticket_id];
-                const isOpen = isOpenAdminAlert(alert);
-                const destination = adminAlertDestination(alert, ticket);
-                return (
-                  <div className={`px-5 py-4 ${isOpen ? "bg-red-500/[0.03]" : ""}`}>
-                    <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2 mb-2">
-                          <StatusPill status={alert.status || "open"} />
-                          <StatusPill status={alert.priority || "high"} />
-                          {alert.match_type && <StatusPill status={alert.match_type} />}
-                        </div>
-                        <p className="font-semibold text-sm">{alert.subject || "Admin request"}</p>
-                        <p className="text-xs text-vapor">From: {alert.requested_by || alert.user_id ? <button type="button" className="admin-player-link" onClick={() => openAdminPlayer(alert.requested_by || alert.user_id)}>{alert.username || alert.requested_by_name || "Player"}</button> : alert.username || alert.requested_by_name || "Unknown"} - {formatDate(alert.created_date)}</p>
-                        {alert.message && <p className="text-sm text-foreground/80 mt-2 whitespace-pre-line">{alert.message}</p>}
-                      </div>
-                      <div className="flex flex-wrap gap-2 lg:justify-end">
-                        {(alert.ticket_id || ticket?.id) && <Link to={adminTargetUrl({ tab: "tickets", caseId: `ticket:${alert.ticket_id || ticket.id}`, status: "all" })} className="admin-console-button"><Ticket size={14} />Open support case</Link>}
-                        <Link
-                          to={destination.url}
-                          className="inline-flex items-center gap-2 px-3 py-1.5 bg-cyan/10 text-cyan text-xs font-bold rounded border border-cyan/20 hover:bg-cyan/20"
-                        >
-                          <ArrowUpRight size={14} />{destination.label}
-                        </Link>
-                        {ticket && (
-                          <button
-                            onClick={() => handleJoinTicket(ticket)}
-                            disabled={busyId === `ticket:${ticket.id}:joinTicket`}
-                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-orange/10 text-orange text-xs font-bold rounded border border-orange/20 hover:bg-orange/20 disabled:opacity-50"
-                          >
-                            <UserCheck className="w-3.5 h-3.5" /> {busyId === `ticket:${ticket.id}:joinTicket` ? "Joining..." : "Join Ticket"}
-                          </button>
-                        )}
-                        {isOpen && (
-                          <button
-                            onClick={() => handleAcknowledgeAlert(alert)}
-                            disabled={busyId === `alert:${alert.id}:acknowledge`}
-                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-secondary text-vapor text-xs font-bold rounded border border-white/5 hover:bg-white/10 disabled:opacity-50"
-                          >
-                            {busyId === `alert:${alert.id}:acknowledge` ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCheck className="w-3.5 h-3.5" />}
-                            Acknowledge
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                    <RowGrid compact columns={[
-                      ["Ticket", ticket ? `#${String(ticket.id).slice(-8)}` : "N/A"],
-                      ["Match", alert.related_entity_id ? `#${String(alert.related_entity_id).slice(-8)}` : ticket?.match_id ? `#${String(ticket.match_id).slice(-8)}` : "N/A"],
-                      ["Teams", ticket?.team_a_name || ticket?.team_b_name ? `${ticket.team_a_name || "Team A"} vs ${ticket.team_b_name || "Team B"}` : "N/A"],
-                      ["Assigned", ticket?.assigned_admin_name || "Unassigned"],
-                      ["Acknowledged", alert.acknowledged_by_name || "No"],
-                    ]} />
-                  </div>
-                );
-              }}
-            />
-          )}
+          {activeTab === "alerts" && <AdminAlerts user={currentUser} onRefresh={loadAdminData} />}
 
           {activeTab === "banAppeals" && <Suspense fallback={<PageLoader />}><AdminBanAppeals /></Suspense>}
 
