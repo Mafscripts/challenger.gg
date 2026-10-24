@@ -1,3 +1,4 @@
+import PlayerCardEffects from "@/components/ui/PlayerCardEffects";
 import { playerCardAppearance } from "@/lib/playerCards";
 import "@/styles/player-cards.css";
 import TournamentMapVeto from "@/components/tournaments/TournamentMapVeto";
@@ -529,7 +530,7 @@ function TeamCard({ label, name, color, seed, isFirstHost, players = [], isCompl
               const profileSlug = player.user_id || player.username || player.handle || player.user_name;
               const displayName = playerName(player);
               return (
-                <article {...playerCardAppearance(player)} key={player.user_id || `${displayName}-${index}`} className="group/player relative overflow-visible rounded-xl border border-white/[0.065] bg-white/[0.025] p-3 transition-all duration-200 hover:z-20 hover:border-white/[0.12] hover:bg-white/[0.04]">
+                <article {...playerCardAppearance(player)} key={player.user_id || `${displayName}-${index}`} className="group/player relative overflow-visible rounded-xl border border-white/[0.065] bg-white/[0.025] p-3 transition-all duration-200 hover:z-20 hover:border-white/[0.12] hover:bg-white/[0.04]"><PlayerCardEffects player={player} />
                   <div className="flex flex-col gap-2.5 xl:flex-row xl:items-center">
                     <div className="flex w-full min-w-0 flex-none items-center gap-3 xl:flex-1">
                       <span className={`flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border font-mono text-sm font-black shadow-[inset_0_1px_0_rgba(255,255,255,.05)] ${tintClass} ${toneClass}`}>{player.avatar_url ? <img src={player.avatar_url} alt="" className="h-full w-full object-cover" /> : displayName.charAt(0).toUpperCase()}</span>
@@ -669,7 +670,7 @@ function TournamentTeamTable({ label, name, color, seed, isFirstHost, players = 
             const profileSlug = player.user_id || player.username || player.handle || player.user_name;
             const displayName = playerName(player);
             return (
-              <article {...playerCardAppearance(player)} key={player.user_id || `${displayName}-${index}`} className="grid gap-4 px-4 py-4 transition-colors hover:bg-white/[0.025] sm:px-5 lg:grid-cols-[minmax(210px,1.25fr)_minmax(170px,.9fr)_90px_minmax(210px,1fr)_86px] lg:items-center lg:gap-3">
+              <article {...playerCardAppearance(player)} key={player.user_id || `${displayName}-${index}`} className="grid gap-4 px-4 py-4 transition-colors hover:bg-white/[0.025] sm:px-5 lg:grid-cols-[minmax(210px,1.25fr)_minmax(170px,.9fr)_90px_minmax(210px,1fr)_86px] lg:items-center lg:gap-3"><PlayerCardEffects player={player} />
                 <div className="flex min-w-0 items-center gap-3">
                   <span className={`flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border font-mono text-sm font-black ${tintClass} ${toneClass}`}>
                     {player.avatar_url ? <img src={player.avatar_url} alt="" className="h-full w-full object-cover" /> : displayName.charAt(0).toUpperCase()}

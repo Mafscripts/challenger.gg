@@ -14,5 +14,5 @@ export const validPlayerCard = value => value === "" || playerCardThemes.some(th
 export const playerCardTheme = player => playerCardThemes.find(theme => theme.id === (typeof player === "string" ? player : player?.player_card_theme || player?.metadata?.player_card_theme));
 export function playerCardAppearance(player) {
   const theme = playerCardTheme(player);
-  return theme ? { "data-player-card": theme.id, "data-card-motion": theme.motion, style: { "--pc-art": `url("/images/player-cards/${theme.id}.webp")`, "--pc-accent": theme.accent, "--pc-focus": theme.focus || "right center" } } : {};
+  return theme ? { "data-player-card": theme.id, "data-card-motion": theme.motion, style: { "--pc-art": `url("/images/player-cards/${theme.id}.webp")`, "--pc-desktop-art": `url("/images/player-cards/desktop/${theme.id}.webp")`, "--pc-accent": theme.accent, "--pc-focus": theme.focus || "right center" } } : {};
 }

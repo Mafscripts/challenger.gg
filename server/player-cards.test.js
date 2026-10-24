@@ -39,6 +39,10 @@ test("ten original optimized images and safe card presentation support the class
     const bytes = await readFile(url); assert.equal(bytes.toString("ascii", 8, 12), "WEBP"); total += (await stat(url)).size;
     assert.equal(playerCardAppearance({ player_card_theme: theme.id })["data-player-card"], theme.id);
     assert.ok(validPlayerCard(theme.id));
+    const banner = await readFile(new URL(`../public/images/player-cards/desktop/${theme.id}.webp`, import.meta.url));
+    assert.equal(banner.toString("ascii", 8, 12), "WEBP");
+    assert.ok(playerCardAppearance(theme.id).style["--pc-desktop-art"].includes(`/desktop/${theme.id}.webp`));
+    assert.ok(!playerCardAppearance(theme.id).style["--pc-art"].includes("/desktop/"));
   }
   assert.ok(total < 1500000);
   assert.deepEqual(playerCardAppearance({ player_card_theme: "https://evil.example" }), {});
@@ -63,6 +67,7 @@ test("the real match roster retains readable identity, rank, record and actions 
   for (const theme of playerCardThemes) {
     const html = mod.exports.render(theme.id);
     assert.ok(html.includes(`data-player-card="${theme.id}"`));
+    assert.ok(html.includes(`data-atmosphere="${theme.motion}"`));
     for (const text of ["TestPlayer", "Example#123", "12W", "4L", "Player action"]) assert.ok(html.includes(text), text);
   }
   assert.doesNotMatch(mod.exports.render(""), /data-player-card=/);

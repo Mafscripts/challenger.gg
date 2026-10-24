@@ -1,3 +1,4 @@
+import PlayerCardEffects from "@/components/ui/PlayerCardEffects";
 import { playerCardAppearance } from "@/lib/playerCards";
 import "@/styles/player-cards.css";
 import React from "react";
@@ -154,6 +155,7 @@ export default function MatchTeamTable({ label, name, color = "cyan", teamIcon =
                 onDragOver={teamEditing ? (event) => { if (!teamEditing.busy && event.dataTransfer.types.includes("application/x-topfragg-player")) { event.preventDefault(); event.dataTransfer.dropEffect = "move"; } } : undefined}
                 onDrop={teamEditing ? (event) => { event.preventDefault(); if (teamEditing.busy) return; try { const source = JSON.parse(event.dataTransfer.getData("application/x-topfragg-player")); if (source.team !== player.team) teamEditing.onDrop(player, source); } catch { /* Ignore unrelated drops. */ } } : undefined}
                 className={`match-player-card match-roster-columns grid gap-4 bg-[var(--arena-inset)] px-4 py-4 transition-colors hover:bg-[var(--arena-hover)] sm:px-5 ${teamEditing && !teamEditing.busy ? "cursor-grab active:cursor-grabbing" : ""} ${selected ? "ring-2 ring-inset ring-cyan" : swapTarget ? "hover:ring-2 hover:ring-inset hover:ring-cyan/60" : ""}`}>
+                <PlayerCardEffects player={player} />
                 <div className="match-player-identity flex min-w-0 items-center gap-3">
                   {teamEditing && <button type="button" aria-label={`${selected ? "Cancel swap for" : "Swap"} ${displayName}`} aria-pressed={selected} disabled={teamEditing.busy} onClick={() => teamEditing.onSelect(player)} className="shrink-0 rounded-lg border border-cyan/25 bg-cyan/10 p-2 text-cyan focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan disabled:opacity-40"><ArrowLeftRight className="h-4 w-4" /></button>}
                   <span className={`h-11 w-11 shrink-0 overflow-hidden rounded-xl border ${tintClass}`}>

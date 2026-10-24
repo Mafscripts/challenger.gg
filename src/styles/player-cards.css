@@ -1,34 +1,70 @@
 /* The artwork and light move behind an isolated, stationary roster. */
 [data-player-card]{position:relative;isolation:isolate;overflow:hidden;background:#08131e!important;color:#f1f7ff;box-shadow:inset 3px 0 0 var(--pc-accent)}
 [data-player-card]::before,[data-player-card]::after{content:"";position:absolute;pointer-events:none;inset:0;z-index:-1;border-radius:inherit}
-[data-player-card]::before{left:auto;width:58%;max-width:640px;background-image:var(--pc-art);background-size:cover;background-repeat:no-repeat;background-position:var(--pc-focus);-webkit-mask-image:linear-gradient(90deg,transparent 0%,#00000008 12%,#00000038 30%,#00000080 50%,#000000c9 72%,#000 94%);mask-image:linear-gradient(90deg,transparent 0%,#00000008 12%,#00000038 30%,#00000080 50%,#000000c9 72%,#000 94%);opacity:.74;animation:pc-breathe 16s ease-in-out infinite alternate}
+[data-player-card]::before{left:auto;width:72%;max-width:1000px;background-image:var(--pc-desktop-art,var(--pc-art));background-size:auto 112%;background-repeat:no-repeat;background-position:var(--pc-focus);-webkit-mask-image:linear-gradient(90deg,transparent 0%,#00000008 12%,#00000038 30%,#00000080 50%,#000000c9 72%,#000 94%);mask-image:linear-gradient(90deg,transparent 0%,#00000008 12%,#00000038 30%,#00000080 50%,#000000c9 72%,#000 94%);opacity:.74;animation:pc-breathe 16s ease-in-out infinite alternate}
 [data-player-card]::after{opacity:.25;background:radial-gradient(ellipse at 85% 30%,var(--pc-accent),transparent 55%);animation:pc-mist 11s ease-in-out infinite alternate}
 /* Preserve contrast under match stats while the settings tiles show richer artwork. */
 .match-player-card[data-player-card]::before{opacity:.56}
 [data-player-card] .text-vapor{color:#b9c9db}
 [data-player-card] .match-player-field-label,[data-player-card] .party-community-field-label{color:#b7c7d8}
 [data-player-card] a,[data-player-card] button{position:relative}
-[data-card-motion="rain"]::after{background:repeating-linear-gradient(112deg,transparent 0 90px,#72dfff42 91px,transparent 93px 130px);animation:pc-rain 4s linear infinite;inset:-60%}
-[data-card-motion="embers"]::after{background:radial-gradient(circle at 76% 80%,#ffc37d 0 1px,transparent 2px),radial-gradient(circle at 92% 25%,#ff7c51 0 1px,transparent 2px),radial-gradient(circle at 62% 50%,#ffdc8a 0 1px,transparent 2px);background-size:180px 95px;animation:pc-embers 9s linear infinite;inset:-50%;opacity:.5}
-[data-card-motion="tide"]::after{background:radial-gradient(ellipse at 80% 90%,#6889e780,transparent 45%);animation:pc-tide 12s ease-in-out infinite alternate}
-[data-card-motion="solar"]::after{background:linear-gradient(112deg,transparent 32%,#ffe4a13d 48%,transparent 62%);animation:pc-solar 14s ease-in-out infinite;inset:-40%}
-[data-card-motion="snow"]::after{background:radial-gradient(circle,#d7faff 0 1px,transparent 2px);background-size:67px 47px;animation:pc-snow 15s linear infinite;opacity:.24;inset:-50%}
-[data-card-motion="mist"]::after{background:radial-gradient(ellipse at 85% 70%,#ac68ff78,transparent 50%),radial-gradient(ellipse at 40% 15%,#7870ff36,transparent 45%);animation:pc-mist 10s ease-in-out infinite alternate}
-[data-card-motion="fireflies"]::after{background:radial-gradient(circle at 72% 35%,#b9ffad 0 1px,transparent 3px),radial-gradient(circle at 88% 70%,#8bffd2 0 1px,transparent 4px),radial-gradient(circle at 42% 65%,#e6ffa0 0 1px,transparent 3px);animation:pc-fireflies 7s ease-in-out infinite alternate;opacity:.65}
-[data-card-motion="chrome"]::after{background:linear-gradient(115deg,transparent 37%,#d7eaff38 49%,transparent 62%);animation:pc-chrome 12s cubic-bezier(.4,0,.2,1) infinite;inset:-30%}
-[data-card-motion="lava"]::after{background:radial-gradient(ellipse at 90% 95%,#ff82178c,transparent 55%);animation:pc-lava 5s ease-in-out infinite alternate}
-[data-card-motion="petals"]::after{background:radial-gradient(ellipse 3px 1.5px at 85% 30%,#f9c6e0 70%,transparent),radial-gradient(ellipse 2px 4px at 60% 70%,#eea5ce 70%,transparent);background-size:170px 110px;animation:pc-petals 18s linear infinite;inset:-50%;opacity:.45}
-@keyframes pc-breathe{from{transform:scale(1)}to{transform:scale(1.015) translateX(-.2%)}}
-@keyframes pc-rain{from{transform:translate(25px,-25px)}to{transform:translate(-25px,25px)}}
-@keyframes pc-embers{from{transform:translateY(30px);opacity:.15}50%{opacity:.5}to{transform:translate(20px,-30px);opacity:.15}}
-@keyframes pc-tide{from{transform:translateX(8%);opacity:.15}to{transform:translate(-8%,-8%);opacity:.4}}
-@keyframes pc-solar{0%,55%{transform:translateX(-45%);opacity:0}65%{opacity:.35}95%,100%{transform:translateX(45%);opacity:0}}
-@keyframes pc-snow{from{transform:translate(0,-35px)}to{transform:translate(-25px,35px)}}
-@keyframes pc-mist{from{transform:translateX(7%) scale(1);opacity:.2}to{transform:translateX(-5%) scale(1.12);opacity:.4}}
-@keyframes pc-fireflies{0%{transform:translateY(8px);opacity:.15}50%{opacity:.65}100%{transform:translate(10px,-8px);opacity:.35}}
-@keyframes pc-chrome{0%,60%{transform:translateX(-65%);opacity:0}70%{opacity:.35}100%{transform:translateX(65%);opacity:0}}
-@keyframes pc-lava{from{opacity:.16;transform:scale(.9)}to{opacity:.45;transform:scale(1.1)}}
-@keyframes pc-petals{from{transform:translate(30px,-35px) rotate(-5deg)}to{transform:translate(-30px,35px) rotate(8deg)}}
+/* Quiet, independently timed layers instead of repeating full-card patterns. */
+[data-player-card]::after{display:none}
+[data-player-card]::before{filter:saturate(.82);animation:pc-art-drift 24s ease-in-out infinite alternate;transform-origin:85% 50%}
+.pc-atmosphere{position:absolute!important;inset:0;z-index:-1;overflow:hidden;pointer-events:none;contain:paint;mask-image:linear-gradient(90deg,transparent 25%,#000 68%);-webkit-mask-image:linear-gradient(90deg,transparent 25%,#000 68%);--atmosphere:#b8ccdc}
+.pc-atmosphere>i{position:absolute;display:block;pointer-events:none;animation-fill-mode:both;animation-delay:var(--mote-delay,0s)}
+.pc-scene-light,.pc-scene-haze{inset:-15%;opacity:0;background:radial-gradient(ellipse at 80% 60%,#b7cfdf20,transparent 48%)}
+.pc-mote{left:var(--mote-x);top:var(--mote-y);width:2px;height:2px;border-radius:50%;background:var(--atmosphere);opacity:0;animation:pc-dust var(--mote-time) linear infinite}
+[data-atmosphere="rain"]{--atmosphere:#9cb4c2}
+[data-atmosphere="rain"] .pc-mote{width:1px;height:11px;background:linear-gradient(transparent,#c1d7e486,transparent);animation:pc-soft-rain calc(var(--mote-time) * .55) linear infinite}
+[data-atmosphere="rain"] .pc-scene-light{inset:40% -20% -50% 30%;background:radial-gradient(ellipse,#8bb4cd26,transparent 62%);animation:pc-reflection 15s ease-in-out infinite alternate}
+[data-atmosphere="embers"]{--atmosphere:#cda985}
+[data-atmosphere="embers"] .pc-mote{width:2px;height:2px;box-shadow:0 0 5px #cfa16e40;animation:pc-ember-rise var(--mote-time) ease-in-out infinite}
+[data-atmosphere="embers"] .pc-scene-haze{background:radial-gradient(ellipse at 85% 80%,#ac7b6130,transparent 48%);animation:pc-quiet-glow 19s ease-in-out infinite alternate}
+[data-atmosphere="tide"]{--atmosphere:#b3c7de}
+[data-atmosphere="tide"] .pc-scene-light{inset:5% -10% -60% 28%;background:radial-gradient(ellipse at 65% 70%,transparent 36%,#94b4d527 43%,transparent 53%);animation:pc-swell 18s ease-in-out infinite alternate}
+[data-atmosphere="tide"] .pc-mote{width:1px;height:1px;animation:pc-starlight var(--mote-time) ease-in-out infinite}
+[data-atmosphere="solar"]{--atmosphere:#c7b28c}
+[data-atmosphere="solar"] .pc-scene-light{background:linear-gradient(112deg,transparent 40%,#d5c29d1c 50%,transparent 60%);animation:pc-golden-pass 26s cubic-bezier(.4,0,.2,1) infinite}
+[data-atmosphere="solar"] .pc-mote{width:1px;height:1px;animation:pc-orbit-dust var(--mote-time) ease-in-out infinite}
+[data-atmosphere="snow"]{--atmosphere:#c6d6df}
+[data-atmosphere="snow"] .pc-mote{width:2px;height:2px;animation:pc-snowfall var(--mote-time) linear infinite}
+[data-atmosphere="snow"] .pc-scene-light{background:radial-gradient(ellipse at 80% 0%,#b1c9d720,transparent 55%);animation:pc-ice-light 22s ease-in-out infinite alternate}
+[data-atmosphere="mist"] .pc-scene-haze{background:radial-gradient(ellipse at 80% 70%,#a498b02d,transparent 48%),radial-gradient(ellipse at 50% 20%,#9d9eaf18,transparent 42%);animation:pc-silk-mist 23s ease-in-out infinite alternate}
+[data-atmosphere="mist"] .pc-scene-light{background:radial-gradient(ellipse at 85% 45%,#c6b4d318,transparent 38%);animation:pc-dragon-breath 16s ease-in-out infinite alternate}
+[data-atmosphere="fireflies"]{--atmosphere:#c4cba4}
+[data-atmosphere="fireflies"] .pc-mote{width:2px;height:2px;box-shadow:0 0 5px #c4cba435;animation:pc-firefly-flight var(--mote-time) ease-in-out infinite}
+[data-atmosphere="fireflies"] .pc-scene-haze{background:radial-gradient(ellipse at 75% 75%,#9fb9a31d,transparent 50%);animation:pc-silk-mist 26s ease-in-out infinite alternate}
+[data-atmosphere="chrome"] .pc-scene-light{background:linear-gradient(110deg,transparent 40%,#dbe2e52b 50%,transparent 60%);animation:pc-silver-pass 24s cubic-bezier(.4,0,.2,1) infinite}
+[data-atmosphere="chrome"] .pc-scene-haze{background:radial-gradient(ellipse at 80% 70%,#bbc6ce18,transparent 48%);animation:pc-quiet-glow 20s ease-in-out infinite alternate}
+[data-atmosphere="lava"]{--atmosphere:#c6a38b}
+[data-atmosphere="lava"] .pc-scene-haze{background:radial-gradient(ellipse at 85% 110%,#bf8f6c33,transparent 50%);animation:pc-heat-flow 18s ease-in-out infinite alternate}
+[data-atmosphere="lava"] .pc-mote{animation:pc-ember-rise calc(var(--mote-time) * 1.4) ease-in-out infinite}
+[data-atmosphere="petals"]{--atmosphere:#c5a9bb}
+[data-atmosphere="petals"] .pc-mote{width:5px;height:2.5px;border-radius:75% 15% 70% 20%;background:linear-gradient(120deg,#d2bac7,#a68c9d);animation:pc-petal-dance calc(var(--mote-time) * 1.45) ease-in-out infinite}
+[data-atmosphere="petals"] .pc-scene-haze{background:radial-gradient(ellipse at 80% 20%,#b99aaf1c,transparent 50%);animation:pc-quiet-glow 25s ease-in-out infinite alternate}
+@keyframes pc-art-drift{from{transform:scale(1.008) translate3d(0,0,0)}to{transform:scale(1.035) translate3d(-.45%,.4%,0)}}
+@keyframes pc-dust{0%,100%{opacity:0;transform:translate3d(0,12px,0)}45%{opacity:.28}90%{opacity:0;transform:translate3d(var(--mote-drift),-18px,0)}}
+@keyframes pc-soft-rain{0%{opacity:0;transform:translate3d(10px,-34px,0) rotate(16deg)}20%,75%{opacity:.22}100%{opacity:0;transform:translate3d(-12px,48px,0) rotate(16deg)}}
+@keyframes pc-reflection{from{opacity:.15;transform:translate3d(-3%,1%,0) scaleX(.95)}to{opacity:.48;transform:translate3d(3%,-2%,0) scaleX(1.08)}}
+@keyframes pc-ember-rise{0%{opacity:0;transform:translate3d(0,24px,0) scale(.5)}25%{opacity:.36}65%{opacity:.22;transform:translate3d(var(--mote-drift),-5px,0) scale(1)}100%{opacity:0;transform:translate3d(5px,-45px,0) scale(.4)}}
+@keyframes pc-quiet-glow{from{opacity:.14;transform:scale(.96)}to{opacity:.46;transform:scale(1.06)}}
+@keyframes pc-swell{from{opacity:.1;transform:translate3d(3%,5%,0) rotate(-2deg) scale(.94)}to{opacity:.42;transform:translate3d(-4%,-4%,0) rotate(2deg) scale(1.08)}}
+@keyframes pc-starlight{0%,100%{opacity:.04;transform:scale(.65)}50%{opacity:.34;transform:scale(1.2)}}
+@keyframes pc-golden-pass{0%,55%{opacity:0;transform:translate3d(-45%,0,0)}72%{opacity:.4}100%{opacity:0;transform:translate3d(45%,0,0)}}
+@keyframes pc-orbit-dust{0%,100%{opacity:0;transform:translate3d(-7px,4px,0)}50%{opacity:.28;transform:translate3d(5px,-6px,0)}}
+@keyframes pc-snowfall{0%{opacity:0;transform:translate3d(0,-30px,0)}20%,75%{opacity:.28}50%{transform:translate3d(var(--mote-drift),12px,0)}100%{opacity:0;transform:translate3d(3px,60px,0)}}
+@keyframes pc-ice-light{from{opacity:.12;transform:translate3d(-4%,0,0)}to{opacity:.45;transform:translate3d(3%,2%,0)}}
+@keyframes pc-silk-mist{from{opacity:.18;transform:translate3d(5%,2%,0) scale(.96)}to{opacity:.46;transform:translate3d(-5%,-3%,0) scale(1.08)}}
+@keyframes pc-dragon-breath{from{opacity:.08;transform:scale(.96)}to{opacity:.36;transform:scale(1.1)}}
+@keyframes pc-firefly-flight{0%,100%{opacity:.03;transform:translate3d(0,8px,0)}25%{opacity:.32;transform:translate3d(9px,-6px,0)}55%{opacity:.14;transform:translate3d(-5px,-14px,0)}80%{opacity:.38;transform:translate3d(var(--mote-drift),-2px,0)}}
+@keyframes pc-silver-pass{0%,58%{opacity:0;transform:translate3d(-55%,0,0)}75%{opacity:.48}100%{opacity:0;transform:translate3d(55%,0,0)}}
+@keyframes pc-heat-flow{from{opacity:.16;transform:translate3d(2%,5%,0) scale(.95)}to{opacity:.46;transform:translate3d(-3%,-4%,0) scale(1.1)}}
+@keyframes pc-petal-dance{0%{opacity:0;transform:translate3d(20px,-34px,0) rotate(0deg) rotateY(0deg)}20%{opacity:.35}45%{transform:translate3d(-6px,2px,0) rotate(75deg) rotateY(100deg)}75%{opacity:.25;transform:translate3d(8px,32px,0) rotate(140deg) rotateY(190deg)}100%{opacity:0;transform:translate3d(-24px,65px,0) rotate(210deg) rotateY(270deg)}}
+.pc-atmosphere[data-motion-paused="true"]>i{animation-play-state:paused!important}
+.player-card-option .pc-atmosphere>i{animation-play-state:paused}
+.player-card-option:is(:hover,:focus-visible,[aria-pressed="true"]) .pc-atmosphere>i{animation-play-state:running}
+@media(prefers-reduced-motion:reduce){.pc-atmosphere>i{animation:none!important;opacity:0!important}}
 .player-card-settings{padding:24px}.player-card-gallery{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:20px}
 .player-card-option{padding:0;overflow:hidden;text-align:left;border:1px solid #ffffff16;border-radius:14px;background:#0a1722;transition:border-color .15s}
 .player-card-option[aria-pressed="true"]{border-color:var(--pc-option);box-shadow:0 0 0 1px var(--pc-option)}
@@ -39,10 +75,13 @@
 .player-card-full-preview{display:grid;grid-template-columns:minmax(160px,1fr) repeat(3,minmax(55px,100px));align-items:center;gap:20px;min-height:96px;padding:16px;border-radius:12px;border:1px solid #ffffff16}
 .player-card-full-preview small{font-size:8px;letter-spacing:.12em;color:#b7c7d8}.player-card-full-preview strong{display:block;margin-top:5px;font-size:13px;color:#eef8ff}.player-card-option .player-card-tile::before,.player-card-option .player-card-tile::after{animation-play-state:paused}
 .player-card-option:hover .player-card-tile::before,.player-card-option:hover .player-card-tile::after,.player-card-option:focus-visible .player-card-tile::before,.player-card-option:focus-visible .player-card-tile::after,.player-card-option[aria-pressed="true"] .player-card-tile::before,.player-card-option[aria-pressed="true"] .player-card-tile::after{animation-play-state:running}
-@media(max-width:650px){.player-card-gallery{grid-template-columns:1fr}.player-card-settings{padding:16px}.player-card-full-preview{grid-template-columns:1fr 1fr;gap:18px}.player-card-full-preview>div:first-child{grid-column:1/-1}}
+@media(max-width:650px){.player-card-gallery{grid-template-columns:1fr}.player-card-settings{padding:16px}.player-card-full-preview{grid-template-columns:1fr 1fr;gap:18px}.player-card-full-preview>div:first-of-type{grid-column:1/-1}}
 @media(prefers-reduced-motion:reduce){[data-player-card]::before,[data-player-card]::after{animation:none!important;transform:none!important}}
 @media print{[data-player-card]::before,[data-player-card]::after{display:none}}
 
 /* The artwork fills its masked area, so no inner image edge can appear before the fade. */
-@media(min-width:651px){.player-card-option .player-card-tile::before{background-size:cover;background-position:var(--pc-focus)}}
-@media(max-width:650px){.match-player-card[data-player-card]::before{top:0;bottom:auto;height:190px;width:86%;background-size:cover;background-position:var(--pc-focus)}.player-card-full-preview>div:first-child{grid-column:1/-1}}
+@media(min-width:651px){.player-card-option .player-card-tile::before{background-size:auto 112%;background-position:var(--pc-focus)}}
+@media(max-width:650px){.match-player-card[data-player-card]::before{top:0;bottom:auto;height:190px;width:86%;background-size:cover;background-position:var(--pc-focus)}.player-card-full-preview>div:first-of-type{grid-column:1/-1}}
+
+/* Desktop gets purpose-composed panoramic artwork; mobile keeps the original illustration. */
+@media(max-width:650px){[data-player-card]::before{background-image:var(--pc-art);background-size:cover}.player-card-tile::before{background-size:cover}}
