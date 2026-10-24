@@ -16,7 +16,7 @@ const overviewKeys = ["dashboardOverview"];
 const sectionKeys = {
   dashboard: overviewKeys,
   users: ["wallets"], roles: [], alerts: ["adminAlerts", "tickets"],
-  tickets: [], banAppeals: [], wagers: ["wagers"],
+  websiteUpdates: [], tickets: [], banAppeals: [], wagers: ["wagers"],
   challenges: [], live8s: [], eightsGames: [], ranked: ["users", "rankedMatches", "rankedStats"],
   verifyRank: ["users"], progression: [],
   tournaments: ["tournaments", "tournamentMatches", "tournamentParticipants", "users", "marketplace"],

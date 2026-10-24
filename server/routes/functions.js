@@ -1,3 +1,4 @@
+import { siteAnnouncementHandlers } from "../site-announcement.js";
 import { claimSupportTicket } from "../support-claims.js";
 import { MEMBER_TIERS } from "../../src/lib/premiumMembership.js";
 import { getPremiumMembershipStatus } from "../premium-membership.js";
@@ -10807,6 +10808,7 @@ const handlers = {
   changeDisplayName,
   getCompetitionTrophyCounts,
   getReferralStatus,
+  ...siteAnnouncementHandlers(prisma),
   getReferralProgram,
   updateReferralProgram,
   adminAction: async (req) => {

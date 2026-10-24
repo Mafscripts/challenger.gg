@@ -3,6 +3,7 @@ import { Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import PageLoader from "@/components/ui/PageLoader";
 import Navbar from "./Navbar";
+import SiteAnnouncement from "./SiteAnnouncement";
 import { NavigationLayoutProvider, useNavigationLayout } from "./NavigationLayoutProvider";
 import "@/styles/navigation-layout.css";
 import NativeTabBar from "./NativeTabBar";
@@ -60,6 +61,7 @@ function PageLayoutShell() {
     <div className={`app-style-arena app-season-mw4 relative min-h-screen overflow-x-clip text-foreground ${isAuthenticated ? "app-shell-auth" : "app-shell-public"} ${isAdminRoute ? "app-shell-admin" : ""} ${!isNativeApp && isAuthenticated && layout === "sidebar" ? "app-layout-sidebar" : "app-layout-topbar"}`}>
       <div className="page-ambient" aria-hidden="true" />
       <Navbar />
+      <SiteAnnouncement />
       <main className="app-content relative z-[1] min-w-0 overflow-x-clip pt-16">
         <Suspense fallback={<RouteFallback />}>
           <div className="route-stage">

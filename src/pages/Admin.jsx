@@ -1,3 +1,4 @@
+import SiteAnnouncementAdmin from "@/components/admin/SiteAnnouncementAdmin";
 import useRouteSection from "@/hooks/useRouteSection";
 import { retainDataSnapshot } from "@/lib/dataSnapshot";
 import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
@@ -261,6 +262,7 @@ const tabs = [
   { id: "tournaments", label: "Tournaments", icon: Trophy },
   { id: "tournamentMatches", label: "Tournament Matches", icon: ClipboardList },
   { id: "wallets", label: "Wallets", icon: Wallet },
+  { id: "websiteUpdates", label: "Website updates", icon: BellRing, adminOnly: true },
   { id: "referrals", label: "Referrals", icon: Gift },
   { id: "freeTrials", label: "Free Trials", icon: Sparkles },
   { id: "withdrawals", label: "Withdrawals", icon: Landmark },
@@ -1906,6 +1908,7 @@ export default function Admin() {
           {activeTab === "verifyRank" && <RankVerificationAdmin users={data.users} />}
           {activeTab === "progression" && <ProgressionResets user={currentUser} onChanged={loadAdminData} />}
           {activeTab === "dashboard" && <AdminDashboard overview={adminQueries.data.dashboardOverview} onSelect={selectAdminSection} canReset={hasRolePower(currentRole, "super_admin")} allowedSections={allowedTabs.map((tab) => tab.id)} />}
+          {activeTab === "websiteUpdates" && <SiteAnnouncementAdmin user={currentUser} />}
           {activeTab === "eightsGames" && <FreeEightsGamesAdmin />}
           {activeTab === "challenges" && <ChallengeTeamAdmin />}
           {activeTab === "live8s" && (

@@ -779,3 +779,13 @@ model CompetitionRewardCampaign {
 
   @@index([active, ends_at])
 }
+
+model SiteAnnouncement {
+  id           String   @id @default("current")
+  enabled      Boolean  @default(false)
+  title        String
+  message      String
+  revision     String
+  updated_by   String?
+  updated_date DateTime @updatedAt
+}
