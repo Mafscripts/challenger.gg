@@ -5,14 +5,16 @@ import "@/styles/player-cards.css";
 import { competitionStreamRequiredMessage, hasCompetitionStream } from "@/lib/competitionStreaming";
 import { loadPlayTeams } from "@/lib/playTeams";
 import { tournamentPayoutPolicy } from "@/lib/tournamentPayoutPolicy";
-import StreamRequirementNotice from "@/components/competition/StreamRequirementNotice";
+import { tournamentFormat, tournamentPrizes, tournamentRegistration } from "@/lib/tournamentOverview";
 import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import useRouteSection from "@/hooks/useRouteSection";
 import {
   ArrowLeft,
+  ArrowRight,
+  BookOpen,
   CalendarDays,
-  Check,
+  CheckCircle2,
   ChevronRight,
   Clock3,
   Coins,
@@ -24,6 +26,7 @@ import {
   LogOut,
   Medal,
   Monitor,
+  Radio,
   ShieldCheck,
   Trophy,
   Users,
@@ -31,7 +34,6 @@ import {
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "@/components/ui/use-toast";
-import ActivisionIdNotice from "@/components/competition/ActivisionIdNotice";
 import PageLoader from "@/components/ui/PageLoader";
 import { tournamentGameId, tournamentGameName } from "@/lib/tournamentGames";
 import { visibleTournamentMatches } from "@/lib/tournamentBracketView";
@@ -47,40 +49,19 @@ import {
 } from "@/components/ui/alert-dialog";
 import { activisionIdRequiredMessage, hasActivisionId } from "@/lib/activision";
 import { teamRosterFormat } from "@/lib/teamFormats";
-import CompetitionHero from "@/components/competition/CompetitionHero";
 import CommercePausedNotice from "@/components/commerce/CommercePausedNotice";
 import { publicCommerceEnabled } from "@/lib/commerce";
 import "@/styles/tournament-overview.css";
+import "@/styles/competition-presentation.css";
 
 const CreateTeamModal = lazy(() => import("@/components/teams/CreateTeamModal"));
 const TournamentJoinModal = lazy(() => import("@/components/tournaments/TournamentJoinModal"));
 
 const BLACK_OPS_7_ART = "/assets/tournaments/black-ops-7.webp";
 
-const statusLabels = {
-  draft: "Draft",
-  open: "Open",
-  registration: "Registration open",
-  closed: "Closed",
-  live: "Live",
-  in_progress: "In progress",
-  completed: "Completed",
-  cancelled: "Cancelled",
-};
-
-const modeLabels = {
-  bo1_snd: "Best of 1 Search & Destroy",
-  snd_hp_snd: "Best of 3 Search & Destroy / Hardpoint / Search & Destroy",
-  bo3_hp_overload_snd: "Best of 3 Hardpoint / Overload / Search & Destroy",
-  bo5_hp_overload_snd_hp_snd: "Best of 5 Hardpoint / Overload / Search & Destroy / Hardpoint / Search & Destroy",
-  snd: "Best of 3 Search & Destroy",
-  overload: "Best of 3 Overload",
-  hp: "Best of 3 Hardpoint",
-};
-
-const formatMoney = (value) => `$${Number(value || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+const formatMoney = (value) => `$${Number(value || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 const formatDate = (value) => {
-  if (!value) return "To be announced";
+  if (!value || !Number.isFinite(Date.parse(value))) return "To be announced";
   return new Date(value).toLocaleString([], {
     weekday: "short",
     month: "short",
@@ -91,12 +72,12 @@ const formatDate = (value) => {
   });
 };
 const formatShortDate = (value) => {
-  if (!value) return "TBA";
+  if (!value || !Number.isFinite(Date.parse(value))) return "To be announced";
   return new Date(value).toLocaleString([], { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
 };
 const rosterSize = (teamSize) => Number.parseInt(String(teamSize || "1v1").split("v")[0], 10) || 1;
 const imageForTournament = (tournament) => {
-  if (tournament.game_id && tournamentGameId(tournament) !== "bo7") {
+  if (tournamentGameId(tournament) !== "bo7") {
     return tournament.banner_url || tournament.cover_image_url || tournament.image_url
       || (tournamentGameId(tournament) === "mw4" ? "/assets/mw4/hero.webp" : "/assets/competition/play-hero.png");
   }
@@ -116,13 +97,7 @@ const entryLabel = (tournament) => {
   if (type === "credits") return `${Number(tournament?.entry_fee || 0).toLocaleString()} Credits`;
   return "Free entry";
 };
-const canJoin = (tournament, joined, user) => {
-  if (!tournament || joined) return false;
-  const inviteOnly = tournament.invite_only || entryType(tournament) === "invitational";
-  const invited = (tournament.invited_user_ids || []).map(String).includes(String(user?.id || ""));
-  const hasSpace = !Number(tournament.max_teams || 0) || Number(tournament.registered_teams || 0) < Number(tournament.max_teams || 0);
-  return ["open", "registration"].includes(tournament.status) && hasSpace && (!inviteOnly || invited);
-};
+const canJoin = (tournament, joined, user) => tournamentRegistration(tournament, { joined, user }).available;
 const canLeave = (tournament, matches) => Boolean(
   tournament
   && ["open", "registration"].includes(tournament.status)
@@ -151,16 +126,10 @@ function Countdown({ value, status, expiredLabel = "Closed" }) {
   }, [value]);
   const target = new Date(value || "").getTime();
   const difference = target - now;
-  if (!Number.isFinite(target)) return <span className="font-mono text-sm font-black text-vapor">TBA</span>;
+  if (["cancelled", "completed", "live", "in_progress"].includes(status)) return <strong className="to-countdown-status">{status === "cancelled" ? "Cancelled" : status === "completed" ? "Completed" : "Live now"}</strong>;
+  if (!Number.isFinite(target)) return <strong className="to-countdown-status">To be announced</strong>;
   if (difference <= 0) {
-    const normalizedStatus = String(status || "").toLowerCase();
-    if (["live", "in_progress"].includes(normalizedStatus)) {
-      return <span className="font-mono text-sm font-black text-orange">Live now</span>;
-    }
-    if (normalizedStatus === "completed") {
-      return <span className="font-mono text-sm font-black text-green">Completed</span>;
-    }
-    return <span className="font-mono text-sm font-black text-vapor">{expiredLabel}</span>;
+    return <strong className="to-countdown-status">{expiredLabel}</strong>;
   }
   const totalSeconds = Math.floor(difference / 1000);
   const units = [
@@ -170,33 +139,27 @@ function Countdown({ value, status, expiredLabel = "Closed" }) {
     [totalSeconds % 60, "S"],
   ];
   return (
-    <div className="flex items-baseline gap-1.5 font-mono">
-      {units.map(([number, label], index) => (
-        <React.Fragment key={label}>
-          {index > 0 && <span className="text-xs font-black text-cyan/35">:</span>}
-          <span className="text-base font-black text-cyan">{String(number).padStart(2, "0")}<small className="ml-0.5 text-[8px] text-vapor">{label}</small></span>
-        </React.Fragment>
-      ))}
+    <div className="to-countdown">
+      {units.map(([number, label]) => <span key={label}><strong>{String(number).padStart(2, "0")}</strong><small>{{ D: "days", H: "hrs", M: "min", S: "sec" }[label]}</small></span>)}
     </div>
   );
 }
 
-function PrizeCard({ place, amount, color, icon: Icon = Trophy }) {
+function PrizeCard({ place, amount, icon: Icon = Trophy }) {
   return (
-    <div className="overview-panel overview-prize px-4 py-5 text-center" data-place={place}>
-      <Icon className={`mx-auto h-5 w-5 ${color}`} />
-      <p className="mt-3 text-[9px] font-black uppercase tracking-[0.16em] text-vapor">{place}</p>
-      <p className="mt-1 font-mono text-lg font-black text-white">{formatMoney(amount)}</p>
+    <div className="overview-panel overview-prize" data-place={place}>
+      <Icon size={25} aria-hidden="true" />
+      <div><p>{place}</p><strong>{formatMoney(amount)}</strong></div>
     </div>
   );
 }
 
 function DetailRow({ icon: Icon, label, value }) {
   return (
-    <div className="overview-detail-row flex items-center gap-3 border-b border-white/[0.06] py-3 last:border-b-0">
-      <Icon className="h-4 w-4 shrink-0 text-vapor/60" />
-      <span className="min-w-24 text-xs text-vapor">{label}</span>
-      <span className="ml-auto text-right text-xs font-black text-white">{value}</span>
+    <div className="overview-detail-row">
+      <Icon size={16} aria-hidden="true" />
+      <span>{label}</span>
+      <strong>{value}</strong>
     </div>
   );
 }
@@ -279,10 +242,15 @@ export default function TournamentOverview() {
   const [participants, setParticipants] = useState([]);
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [accountReady, setAccountReady] = useState(false);
+  const [registrationNow, setRegistrationNow] = useState(Date.now);
   const loadGeneration = useRef(0);
   const [teamsLoading, setTeamsLoading] = useState(false);
   const [participantsLoading, setParticipantsLoading] = useState(true);
   const [matchesLoading, setMatchesLoading] = useState(true);
+  const [participantsError, setParticipantsError] = useState(false);
+  const [matchesError, setMatchesError] = useState(false);
   const [activeTab, setActiveTab] = useRouteSection("tab", "overview", ["overview", "bracket", "participants", "rules"]);
   const [joinOpen, setJoinOpen] = useState(false);
   const [createTeamOpen, setCreateTeamOpen] = useState(false);
@@ -296,6 +264,13 @@ export default function TournamentOverview() {
   const [selectedParticipantId, setSelectedParticipantId] = useState(null);
   const [rosterPlayers, setRosterPlayers] = useState([]);
   const [rosterLoading, setRosterLoading] = useState(false);
+
+  useEffect(() => {
+    const deadline = Date.parse(tournament?.registration_end || tournament?.start_date || "");
+    if (!Number.isFinite(deadline) || deadline <= registrationNow) return;
+    const timer = window.setTimeout(() => setRegistrationNow(Date.now()), Math.min(deadline - Date.now() + 30, 2147483647));
+    return () => window.clearTimeout(timer);
+  }, [tournament?.registration_end, tournament?.start_date, registrationNow]);
 
   const selectedParticipant = useMemo(() => (
     participants.find((participant) => String(participant.id) === String(selectedParticipantId)) || null
@@ -353,14 +328,17 @@ export default function TournamentOverview() {
     const generation = ++loadGeneration.current;
     const current = () => generation === loadGeneration.current;
     try {
-      setLoading(true); setParticipantsLoading(true); setMatchesLoading(true);
+      setLoading(true); setLoadError(false); setTournament(null); setUser(null); setAccountReady(false);
+      setParticipantsLoading(true); setMatchesLoading(true); setParticipantsError(false); setMatchesError(false);
       setParticipants([]); setMatches([]); setTeams([]); setJoined(false); setSelectedParticipantId(null);
-      const currentUserPromise = base44.auth.me().catch(() => null).then(row => { if (current()) setUser(row); return row; });
-      const participantRowsPromise = base44.entities.TournamentParticipant.filterFresh({ tournament_id: id }, "seed", 256).catch(() => []).then(rows => {
+      setJoinOpen(false); setCreateTeamOpen(false); setLeaveDialogOpen(false); setSelectedTeamId(""); setSponsoredMemberIds([]);
+      let participantsFailed = false;
+      const currentUserPromise = base44.auth.me().catch(() => null).then(row => { if (current()) { setUser(row); setAccountReady(true); } return row; });
+      const participantRowsPromise = base44.entities.TournamentParticipant.filterFresh({ tournament_id: id }, "seed", 256).catch(() => { participantsFailed = true; if (current()) setParticipantsError(true); return []; }).then(rows => {
         if (current()) { setParticipants(rows || []); setParticipantsLoading(false); }
         return rows || [];
       });
-      void base44.entities.TournamentMatch.filterFresh({ tournament_id: id }, "round", 256).catch(() => []).then(rows => {
+      void base44.entities.TournamentMatch.filterFresh({ tournament_id: id }, "round", 256).catch(() => { if (current()) setMatchesError(true); return []; }).then(rows => {
         if (current()) { setMatches(rows || []); setMatchesLoading(false); }
       });
       const tournamentRow = await base44.entities.Tournament.get(id);
@@ -371,10 +349,14 @@ export default function TournamentOverview() {
       const userJoined = Boolean(currentUser?.id) && participantRows.some(participant => participant.captain_id === currentUser?.id || participant.user_id === currentUser?.id
         || (participant.members || []).some(member => member.user_id === currentUser?.id));
       setJoined(userJoined);
-      if (searchParams.get("join") === "1" && canJoin(tournamentRow, userJoined, currentUser)) setJoinOpen(true);
+      if (!participantsFailed && searchParams.get("join") === "1" && canJoin({ ...tournamentRow, registered_teams: tournamentRow.registered_teams ?? participantRows.length }, userJoined, currentUser)) {
+        if (currentUser?.id) setJoinOpen(true);
+        else navigate("/login");
+      }
     } catch (error) {
       if (!current()) return;
       console.error("Failed to load tournament overview:", error);
+      setLoadError(true);
       toast({ title: "Tournament unavailable", description: "This tournament could not be loaded.", variant: "destructive" });
     } finally { if (current()) setLoading(false); }
   };
@@ -401,7 +383,7 @@ export default function TournamentOverview() {
       toast({ title: "Activision ID required", description: activisionIdRequiredMessage, variant: "destructive" });
       return;
     }
-    if (!selectedTeamId || !canJoin(tournament, joined, user)) return;
+    if (!selectedTeamId || participantsLoading || participantsError || !canJoin({ ...tournament, registered_teams: tournament.registered_teams ?? participants.length }, joined, user)) return;
     setJoining(true);
     try {
       const response = await base44.functions.invoke("registerTournament", {
@@ -512,129 +494,128 @@ export default function TournamentOverview() {
     return (
       <div className="mx-auto flex min-h-[65vh] max-w-xl flex-col items-center justify-center px-5 text-center">
         <Trophy className="h-10 w-10 text-vapor/25" />
-        <h1 className="mt-4 text-2xl font-black">Tournament not found</h1>
+        <h1 className="mt-4 text-2xl font-black">{loadError ? "Tournament could not be loaded" : "Tournament not found"}</h1>
+        {loadError && <button type="button" onClick={loadPage} className="to-primary mt-5">Try again</button>}
         <Link to="/tournaments" className="mt-5 rounded-xl bg-orange px-5 py-3 text-xs font-black uppercase tracking-wider text-white">Back to tournaments</Link>
       </div>
     );
   }
 
-  const joinAvailable = canJoin(tournament, joined, user);
+  const registrationChecking = !accountReady || participantsLoading;
+  const registeredTeams = Number(tournament.registered_teams ?? participants.length) || 0;
+  const registration = tournamentRegistration({ ...tournament, registered_teams: registeredTeams }, { joined, user, now: registrationNow });
+  const joinAvailable = registration.available && !registrationChecking && !participantsError;
   const joinedParticipant = participants.find((participant) => (
     participant.captain_id === user?.id
     || participant.user_id === user?.id
     || (participant.members || []).some((member) => member.user_id === user?.id)
   ));
   const leaveAvailable = joinedParticipant?.captain_id === user?.id && canLeave(tournament, matches);
-  const distribution = tournament.prize_distribution || {};
-  const firstPrize = Number(distribution.first_amount ?? distribution.first ?? tournament.first_place_prize ?? tournament.prize_pool ?? 0);
-  const secondPrize = Number(distribution.second_amount ?? distribution.second ?? tournament.second_place_prize ?? 0);
-  const thirdPrize = Number(distribution.third_amount ?? distribution.third ?? tournament.third_place_prize ?? 0);
+  const prizes = tournamentPrizes(tournament);
   const registrationDate = tournament.registration_end || tournament.start_date;
   const gameName = tournamentGameName(tournament);
-  const modeName = modeLabels[tournament.game_mode] || tournament.game_mode || "Search & Destroy";
+  const format = tournamentFormat(tournament);
+  const capacity = Number(tournament.max_teams) || 0;
+  const localTimeZone = Intl.DateTimeFormat(undefined, { timeZoneName: "short" }).formatToParts(new Date()).find(part => part.type === "timeZoneName")?.value || "your local time";
+  const eventStatus = String(tournament.status || "").toLowerCase();
+  const eventActive = ["live", "in_progress"].includes(eventStatus);
+  const eventFinished = ["completed", "cancelled"].includes(eventStatus);
+  const waitingToStart = !eventActive && !eventFinished && registration.status !== "draft";
+  const statusLabel = eventActive ? "Tournament in progress" : eventFinished ? eventStatus === "completed" ? "Tournament completed" : "Tournament cancelled" : registration.status === "open" ? "Registration open" : registration.label;
+  const countdownDate = registration.status === "open" ? registration.deadline : tournament.start_date;
+  const moveSection = event => {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    const tabs = [...event.currentTarget.parentElement.querySelectorAll('[role="tab"]')];
+    const index = tabs.indexOf(event.currentTarget);
+    const next = event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : (index + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
+    event.preventDefault(); tabs[next]?.click(); tabs[next]?.focus();
+  };
 
   return (
     <div className="tournament-overview competition-surface page-shell" data-competition="tournaments">
       <div className="page-container">
         <Link to="/tournaments" className="overview-back"><ArrowLeft size={15} />All tournaments</Link>
-        <CompetitionHero mode="tournaments" title={tournament.name} eyebrow="Tournament overview" description={`${gameName} · ${modeName} · ${tournament.platform || "Cross platform"}`} artwork={imageForTournament(tournament)} className="overview-hero"
-          gameId={tournamentGameId(tournament)}
-          cover={tournamentGameId(tournament) === "mw4" ? { src: "/assets/mw4/tournament-cover.webp", alt: "Call of Duty: Modern Warfare 4" } : undefined}
-          facts={[["Gamepad2", tournament.team_size || "1v1"], ["Globe2", tournament.region?.toUpperCase() || "NA + EU"], ["Trophy", entryLabel(tournament)]]}
-          count={`${tournament.registered_teams || participants.length}/${tournament.max_teams || "∞"}`} countLabel="teams registered"
-          metadata={<><span className="overview-status" data-status={tournament.status}>{statusLabels[tournament.status] || tournament.status}</span><CalendarDays size={13} />{formatShortDate(tournament.start_date)}</>}
-          action={<div className="competition-actions overview-actions">
-              {joined ? (
-                <>
-                  <span className="overview-joined"><Check size={16} />Tournament joined</span>
-                  {leaveAvailable && (
-                    <button type="button" onClick={() => { setRefundResult(null); setLeaveDialogOpen(true); }} className="competition-action-pill overview-leave">
-                      <LogOut className="h-4 w-4" /> Leave tournament
-                    </button>
-                  )}
-                </>
-              ) : joinAvailable ? (
-                <button type="button" onClick={openJoin} className="competition-action-pill overview-join"><Users size={16} />Join tournament</button>
-              ) : (
-                <span className="overview-registration-closed">Registration unavailable</span>
-              )}
-              <div className="overview-countdown"><span>Starts in</span><Countdown value={tournament.start_date} status={tournament.status} expiredLabel="Starting" /></div>
-          </div>} />
+        <header className="to-hero overview-hero" data-game={tournamentGameId(tournament)}>
+          <img className="to-hero-art" src={imageForTournament(tournament)} alt="" decoding="async" />
+          <div className="to-hero-main">
+            <div className="to-identity">
+              <img className="to-cover" src={tournamentGameId(tournament) === "mw4" ? "/assets/mw4/tournament-cover.webp" : imageForTournament(tournament)} alt={gameName} width={224} height={315} decoding="async" />
+              <div className="to-title-copy">
+                <p className="to-eyebrow"><Trophy size={15} />Tournament</p>
+                <h1>{tournament.name}</h1>
+                <p className="to-game-label">{gameName}</p>
+                <div className="to-tags"><span><Gamepad2 size={14} />{tournament.team_size || "1v1"}</span><span><Layers3 size={14} />{format.modesLabel}</span><span><Globe2 size={14} />{tournament.region?.toUpperCase() || "NA + EU"}</span></div>
+              </div>
+            </div>
+            <aside className="to-registration" aria-label="Tournament registration">
+              <span className="to-status" data-status={eventActive ? "live" : eventFinished ? eventStatus : registration.status}>{statusLabel}</span>
+              <div className="to-seat-count"><Users size={18} /><strong>{registeredTeams}<span>{capacity ? ` / ${capacity}` : ""}</span></strong><small>teams registered</small></div>
+              {capacity > 0 && <div className="to-capacity" role="meter" aria-label="Registered teams" aria-valuenow={Math.min(registeredTeams, capacity)} aria-valuemin={0} aria-valuemax={capacity}><span style={{ width: `${Math.min(100, registeredTeams / capacity * 100)}%` }} /></div>}
+              {(waitingToStart || eventActive || eventFinished) && <div className="to-deadline"><span>{registration.status === "open" ? "Registration closes in" : waitingToStart ? "Starts in" : "Tournament status"}</span><Countdown key={countdownDate} value={countdownDate} status={eventStatus} expiredLabel="Awaiting start" /></div>}
+              {registrationChecking ? <button className="to-primary" type="button" disabled><Loader2 size={16} className="animate-spin" />Checking registration...</button> : joined ? <div className="to-joined-actions"><div className="to-registered"><CheckCircle2 size={17} /><div><strong>Your team is registered</strong><span>{joinedParticipant?.team_name || joinedParticipant?.player_name || "You have a place in this tournament."}</span></div></div>{(eventActive || eventStatus === "completed") && <button type="button" className="to-primary" onClick={() => setActiveTab("bracket")}><Layers3 size={16} />View bracket<ArrowRight size={16} /></button>}</div> : joinAvailable ? <button type="button" onClick={openJoin} className="to-primary"><Users size={16} />{registration.label}<ArrowRight size={16} /></button> : ["live", "completed"].includes(registration.status) ? <button type="button" className="to-primary" onClick={() => setActiveTab("bracket")}><Layers3 size={16} />View bracket<ArrowRight size={16} /></button> : registration.status === "invite_only" && !user ? <Link className="to-primary" to="/login">Sign in to check your invite<ArrowRight size={16} /></Link> : null}
+              {participantsError ? <div className="to-load-error" role="alert">Registration could not be checked.<button type="button" onClick={loadPage}>Try again</button></div> : !registrationChecking && <p className="to-action-hint">{eventActive ? "Follow the matches in the bracket." : eventFinished ? "Registration has ended." : joined ? "Keep your roster ready and follow the tournament rules." : registration.reason}</p>}
+              {leaveAvailable && !matchesLoading && !matchesError && <button type="button" className="to-leave" onClick={() => { setRefundResult(null); setLeaveDialogOpen(true); }}><LogOut size={14} />Leave tournament</button>}
+            </aside>
+          </div>
+          <div className="to-quick-facts">
+            <div className="to-total-prize"><Trophy size={20} /><div><span>Total prize pool</span><strong>{formatMoney(tournament.prize_pool)}</strong><small>{entryLabel(tournament)}</small></div></div>
+            <div><CalendarDays size={20} /><div><span>Tournament starts</span><strong>{formatShortDate(tournament.start_date)}</strong><small>Your local time · {localTimeZone}</small></div></div>
+            <div><Layers3 size={20} /><div><span>Competition format</span><strong>{format.seriesLabel}</strong><small>{format.bracketLabel}</small></div></div>
+          </div>
+        </header>
       </div>
 
       <div className="page-container">
         {!publicCommerceEnabled && <CommercePausedNotice compact className="mt-5" />}
-        <ActivisionIdNotice user={user} className="mt-5" />
-        <StreamRequirementNotice user={user} className="mt-5" />
         <div className="overview-tabs arena-tabs mt-5">
           <div className="flex" role="tablist" aria-label="Tournament sections">
-            {[["overview", "Overview"], ["bracket", "Bracket"], ["participants", `Participants ${participants.length}`], ["rules", "Rules"]].map(([value, label]) => (
-              <button key={value} type="button" onClick={() => setActiveTab(value)} role="tab" aria-selected={activeTab === value} className="arena-tab relative px-5 py-4 text-xs font-black transition-colors">{label}</button>
+            {[["overview", "Overview", Trophy], ["bracket", "Bracket", Layers3], ["participants", `Teams ${registeredTeams}`, Users], ["rules", "Rules", BookOpen]].map(([value, label, Icon]) => (
+              <button key={value} id={`tournament-tab-${value}`} aria-controls="tournament-section" type="button" onClick={() => setActiveTab(value)} onKeyDown={moveSection} role="tab" tabIndex={activeTab === value ? 0 : -1} aria-selected={activeTab === value} className="arena-tab"><Icon size={15} />{label}</button>
             ))}
           </div>
         </div>
-
+        <div id="tournament-section" role="tabpanel" aria-labelledby={`tournament-tab-${activeTab}`}>
         {activeTab === "overview" && (
-          <div className="overview-content mt-7 grid gap-6 xl:grid-cols-[minmax(0,1fr)_310px]">
-            <div className="space-y-7">
-              <section>
-                <div className="mb-3 flex items-center justify-between"><h2 className="text-base font-black">Prizes</h2><span className="font-mono text-lg font-black text-green">{formatMoney(tournament.prize_pool)}</span></div>
-                <div className="overview-prizes grid gap-3 sm:grid-cols-3">
-                  <PrizeCard place="1st place" amount={firstPrize} color="text-yellow-300" />
-                  <PrizeCard place="2nd place" amount={secondPrize} color="text-zinc-300" icon={Medal} />
-                  <PrizeCard place="3rd place" amount={thirdPrize} color="text-orange" icon={Medal} />
-                </div>
+          <div className="to-overview-grid">
+            <div className="to-main">
+              <section className="to-section">
+                <div className="to-section-heading"><div><h2><Trophy size={18} />Prize breakdown</h2><p>Announced prizes for the top placements.</p></div></div>
+                {prizes.some(prize => prize.amount > 0) ? <div className="to-prize-grid">{prizes.filter(prize => prize.amount > 0).map(prize => <PrizeCard key={prize.place} place={prize.label} amount={prize.amount} icon={prize.place === 1 ? Trophy : Medal} />)}</div> : <div className="overview-panel to-no-prizes"><Trophy size={22} /><div><strong>No cash prizes announced</strong><p>Check the tournament rules for any additional rewards.</p></div></div>}
+                <p className="to-prize-note"><button type="button" onClick={() => setActiveTab("rules")}>View prize payout details<ArrowRight size={13} /></button></p>
               </section>
-
-              <section>
-                <h2 className="mb-3 text-base font-black">Schedule</h2>
-                <div className="grid gap-3 md:grid-cols-2">
-                  <div className="overview-panel overview-schedule p-5">
-                    <p className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.15em] text-vapor"><span className="h-1.5 w-1.5 rounded-full bg-cyan" /> Registration closes</p>
-                    <div className="overview-schedule-timing mt-4 flex flex-wrap items-end justify-between gap-4"><div><p className="text-sm font-black text-white">{formatDate(registrationDate)}</p><p className="mt-1 text-[10px] text-vapor">Secure your place before the deadline.</p></div><Countdown value={registrationDate} expiredLabel="Closed" /></div>
-                  </div>
-                  <div className="overview-panel overview-schedule p-5" data-highlight="true">
-                    <p className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.15em] text-vapor"><span className="h-1.5 w-1.5 rounded-full bg-orange" /> Tournament starts</p>
-                    <div className="overview-schedule-timing mt-4 flex flex-wrap items-end justify-between gap-4"><div><p className="text-sm font-black text-white">{formatDate(tournament.start_date)}</p><p className="mt-1 text-[10px] text-vapor">All teams must be match ready.</p></div><Countdown value={tournament.start_date} status={tournament.status} expiredLabel="Starting" /></div>
-                    {joinAvailable && <button type="button" onClick={openJoin} className="overview-join mt-5 inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-3 text-xs font-black"><Users className="h-3.5 w-3.5" /> Join tournament</button>}
-                  </div>
+              <section className="to-section">
+                <div className="to-section-heading"><div><h2><CalendarDays size={18} />Schedule</h2><p>Plan your registration and be ready for the first match.</p></div></div>
+                <div className="overview-panel to-timeline">
+                  <div className="to-schedule-step"><span className="to-step-icon"><Users size={18} /></span><div><span>Registration closes</span><strong>{formatDate(registrationDate)}</strong><p>{joined ? "Your team is already registered." : "The captain registers the full team before this deadline."}</p></div></div>
+                  <div className="to-schedule-step"><span className="to-step-icon"><Gamepad2 size={18} /></span><div><span>Tournament starts</span><strong>{formatDate(tournament.start_date)}</strong><p>{tournament.check_in_required ? "Check-in is required. Follow the tournament instructions before the start." : "Automatic check-in. Have your team and streams ready at the start."}</p></div></div>
                 </div>
+                <p className="to-timezone"><Clock3 size={12} />All times are shown in your local time ({localTimeZone}).</p>
               </section>
-
-              <section>
-                <h2 className="mb-3 text-base font-black">Details</h2>
-                <div className="overview-panel grid gap-x-8 px-5 md:grid-cols-2">
-                  <div><DetailRow icon={Gamepad2} label="Format" value={tournament.team_size || "1v1"} /><DetailRow icon={Globe2} label="Region" value={tournament.region?.toUpperCase() || "NA + EU"} /><DetailRow icon={CalendarDays} label="Starts" value={formatShortDate(tournament.start_date)} /><DetailRow icon={Users} label="Size" value={`${tournament.max_teams || "Open"} teams`} /></div>
-                  <div><DetailRow icon={Monitor} label="Game" value={gameName} /><DetailRow icon={Layers3} label="Mode" value={modeName} /><DetailRow icon={ShieldCheck} label="Platform" value={tournament.platform || "Cross platform"} /><DetailRow icon={Trophy} label="Bracket" value={String(tournament.bracket_type || "Single elimination").replace(/_/g, " ")} /></div>
-                </div>
+              <section className="to-section">
+                <div className="to-section-heading"><div><h2><Gamepad2 size={18} />Event details</h2></div></div>
+                <div className="overview-panel to-event-details"><DetailRow icon={Monitor} label="Game" value={gameName} /><DetailRow icon={Gamepad2} label="Teams" value={format.teamSizeLabel} /><DetailRow icon={Layers3} label="Game modes" value={format.modesLabel} /><DetailRow icon={Trophy} label="Series" value={format.seriesLabel} /><DetailRow icon={Globe2} label="Region" value={tournament.region?.toUpperCase() || "NA + EU"} /><DetailRow icon={ShieldCheck} label="Platform" value={tournament.platform || "Cross platform"} /></div>
               </section>
             </div>
-
-            <aside className="space-y-5">
-              <section>
-                <div className="mb-3 flex items-center justify-between"><h2 className="text-sm font-black">Participants</h2><button type="button" onClick={() => setActiveTab("participants")} className="text-[9px] font-black uppercase tracking-wider text-orange hover:text-orange/80">View all</button></div>
-                <div className="overview-panel overview-participant-count p-4">
-                  <div className="flex items-center gap-3"><span className="flex h-9 w-9 items-center justify-center rounded-lg bg-cyan/10 text-cyan"><Users className="h-4 w-4" /></span><div><p className="font-mono text-lg font-black text-white">{tournament.registered_teams || participants.length}<span className="text-vapor">/{tournament.max_teams || "∞"}</span></p><p className="text-[9px] font-black uppercase tracking-wider text-vapor">Registered teams</p></div></div>
-                </div>
-              </section>
-              <section>
-                <h2 className="mb-3 text-sm font-black">Requirements</h2>
-                <div className="overview-panel overflow-hidden px-4">
-                  <DetailRow icon={Globe2} label="Region" value={tournament.region?.toUpperCase() || "NA + EU"} />
-                  <DetailRow icon={Users} label="Team size" value={`${rosterSize(tournament.team_size)} players`} />
-                  <DetailRow icon={Trophy} label="Entry" value={entryLabel(tournament)} />
-                  <DetailRow icon={Clock3} label="Check-in" value={tournament.check_in_required ? "Required" : "Automatic"} />
-                </div>
+            <aside>
+              <section className="overview-panel to-readiness" aria-label="Entry requirements">
+                <h2><ShieldCheck size={19} />Before you play</h2><p>Every player on your roster needs to be ready.</p>
+                <ol className="to-checklist">
+                  <li data-ready={joined ? "true" : "unknown"}>{joined ? <CheckCircle2 size={18} /> : <Users size={18} />}<div><strong>{joined ? "Team registered" : `${rosterSize(tournament.team_size)}-player team`}</strong><p>{joined ? joinedParticipant?.team_name || "Your roster has a place in this event." : "Your captain chooses the tournament team when joining."}</p></div></li>
+                  <li data-ready={!user ? "unknown" : hasActivisionId(user) ? "true" : "false"}>{user && hasActivisionId(user) ? <CheckCircle2 size={18} /> : <Gamepad2 size={18} />}<div><strong>Activision ID</strong><p>{!user ? "Sign in to check your gaming ID." : hasActivisionId(user) ? "Your gaming ID is saved." : "Add your full Activision ID before joining."}</p>{(!user || !hasActivisionId(user)) && <Link to={user ? "/settings#gaming-ids" : "/login"}>{user ? "Add Activision ID" : "Sign in"}<ArrowRight size={12} /></Link>}</div></li>
+                  <li data-ready={!user ? "unknown" : hasCompetitionStream(user) ? "true" : "false"}>{user && hasCompetitionStream(user) ? <CheckCircle2 size={18} /> : <Radio size={18} />}<div><strong>Stream every map</strong><p>{user && hasCompetitionStream(user) ? "Your channel is saved. Every player must still stream every map." : "Twitch, YouTube or Kick · all players, including console."}</p><Link to={!user ? "/login" : hasCompetitionStream(user) ? "/rules" : "/settings#streaming"}>{user && hasCompetitionStream(user) ? "Stream rules" : "Add stream channel"}<ArrowRight size={12} /></Link></div></li>
+                </ol>
+                <details className="to-stream-rules"><summary>Streaming requirements<ChevronRight size={13} /></summary><p>{competitionStreamRequiredMessage}</p></details>
+                <div className="to-side-actions"><button type="button" onClick={() => setActiveTab("participants")}><Users size={15} />View registered teams<ArrowRight size={13} /></button><button type="button" onClick={() => setActiveTab("rules")}><BookOpen size={15} />Read tournament rules<ArrowRight size={13} /></button></div>
               </section>
             </aside>
           </div>
         )}
 
-        {activeTab === "bracket" && <div className="mt-7">{matchesLoading ? <p role="status" className="p-6 text-sm text-vapor">Loading bracket…</p> : <BracketPreview matches={matches} />}</div>}
+        {activeTab === "bracket" && <div className="mt-7">{matchesLoading ? <p role="status" className="p-6 text-sm text-vapor">Loading bracket…</p> : matchesError ? <div className="to-load-error" role="alert">The bracket could not be loaded.<button type="button" onClick={loadPage}>Try again</button></div> : <BracketPreview matches={matches} />}</div>}
         {activeTab === "participants" && (
           <div className="mt-7">
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {participantsLoading ? <p role="status" className="p-6 text-sm text-vapor">Loading registered teams…</p> : participants.length ? participants.map((participant, index) => {
+              {participantsLoading ? <p role="status" className="p-6 text-sm text-vapor">Loading registered teams…</p> : participantsError ? <div className="to-load-error" role="alert">Registered teams could not be loaded.<button type="button" onClick={loadPage}>Try again</button></div> : participants.length ? participants.map((participant, index) => {
                 const selected = String(selectedParticipantId) === String(participant.id);
                 return (
                   <button
@@ -672,6 +653,7 @@ export default function TournamentOverview() {
         {activeTab === "rules" && (
           <div className="overview-panel overview-rules mt-7 p-6"><p className="text-[9px] font-black uppercase tracking-[0.18em] text-orange">Tournament rules</p><h2 className="mt-2 text-xl font-black">Format and fair play</h2><div className="mt-5 whitespace-pre-wrap text-sm leading-7 text-vapor">{tournament.rules || tournament.rules_text || tournament.description || "This event follows the Topfragg competitive rules, match reporting process, and dispute policy."}</div><section aria-label="Tournament prize payouts" className="mt-6 rounded-xl border border-orange/20 bg-orange/5 p-4"><h3 className="text-sm font-black text-white">Prize payouts</h3><div className="mt-3 space-y-4">{tournamentPayoutPolicy.map(policy => <div key={policy.title}><h4 className="text-xs font-bold text-orange">{policy.title}</h4><p className="mt-1 text-sm leading-6 text-vapor">{policy.text}</p></div>)}</div></section><Link to="/rules" className="mt-6 inline-flex rounded-lg border border-white/10 bg-secondary px-4 py-2.5 text-[10px] font-black uppercase tracking-wider text-white hover:border-orange/25 hover:text-orange">View platform rules</Link></div>
         )}
+        </div>
       </div>
 
       {joinOpen && <Suspense fallback={<PageLoader label="Opening registration" />}><TournamentJoinModal

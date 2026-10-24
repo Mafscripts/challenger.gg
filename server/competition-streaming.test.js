@@ -108,7 +108,7 @@ test("cash and Money 8s creation reject missing stream channels before creating 
 
 test("a linked captain cannot create a cash match for a teammate without a stream channel, even when covering all fees", async t => {
   const f = fixture(t); f.user("teammate", false);
-  const result = await invoke("createWager", f, { team_id: "team", team_size: "2v2", amount: 5, payment_mode: "full_team", play_rule: "console_only" });
+  const result = await invoke("createWager", f, { team_id: "team", team_size: "2v2", game_mode: "snd", amount: 5, payment_mode: "full_team", play_rule: "console_only" });
   assert.equal(result.code, "STREAM_CHANNEL_REQUIRED");
   assert.deepEqual(result.missing_user_ids, ["teammate"]);
   assert.deepEqual(f.writes, []);
