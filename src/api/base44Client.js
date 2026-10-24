@@ -485,6 +485,7 @@ export const base44 = {
     change(id, input) { requireToken(); return apiFetch(`/party-rooms/${encodeURIComponent(id)}`, { method: "POST", body: input }); },
   },
   public: {
+    ruleSets() { return apiFetch("/public/rule-sets", { dedupe: false }); },
     topfraggVariantRules() { return apiFetch("/public/topfragg-variant-rules", { dedupe: false }); },
     playerOverlay(identifier) {
       return apiFetch(`/public/player-overlay/${encodeURIComponent(identifier)}`);

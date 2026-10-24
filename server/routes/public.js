@@ -1,3 +1,4 @@
+import { ruleUpdateOptions } from "../../src/lib/ruleUpdates.js";
 import { consoleRestrictedFor } from "../../src/lib/playerRestrictions.js";
 import { Router } from "express";
 import { getEntity, listEntities } from "../entity.js";
@@ -9,6 +10,12 @@ import { EIGHTS_CONFIG_ID } from "../free-eights-games.js";
 import { DEFAULT_EIGHTS_GAMES, withMw4Preview } from "../../src/lib/freeEightsGames.js";
 
 const router = Router();
+router.get("/rule-sets", async (_req, res, next) => {
+  try {
+    const rules = await prisma.ruleSet.findMany({ where: { id: { in: ruleUpdateOptions.map(option => option.id) } }, select: { id: true, body: true, revision: true, updated_date: true } });
+    res.set("Cache-Control", "no-store").json({ success: true, rules });
+  } catch (error) { next(error); }
+});
 router.get("/topfragg-variant-rules", async (_req, res, next) => {
   try {
     const rules = await prisma.ruleSet.findUnique({ where: { id: "topfragg-variant" } });

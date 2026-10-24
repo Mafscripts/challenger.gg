@@ -287,7 +287,12 @@ export const ruleSections = [
   },
 ];
 
-ruleSections.push({ id: "topfragg-variant", group: "essentials", title: "Topfragg Variant Rules", icon: "Swords", description: "The published rules for Topfragg Variant matches.", rules: [] });
+ruleSections.push(
+  { id: "topfragg-variant", group: "essentials", title: "Topfragg Variant Rules", icon: "Swords", description: "The published rules for Topfragg Variant matches.", rules: [] },
+  { id: "cdl-rules", group: "essentials", title: "CDL Rules", icon: "SlidersHorizontal", description: "Published CDL competition rules.", rules: [] },
+  { id: "search-destroy-rules", group: "essentials", title: "Search & Destroy Rules", icon: "Swords", description: "Published Search & Destroy mode rules.", rules: [] },
+  { id: "hardpoint-rules", group: "essentials", title: "Hardpoint Rules", icon: "Gamepad2", description: "Published Hardpoint mode rules.", rules: [] },
+);
 
 export const ruleQuickLinks = [
   { id: "no-shows", value: "15 min", label: "Match readiness", detail: "From the official start", icon: "Clock" },
@@ -314,4 +319,9 @@ export function searchRulebook(query, sections = ruleSections) {
 export function withTopfraggVariantRules(body) {
   const rules = String(body || "").split(/\r?\n/).map(line => line.trim()).filter(Boolean);
   return ruleSections.map(section => section.id === "topfragg-variant" ? { ...section, rules } : section);
+}
+
+export function withPublishedRuleSets(records = []) {
+  const published = new Map(records.map(record => [record.id, record.body]));
+  return ruleSections.map(section => published.has(section.id) ? { ...section, rules: String(published.get(section.id)).split(/\r?\n/).map(line => line.trim()).filter(Boolean) } : section);
 }

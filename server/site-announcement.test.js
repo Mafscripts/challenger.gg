@@ -13,6 +13,7 @@ const fixture = () => {
     findUnique: async () => structuredClone(record),
     upsert: async ({ update }) => { record = { ...record, ...update }; return record; },
   }, ruleSet: {
+    findMany: async () => [...rules.values()],
     findUnique: async ({ where }) => rules.get(where.id) || null,
     upsert: async ({ where, update }) => { rules.set(where.id, { id: where.id, ...update }); },
   }, $executeRaw: async (_sql, revision, title, message, actionUrl) => {
@@ -120,4 +121,24 @@ test("guests can read the published Variant rule set without staff metadata", as
   const data = await response.json();
   assert.equal(data.rules.body, "Official rule");
   assert.equal(Object.hasOwn(data.rules, "updated_by"), false);
+});
+
+test("CDL, Search & Destroy, Hardpoint and existing topics can each be published independently", async () => {
+  const { ruleUpdateOptions } = await import("../src/lib/ruleUpdates.js");
+  const { withPublishedRuleSets, ruleSections } = await import("../src/lib/rulebook.js");
+  const { handlers: h, rules, deliveries, req } = fixture();
+  for (const id of ["cdl-rules", "search-destroy-rules", "hardpoint-rules", "general-match-rules", "tournaments"]) {
+    const option = ruleUpdateOptions.find(entry => entry.id === id);
+    assert.ok(option);
+    const body = `${id} rule one\n${id} rule two`;
+    const publication = await h.updateSiteAnnouncement(req("admin", { enabled: true, kind: option.kind, title: `${option.label} updated`, message: "Read the latest rules", rules_text: body }));
+    assert.equal(publication.announcement.action_url, `/rules#${id}`);
+    assert.equal(rules.get(id).body, body);
+    assert.equal([...deliveries.values()].at(-1).action_url, `/rules#${id}`);
+    assert.equal((await h.getSiteAnnouncement(req("admin"))).announcement.rules_by_kind[option.kind], body);
+  }
+  assert.equal(rules.get("cdl-rules").body, "cdl-rules rule one\ncdl-rules rule two");
+  const sections = withPublishedRuleSets([...rules.values()]);
+  assert.deepEqual(sections.find(section => section.id === "hardpoint-rules").rules, ["hardpoint-rules rule one", "hardpoint-rules rule two"]);
+  assert.deepEqual(sections.find(section => section.id === "evidence"), ruleSections.find(section => section.id === "evidence"));
 });
