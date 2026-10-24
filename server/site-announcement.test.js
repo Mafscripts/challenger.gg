@@ -7,11 +7,17 @@ import { siteAnnouncementHandlers, initialAnnouncement } from "./site-announceme
 
 const fixture = () => {
   let record = { id: "current", enabled: true, ...initialAnnouncement, revision: "initial" };
-  const handlers = siteAnnouncementHandlers({ siteAnnouncement: {
+  const deliveries = new Map();
+  const db = { siteAnnouncement: {
     findUnique: async () => structuredClone(record),
     upsert: async ({ update }) => { record = { ...record, ...update }; return record; },
-  } });
-  return { handlers, req: (role = "admin", body = {}) => ({ user: { id: "staff", role }, body }) };
+  }, $executeRaw: async (_sql, revision, title, message) => {
+    for (const id of ["online-player", "offline-player"]) deliveries.set(`${id}:${revision}`, { user_id: id, title, message, revision });
+    return 2;
+  } };
+  db.$transaction = async action => action(db);
+  const handlers = siteAnnouncementHandlers(db);
+  return { handlers, deliveries, req: (role = "admin", body = {}) => ({ user: { id: "staff", role }, body }) };
 };
 test("users receive the active notice, while only admins may publish or switch it off", async () => {
   const { handlers: h, req } = fixture();
@@ -43,4 +49,19 @@ test("anonymous notice access and generic record writes are blocked", async t =>
   for (const entity of ["SiteAnnouncement", "siteAnnouncement"]) for (const method of ["GET", "POST", "PATCH", "DELETE"]) {
     assert.equal((await fetch(`${url}/entities/${entity}/current`, { method })).status, 403);
   }
+});
+
+test("publishing notifies every account once per publication; reads and switching off do not send again", async () => {
+  const { handlers: h, deliveries, req } = fixture();
+  const publication = { enabled: true, ...initialAnnouncement, publication_id: "8f221395-0667-437e-95c6-3ed399d68724" };
+  await h.updateSiteAnnouncement(req("admin", publication));
+  assert.deepEqual([...deliveries.values()].map(row => row.user_id), ["online-player", "offline-player"]);
+  await h.updateSiteAnnouncement(req("admin", publication));
+  await h.getSiteAnnouncement(req("user"));
+  assert.equal(deliveries.size, 2);
+  await h.updateSiteAnnouncement(req("admin", { ...publication, enabled: false }));
+  assert.equal(deliveries.size, 2);
+  await h.updateSiteAnnouncement(req("ceo", { ...publication, publication_id: "fed35b6d-4948-4696-99a0-52ed75bd312e", message: "Next update" }));
+  assert.equal(deliveries.size, 4);
+  await assert.rejects(h.updateSiteAnnouncement(req("admin", { ...publication, publication_id: "invalid" })), error => error.status === 400);
 });

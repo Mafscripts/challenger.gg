@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Megaphone, Save } from "lucide-react";
 import { base44 } from "@/api/base44Client";
@@ -6,6 +6,7 @@ import { toast } from "@/components/ui/use-toast";
 
 export default function SiteAnnouncementAdmin({ user }) {
   const client = useQueryClient();
+  const publication = useRef(null);
   const [draft, setDraft] = useState(null), [busy, setBusy] = useState(false), [error, setError] = useState("");
   const query = useQuery({ queryKey: ["site-announcement", user.id], queryFn: async () => {
     const response = await base44.functions.invoke("getSiteAnnouncement", {});
@@ -16,10 +17,12 @@ export default function SiteAnnouncementAdmin({ user }) {
   const save = async event => {
     event.preventDefault(); setBusy(true); setError("");
     try {
-      const { data } = await base44.functions.invoke("updateSiteAnnouncement", { enabled: value.enabled, title: value.title, message: value.message });
+      const signature = JSON.stringify([value.enabled, value.title, value.message]);
+      if (publication.current?.signature !== signature) publication.current = { signature, id: crypto.randomUUID() };
+      const { data } = await base44.functions.invoke("updateSiteAnnouncement", { enabled: value.enabled, title: value.title, message: value.message, publication_id: publication.current.id });
       if (data.success === false) throw new Error(data.error);
-      client.setQueryData(["site-announcement", user.id], data.announcement); setDraft(null);
-      toast({ title: data.announcement.enabled ? "Website update published" : "Website update switched off", description: "Connected users receive the change within 20 seconds. A newly published message appears again after dismissal." });
+      client.setQueryData(["site-announcement", user.id], data.announcement); setDraft(null); publication.current = null;
+      toast({ title: data.announcement.enabled ? "Website update published" : "Website update switched off", description: "The notice is updated for connected users. Published notices also appear in every user's notifications." });
     } catch (failure) { setError(failure.message || "Could not save the announcement."); } finally { setBusy(false); }
   };
   const field = (key, content) => setDraft({ ...value, [key]: content });
@@ -32,7 +35,7 @@ export default function SiteAnnouncementAdmin({ user }) {
       <label className="block text-sm font-bold">Title<input className="mt-2 w-full rounded-lg border border-white/15 bg-background px-3 py-3" required maxLength={100} value={value.title} disabled={busy} onChange={event => field("title", event.target.value)} /></label>
       <label className="block text-sm font-bold">Message<textarea className="mt-2 w-full rounded-lg border border-white/15 bg-background px-3 py-3 text-sm leading-6" required maxLength={1000} rows={5} value={value.message} disabled={busy} onChange={event => field("message", event.target.value)} /></label>
       <div className="rounded-xl border border-cyan/20 bg-background p-4"><span className="text-xs font-bold text-cyan">PREVIEW</span><h3 className="mt-2 font-black">{value.title}</h3><p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-vapor">{value.message}</p></div>
-      <p className="text-xs text-vapor">Players can dismiss the notice. Publishing it creates a new version that everyone sees again. Switching it off removes it for connected users.</p>
+      <p className="text-xs text-vapor">Players can dismiss the notice. Publishing sends the message to every user's notification inbox, including offline players. Switching it off hides the popup; notifications stay in their inbox.</p>
       {error && <p role="alert" className="text-red-400">{error}</p>}
       <button disabled={busy} className="inline-flex items-center gap-2 rounded-lg bg-cyan px-4 py-3 text-sm font-black text-background disabled:opacity-50">{busy ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}{value.enabled ? "Publish notice" : "Save & switch off"}</button>
     </form>}
