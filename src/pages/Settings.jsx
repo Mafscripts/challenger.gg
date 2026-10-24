@@ -71,14 +71,18 @@ export default function Settings() {
   const GroupIcon = icons[activeGroup.icon];
   const searchResults = searchSettings(query);
 
-  const loadUser = useCallback(async () => {
-    const me = await base44.auth.me({ force: true });
+  const loadUser = useCallback(async ({ force = true } = {}) => {
+    const me = await base44.auth.me({ force });
     setUser(me);
   }, []);
+  const applyPlayerCardUser = useCallback(updatedUser => {
+    if (updatedUser?.id) setUser(updatedUser);
+    else return loadUser();
+  }, [loadUser]);
 
   useEffect(() => {
     base44.auth.isAuthenticated().then(async (authed) => {
-      if (authed) await loadUser();
+      if (authed) await loadUser({ force: false });
     }).catch(() => setError("Your settings could not be loaded. Please refresh and try again."))
       .finally(() => setLoading(false));
   }, [loadUser]);
@@ -158,7 +162,7 @@ export default function Settings() {
                 <span><GroupIcon size={22} aria-hidden="true" /></span>
                 <div><span className="settings-section-kicker"><Sparkles size={11} /> MAKE IT YOURS</span><h2>{details.title}</h2><p>{details.description}</p></div>
               </header>
-              {activeGroup.id === "appearance" && <div className="settings-panel"><div id="settings-navigation" className="settings-block"><NavigationLayoutSection /></div><div id="settings-player-card" className="settings-block"><PlayerCardSection user={user} onUserUpdate={loadUser} /></div></div>}
+              {activeGroup.id === "appearance" && <div className="settings-panel"><div id="settings-navigation" className="settings-block"><NavigationLayoutSection /></div><div id="settings-player-card" className="settings-block"><PlayerCardSection user={user} onUserUpdate={applyPlayerCardUser} /></div></div>}
               {activeGroup.id === "account" && <div className="settings-panel">
                 <div id="settings-account" className="settings-block"><AccountSection user={user} onUserUpdate={loadUser} /></div>
                 <div id="settings-name-color" className="settings-block"><NameColorSection user={user} onUserUpdate={loadUser} /></div>

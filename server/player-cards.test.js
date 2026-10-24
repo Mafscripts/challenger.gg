@@ -80,6 +80,8 @@ test("the real match roster retains readable identity, rank, record and actions 
   }
   assert.doesNotMatch(mod.exports.render(""), /data-player-card=/);
   const studio = mod.exports.studio();
-  for (const theme of playerCardThemes) assert.ok(studio.includes(theme.name));
+  assert.match(studio, /Choose a player card/);
+  assert.doesNotMatch(studio, /class="player-card-option"/);
+  assert.match(studio, /aria-expanded="false"/);
   assert.match(studio, /LIVE MATCH PREVIEW/); assert.match(studio, /Classic/);
 });
