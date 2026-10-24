@@ -1,4 +1,4 @@
-import { validPlayerCard } from "../../src/lib/playerCards.js";
+import { validPlayerCard, validPlayerCardMotion } from "../../src/lib/playerCards.js";
 import { streamChannelUrl } from "../../src/lib/competitionStreaming.js";
 import { Router } from "express";
 import crypto from "node:crypto";
@@ -352,6 +352,7 @@ router.patch("/me", requireAuth, async (req, res, next) => {
       "discord_alerts_enabled",
       "display_name_color",
       "player_card_theme",
+      "player_card_motion",
       "allow_team_credit_payments",
       "allow_team_wager_payments",
       "navigation_layout",
@@ -363,6 +364,7 @@ router.patch("/me", requireAuth, async (req, res, next) => {
     if (Object.hasOwn(rest, "navigation_layout") && !["topbar", "sidebar"].includes(rest.navigation_layout)) {
       return res.status(400).json({ error: "Choose topbar or sidebar navigation" });
     }
+    if (Object.hasOwn(rest, "player_card_motion") && !validPlayerCardMotion(rest.player_card_motion)) return res.status(400).json({ error: "Choose Auto, On or Off for player card animation" });
     if (Object.hasOwn(rest, "player_card_theme") && !validPlayerCard(rest.player_card_theme)) return res.status(400).json({ error: "Choose a valid player card style" });
     for (const provider of ["twitch", "youtube", "kick"]) {
       if (!Object.hasOwn(rest, provider)) continue;

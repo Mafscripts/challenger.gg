@@ -30,6 +30,11 @@ test("only known card identifiers can be saved on the authenticated account; exi
   assert.equal((await request({ user_id: "other", player_card_theme: "frostbite" })).status, 403);
   assert.equal((await request({ player_card_theme: "" })).status, 200);
   assert.equal(account.metadata.player_card_theme, ""); assert.equal(updates.length, 11);
+  for (const motion of ["auto", "on", "off"]) {
+    assert.equal((await request({ player_card_motion: motion })).status, 200);
+    assert.equal(account.metadata.player_card_motion, motion);
+  }
+  for (const motion of ["fast", null, {}, true]) assert.equal((await request({ player_card_motion: motion })).status, 400);
 });
 test("ten original optimized images and safe card presentation support the classic fallback", async () => {
   assert.equal(playerCardThemes.length, 10); assert.equal(new Set(playerCardThemes.map(theme => theme.id)).size, 10);

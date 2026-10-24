@@ -27,6 +27,7 @@ export async function loadWagerParticipants(base44, wager, options = {}) {
       free_eights_rank_loading: wager.match_type === "8s",
       screenshot_rank: userRow ? userRow.screenshot_rank ?? null : participant.screenshot_rank ?? null,
       full_name: userRow?.display_name || userRow?.full_name || userRow?.username || participant.user_name || "Unnamed player",
+      player_card_motion: userRow?.player_card_motion || "auto",
       player_card_theme: userRow?.player_card_theme || "",
       display_name_color: userRow?.display_name_color || profileRow?.display_name_color || "",
       avatar_url: userRow?.avatar_url || profileRow?.avatar_url || profileRow?.profile_picture_url || participant.avatar_url || "",

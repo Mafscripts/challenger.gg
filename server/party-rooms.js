@@ -76,7 +76,7 @@ export async function getPartyRoom(db, id, { matchId = null } = {}) {
     } });
     const profiles = new Map(users.map((user) => [user.id, { id: user.id, username: user.username, display_name: user.display_name,
       role: user.role, admin_role: user.admin_role, is_admin: user.is_admin, is_premium: user.is_premium,
-      player_card_theme: user.metadata?.player_card_theme || "", avatar_url: playerAvatarFor(user), display_name_color: user.metadata?.display_name_color || null, console_restricted: consoleRestrictedFor(user),
+      player_card_motion: user.metadata?.player_card_motion || "auto", player_card_theme: user.metadata?.player_card_theme || "", avatar_url: playerAvatarFor(user), display_name_color: user.metadata?.display_name_color || null, console_restricted: consoleRestrictedFor(user),
       activision_id: user.metadata?.activision_id || user.metadata?.activision_name || null }]));
     room.players = room.players.map((player) => profiles.has(player.user_id) ? { ...player, profile: profiles.get(player.user_id) } : player);
   }
